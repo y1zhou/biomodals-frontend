@@ -1,6 +1,7 @@
 # BioModals frontend
 
-Static React frontend for the BioModals web tools catalog.
+Static React frontend for the BioModals web tools catalog. This repository owns
+the browser application only; FastAPI and Caddy are deployed separately.
 
 ## Development
 
@@ -11,7 +12,9 @@ bun install
 bun dev
 ```
 
-The Vite development server proxies `/api/*` to `http://127.0.0.1:8000`. Production builds use same-origin `/api` URLs and expect the deployment proxy to route them to FastAPI.
+The Vite development server proxies `/api/*` to `http://127.0.0.1:8000`.
+Production builds use same-origin `/api` URLs and expect the deployment proxy to
+route them to FastAPI.
 
 ## Commands
 
@@ -23,21 +26,32 @@ bun run build    # typecheck and build dist/
 bun run preview  # preview dist/ locally
 ```
 
-## Adding a tool
+## Current state
 
-Add its metadata to `src/tools.ts`, then replace the matching placeholder route in `src/App.tsx` with the tool interface. The sample catalog entries are deliberately labeled as examples in the UI.
+The app has a searchable landing page, a typed catalog of clearly labelled
+example Tools, internal placeholder routes, and TanStack Query at the
+application root. The real Tool inventory and the stable FastAPI OpenAPI schema
+have not yet been supplied.
 
-TanStack Query is provided at the application root in `src/main.tsx`. A polling query can stop itself when the backend reports a terminal job status:
+To add a real Tool, add its metadata to `src/tools.ts` and introduce a
+lazy-loaded internal route module. Keep the card as a real link and prefer
+native browser controls for simple interactions such as file selection.
 
-```tsx
-useQuery({
-  queryKey: ["jobs", jobId],
-  queryFn: ({ signal }) => fetch(`/api/jobs/${jobId}`, { signal }).then((response) => response.json()),
-  refetchInterval: (query) =>
-    ["succeeded", "failed", "cancelled"].includes(query.state.data?.status)
-      ? false
-      : 2_000,
-})
-```
+The first recommended vertical slice is one real Tool covering input
+validation, upload progress, idempotent Job creation, polling, failure and
+cancellation states, recovery through Job History, and direct Result download.
+Generate the TypeScript API types from FastAPI only after its OpenAPI schema is
+stable.
 
-The production build is a browser-routed SPA. Its static server must fall back to `index.html` for paths that do not match real files.
+## Project documentation
+
+- `AGENTS.md` contains repository workflow and implementation conventions.
+- `CONTEXT.md` defines the canonical BioModals domain language.
+- `docs/adr/` records the frontend boundary, resumable Job model, retention
+  policy, and account/session decisions.
+- `docs/agents/` configures the issue tracker, triage vocabulary, and domain-doc
+  layout used by engineering skills.
+
+The production build is a browser-routed SPA. Its static server must fall back
+to `index.html` for paths that do not match real files. Vite's preview server is
+for local verification, not production hosting.
