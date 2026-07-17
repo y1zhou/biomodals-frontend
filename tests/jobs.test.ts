@@ -1,13 +1,17 @@
 import { describe, expect, test } from "bun:test"
 
-import type { Job } from "../src/api/client"
+import { ApiError, type Job } from "../src/api/client"
 import {
   formatTimestamp,
   isActiveJob,
+  isJobNotCancellableError,
+  isJobUnavailableError,
+  jobFailureMessage,
   jobPollingInterval,
   jobPresentation,
   latestJob,
   newestJobsFirst,
+  shouldRetryJobQuery,
 } from "../src/jobs"
 
 function job(jobId: string, state: Job["state"], createdAt: string): Job {
@@ -62,6 +66,49 @@ describe("Job lifecycle presentation", () => {
 
     expect(latestJob(collectionJob, detailJob).state).toBe("succeeded")
     expect(latestJob(detailJob, collectionJob).state).toBe("succeeded")
+  })
+
+  test("prefers the detail snapshot when timestamps are equal", () => {
+    const collectionJob = job("one", "running", "2026-07-17T00:00:00Z")
+    const detailJob = { ...collectionJob, state: "succeeded" as const }
+
+    expect(latestJob(collectionJob, detailJob).state).toBe("succeeded")
+  })
+
+  test("treats malformed and inaccessible Job IDs as unavailable", () => {
+    expect(isJobUnavailableError(new ApiError(403))).toBeTrue()
+    expect(isJobUnavailableError(new ApiError(404))).toBeTrue()
+    expect(isJobUnavailableError(new ApiError(422))).toBeTrue()
+    expect(isJobUnavailableError(new ApiError(500))).toBeFalse()
+    expect(shouldRetryJobQuery(0, new ApiError(422))).toBeFalse()
+    expect(shouldRetryJobQuery(0, new ApiError(401))).toBeFalse()
+    expect(shouldRetryJobQuery(0, new ApiError(500))).toBeTrue()
+    expect(shouldRetryJobQuery(1, new ApiError(500))).toBeFalse()
+  })
+
+  test("recognizes cancellation races by code", () => {
+    expect(
+      isJobNotCancellableError(
+        new ApiError(409, { code: "job_not_cancellable", detail: "Already finalizing" })
+      )
+    ).toBeTrue()
+    expect(isJobNotCancellableError(new ApiError(409, { detail: "Conflict" }))).toBeFalse()
+  })
+
+  test("only presents safe structured failure messages", () => {
+    const failed = {
+      ...job("one", "failed", "2026-07-17T00:00:00Z"),
+      error_code: "compute_failed" as const,
+      error_message: "Remote compute failed before producing a Result.",
+    }
+    const unknown = {
+      ...failed,
+      error_code: "provider_trace" as never,
+      error_message: "secret traceback",
+    }
+
+    expect(jobFailureMessage(failed)).toBe(failed.error_message)
+    expect(jobFailureMessage(unknown)).toBe("This simulation could not be completed.")
   })
 
   test("uses plain-language labels for API states", () => {

@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { Link } from "react-router"
 
-import { useCurrentUser } from "@/auth-state"
+import { authenticatedPrincipal, useCurrentUser } from "@/auth-state"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,8 +41,9 @@ const features = [
 
 export default function GromacsOverviewPage() {
   const user = useCurrentUser()
+  const currentUser = authenticatedPrincipal(user.data)
   const ToolIcon = gromacsTool.icon
-  const target = user.data
+  const target = currentUser
     ? gromacsPaths.submission
     : `/login?returnTo=${encodeURIComponent(gromacsPaths.submission)}`
 
@@ -85,7 +86,7 @@ export default function GromacsOverviewPage() {
               className={cn(buttonVariants({ size: "lg" }), "w-full")}
               to={target}
             >
-              {user.data ? "Start a simulation" : "Sign in to start"}
+              {currentUser ? "Start a simulation" : "Sign in to start"}
               <ArrowRight aria-hidden="true" data-icon="inline-end" />
             </Link>
           </CardContent>

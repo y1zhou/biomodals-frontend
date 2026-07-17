@@ -12,21 +12,23 @@ import { Link, useNavigate } from "react-router"
 
 import {
   ApiError,
+  apiErrorCode,
   submitGromacsJob,
   type GromacsSubmission,
 } from "@/api/client"
-import { ReauthenticationDialog } from "@/auth"
+import { useExpireSession } from "@/auth-state"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
-  WEB_UPLOAD_LIMIT_BYTES,
   WEB_UPLOAD_LIMIT_LABEL,
   apiFieldErrors,
   normalizedDisplayName,
   pdbFileError,
+  shouldRotateIdempotencyKey,
   simulationTimeError,
+  submissionErrorMessage,
   type SubmissionField,
 } from "@/gromacs"
 import { cn } from "@/lib/utils"
@@ -67,8 +69,6 @@ export default function GromacsSubmissionPage() {
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<SubmissionField, string>>
   >({})
-  const [needsAuthentication, setNeedsAuthentication] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: ({ input, signal }: { input: GromacsSubmission; signal: AbortSignal }) =>
@@ -83,15 +83,14 @@ export default function GromacsSubmissionPage() {
       const errors = apiFieldErrors(error)
       setFieldErrors(errors)
       focusFirstFieldError(errors)
-      if (error instanceof ApiError && error.status === 401) setNeedsAuthentication(true)
-      if (error instanceof ApiError && error.status === 409) idempotencyKey.current = null
+      if (shouldRotateIdempotencyKey(error)) idempotencyKey.current = null
     },
   })
+  useExpireSession(mutation.error)
 
   function resetIntent() {
     idempotencyKey.current = null
     setFieldErrors({})
-    setNotice(null)
     if (!mutation.isPending) mutation.reset()
   }
 
@@ -103,7 +102,6 @@ export default function GromacsSubmissionPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setNotice(null)
 
     const nextErrors: Partial<Record<SubmissionField, string>> = {}
     const pdbError = pdbFileError(pdb)
@@ -143,18 +141,15 @@ export default function GromacsSubmissionPage() {
   const error = mutation.error
   const wasCancelled = error instanceof DOMException && error.name === "AbortError"
   const apiError = error instanceof ApiError ? error : null
-  const formError = (() => {
-    if (!error || apiError?.status === 401) return null
-    if (apiError?.status === 422 && Object.keys(fieldErrors).length === 0) {
-      return "The API rejected the Submission. Review the form and try again."
-    }
-    if (apiError?.status === 422) return null
-    if (wasCancelled) return "Upload cancelled. Your PDB and settings are still here."
-    if (apiError?.status === 503) return "Remote compute could not start. Try the same Submission again."
-    if (apiError?.status === 409) return "The Submission changed. Review it and submit again with a new key."
-    if (apiError?.status === 0) return "We could not confirm whether the Job was created. Retry this Submission or check My Jobs."
-    return "The Submission could not be completed. Check the fields and try again."
-  })()
+  const errorCode = apiErrorCode(error)
+  const formError = submissionErrorMessage(error, Object.keys(fieldErrors).length > 0)
+  const canRetry =
+    apiError?.status === 0 ||
+    errorCode === "compute_unavailable" ||
+    errorCode === "active_job_limit_reached" ||
+    errorCode === "idempotency_conflict"
+  const shouldCheckJobs =
+    apiError?.status === 0 || errorCode === "active_job_limit_reached"
   const isUploading = mutation.isPending
   const simulationNumber = Number(simulationTime)
 
@@ -206,12 +201,7 @@ export default function GromacsSubmissionPage() {
                   />
                   {fieldErrors.pdb ? (
                     <p className="text-sm text-destructive" id="pdb-error">
-                      {fieldErrors.pdb}{" "}
-                      {pdb?.size && pdb.size > WEB_UPLOAD_LIMIT_BYTES ? (
-                        <a className="underline underline-offset-4" href="/docs" rel="noreferrer" target="_blank">
-                          Use the API for larger files.
-                        </a>
-                      ) : null}
+                      {fieldErrors.pdb}
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground" id="pdb-help">
@@ -386,12 +376,12 @@ export default function GromacsSubmissionPage() {
                 </div>
               ) : (
                 <Button className="w-full" disabled={!pdb} size="lg" type="submit">
-                  {apiError?.status === 503 || apiError?.status === 0 ? (
+                  {canRetry ? (
                     <RefreshCw aria-hidden="true" />
                   ) : (
                     <CloudUpload aria-hidden="true" />
                   )}
-                  {apiError?.status === 503 || apiError?.status === 0 ? "Try again" : "Submit simulation"}
+                  {canRetry ? "Try again" : "Submit simulation"}
                 </Button>
               )}
 
@@ -410,7 +400,7 @@ export default function GromacsSubmissionPage() {
                     )}
                     <span>{formError}</span>
                   </div>
-                  {apiError?.status === 0 || apiError?.status === 503 ? (
+                  {shouldCheckJobs ? (
                     <Link className="mt-2 inline-block font-medium underline underline-offset-4" to="/jobs">
                       Check My Jobs
                     </Link>
@@ -418,25 +408,10 @@ export default function GromacsSubmissionPage() {
                 </div>
               ) : null}
 
-              {notice ? (
-                <p aria-live="polite" className="rounded-lg bg-muted px-3 py-2 text-sm">
-                  {notice}
-                </p>
-              ) : null}
             </CardContent>
           </Card>
         </form>
       </main>
-
-      <ReauthenticationDialog
-        onCancel={() => setNeedsAuthentication(false)}
-        onSuccess={() => {
-          setNeedsAuthentication(false)
-          mutation.reset()
-          setNotice("You are signed in again. Review the Submission and submit when ready.")
-        }}
-        open={needsAuthentication}
-      />
     </>
   )
 }

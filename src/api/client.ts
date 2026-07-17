@@ -1,11 +1,13 @@
 import type { components } from "@/api/schema"
 
-export type HttpValidationError = components["schemas"]["HTTPValidationError"]
 export type Job = components["schemas"]["JobView"]
 export type JobState = components["schemas"]["JobState"]
 export type LoginInput = components["schemas"]["LoginRequest"]
 export type Principal = components["schemas"]["PrincipalView"]
 export type SetPasswordInput = components["schemas"]["SetPasswordRequest"]
+
+export const SERVICE_CONFIGURATION_ERROR_MESSAGE =
+  "BioModals is not configured to accept requests from this site. Contact an administrator."
 
 export interface GromacsSubmission {
   cpuOnly: boolean
@@ -33,6 +35,16 @@ export class MissingCsrfError extends ApiError {
     super(401, { detail: "Authentication required" })
     this.name = "MissingCsrfError"
   }
+}
+
+export function apiErrorCode(error: unknown) {
+  if (!(error instanceof ApiError) || !error.body || typeof error.body !== "object") return null
+  if (!("code" in error.body) || typeof error.body.code !== "string") return null
+  return error.body.code
+}
+
+export function isServiceConfigurationError(error: unknown) {
+  return apiErrorCode(error) === "origin_not_allowed"
 }
 
 function apiErrorMessage(body: unknown) {

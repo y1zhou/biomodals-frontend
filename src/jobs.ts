@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import type { Job, JobState } from "@/api/client"
+import { ApiError, apiErrorCode, type Job, type JobState } from "@/api/client"
 
 export const jobListKey = ["jobs"] as const
 export const jobKey = (jobId: string) => ["jobs", jobId] as const
@@ -48,9 +48,40 @@ export function newestJobsFirst(jobs: readonly Job[]) {
   return [...jobs].sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
 }
 
-export function latestJob(left: Job, right: Job | undefined) {
-  if (!right) return left
-  return Date.parse(right.updated_at) > Date.parse(left.updated_at) ? right : left
+export function latestJob(collectionJob: Job, detailJob: Job | undefined) {
+  if (!detailJob) return collectionJob
+  return Date.parse(detailJob.updated_at) >= Date.parse(collectionJob.updated_at)
+    ? detailJob
+    : collectionJob
+}
+
+export function isJobUnavailableError(error: unknown) {
+  return error instanceof ApiError && [403, 404, 422].includes(error.status)
+}
+
+export function shouldRetryJobQuery(failureCount: number, error: unknown) {
+  if (isJobUnavailableError(error)) return false
+  if (error instanceof ApiError && error.status === 401) return false
+  return failureCount < 1
+}
+
+export function isJobNotCancellableError(error: unknown) {
+  return apiErrorCode(error) === "job_not_cancellable"
+}
+
+const jobErrorCodes = new Set(["compute_failed", "result_invalid", "result_unavailable"])
+
+export function jobFailureMessage(job: Job) {
+  if (
+    job.state === "failed" &&
+    typeof job.error_code === "string" &&
+    jobErrorCodes.has(job.error_code) &&
+    typeof job.error_message === "string" &&
+    job.error_message.trim()
+  ) {
+    return job.error_message
+  }
+  return "This simulation could not be completed."
 }
 
 export const jobPresentation: Record<

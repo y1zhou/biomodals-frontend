@@ -13,7 +13,13 @@ import {
 import { useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
-import { ApiError, cancelJob, inspectJob, type Job } from "@/api/client"
+import {
+  SERVICE_CONFIGURATION_ERROR_MESSAGE,
+  cancelJob,
+  inspectJob,
+  isServiceConfigurationError,
+  type Job,
+} from "@/api/client"
 import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -21,10 +27,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   formatTimestamp,
   isActiveJob,
+  isJobNotCancellableError,
+  isJobUnavailableError,
+  jobFailureMessage,
   jobKey,
   jobListKey,
   jobPollingInterval,
   jobPresentation,
+  shouldRetryJobQuery,
   useDocumentVisibility,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
@@ -73,10 +83,7 @@ export default function JobDetailPage() {
     queryKey: jobKey(jobId),
     queryFn: ({ signal }) => inspectJob(jobId, signal),
     enabled: Boolean(jobId),
-    retry(failureCount, error) {
-      if (error instanceof ApiError && [401, 403, 404].includes(error.status)) return false
-      return failureCount < 1
-    },
+    retry: shouldRetryJobQuery,
     refetchInterval(query) {
       return jobPollingInterval(query.state.data, visibility)
     },
@@ -95,8 +102,15 @@ export default function JobDetailPage() {
       )
       confirmationDialog.current?.close()
     },
+    onError(error) {
+      if (isJobNotCancellableError(error)) {
+        confirmationDialog.current?.close()
+        void jobQuery.refetch()
+      }
+    },
   })
-  useExpireSession(jobQuery.error ?? cancelMutation.error)
+  useExpireSession(jobQuery.error)
+  useExpireSession(cancelMutation.error)
 
   if (jobQuery.isPending) {
     return (
@@ -110,10 +124,7 @@ export default function JobDetailPage() {
   }
 
   const queryError = jobQuery.error
-  if (
-    queryError instanceof ApiError &&
-    (queryError.status === 403 || queryError.status === 404)
-  ) {
+  if (isJobUnavailableError(queryError)) {
     return <JobUnavailable />
   }
 
@@ -138,6 +149,8 @@ export default function JobDetailPage() {
   const canCancel = job.state === "queued" || job.state === "running"
   const canDownload = job.state === "succeeded" || job.state === "partial"
   const canStartAgain = job.state === "failed" || job.state === "cancelled"
+  const stateDescription =
+    job.state === "failed" ? jobFailureMessage(job) : presentation.description
 
   return (
     <>
@@ -185,7 +198,7 @@ export default function JobDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="max-w-2xl leading-7">{presentation.description}</p>
+              <p className="max-w-2xl leading-7">{stateDescription}</p>
               <p className="mt-2 text-xs opacity-80">
                 Job updated {formatTimestamp(job.updated_at)} · Last checked {formatTimestamp(jobQuery.dataUpdatedAt)}
               </p>
@@ -296,9 +309,11 @@ export default function JobDetailPage() {
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Cancellation is best effort. The simulation may complete before the remote work stops.
           </p>
-          {cancelMutation.isError ? (
+          {cancelMutation.isError && !isJobNotCancellableError(cancelMutation.error) ? (
             <p aria-live="polite" className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Cancellation could not be requested. Try again.
+              {isServiceConfigurationError(cancelMutation.error)
+                ? SERVICE_CONFIGURATION_ERROR_MESSAGE
+                : "Cancellation could not be requested. Try again."}
             </p>
           ) : null}
           <div className="mt-6 flex justify-end gap-3">

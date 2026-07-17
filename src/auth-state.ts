@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 
-import { ApiError, currentUser } from "@/api/client"
+import { ApiError, apiErrorCode, currentUser, type Principal } from "@/api/client"
 
 export const currentUserKey = ["auth", "current-user"] as const
+export const REAUTHENTICATION_REQUIRED = { reauthenticationRequired: true } as const
+export type CurrentUserState = Principal | null | typeof REAUTHENTICATION_REQUIRED
 
 export function useCurrentUser() {
-  return useQuery({
+  return useQuery<CurrentUserState>({
     queryKey: currentUserKey,
     queryFn: ({ signal }) => currentUser(signal),
     // Mutations detect expiry. Automatic rechecks could unmount a selected File.
@@ -20,10 +22,39 @@ export function useExpireSession(error: unknown) {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (error instanceof ApiError && error.status === 401) {
-      queryClient.setQueryData(currentUserKey, null)
+    if (requiresReauthentication(error)) {
+      queryClient.setQueryData<CurrentUserState>(
+        currentUserKey,
+        REAUTHENTICATION_REQUIRED
+      )
     }
   }, [error, queryClient])
+}
+
+export function requiresReauthentication(error: unknown) {
+  return error instanceof ApiError && (error.status === 401 || apiErrorCode(error) === "csrf_invalid")
+}
+
+export function isReauthenticationRequired(
+  value: unknown
+): value is typeof REAUTHENTICATION_REQUIRED {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "reauthenticationRequired" in value &&
+    value.reauthenticationRequired === true
+  )
+}
+
+export function authenticatedPrincipal(value: CurrentUserState | undefined) {
+  return value && !isReauthenticationRequired(value) ? value : null
+}
+
+export function passwordSetupLocation(hash: string, pathname: string, search: string) {
+  return {
+    token: new URLSearchParams(hash.replace(/^#/, "")).get("token") ?? "",
+    scrubbedUrl: `${pathname}${search}`,
+  }
 }
 
 export function safeReturnTo(value: string | null, origin = "http://localhost") {

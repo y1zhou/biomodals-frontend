@@ -22,6 +22,7 @@ import {
   jobPollingInterval,
   latestJob,
   newestJobsFirst,
+  shouldRetryJobQuery,
   useDocumentVisibility,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
@@ -42,10 +43,7 @@ function JobRow({
     initialData: initialJob,
     initialDataUpdatedAt: updatedAt,
     enabled: isActiveJob(initialJob.state),
-    retry(failureCount, error) {
-      if (error instanceof ApiError && [401, 403, 404].includes(error.status)) return false
-      return failureCount < 1
-    },
+    retry: shouldRetryJobQuery,
     refetchInterval(query) {
       return jobPollingInterval(query.state.data, visibility)
     },

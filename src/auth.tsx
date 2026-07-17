@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Eye, EyeOff, LoaderCircle } from "lucide-react"
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react"
 import {
   Navigate,
   Outlet,
@@ -9,8 +9,22 @@ import {
   useSearchParams,
 } from "react-router"
 
-import { ApiError, login, setPassword, type Principal } from "@/api/client"
-import { currentUserKey, safeReturnTo, useCurrentUser } from "@/auth-state"
+import {
+  ApiError,
+  SERVICE_CONFIGURATION_ERROR_MESSAGE,
+  apiErrorCode,
+  isServiceConfigurationError,
+  login,
+  setPassword,
+  type Principal,
+} from "@/api/client"
+import {
+  currentUserKey,
+  isReauthenticationRequired,
+  passwordSetupLocation,
+  safeReturnTo,
+  useCurrentUser,
+} from "@/auth-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -46,6 +60,8 @@ export function ProtectedRoute() {
     )
   }
 
+  if (isReauthenticationRequired(user.data)) return <Outlet />
+
   if (!user.data) {
     const returnTo = `${location.pathname}${location.search}${location.hash}`
     return <Navigate replace to={`/login?returnTo=${encodeURIComponent(returnTo)}`} />
@@ -78,7 +94,9 @@ export function LoginForm({ onSuccess, submitLabel = "Sign in" }: LoginFormProps
   }
 
   const error = mutation.error
-    ? mutation.error instanceof ApiError && mutation.error.status === 401
+    ? isServiceConfigurationError(mutation.error)
+      ? SERVICE_CONFIGURATION_ERROR_MESSAGE
+      : mutation.error instanceof ApiError && mutation.error.status === 401
       ? "Email or password is incorrect."
       : "Sign in failed. Check the connection and try again."
     : null
@@ -194,7 +212,9 @@ export function LoginPage() {
   const returnTo = safeReturnTo(searchParams.get("returnTo"), window.location.origin)
 
   if (user.isPending) return <LoadingPage />
-  if (user.data) return <Navigate replace to={returnTo} />
+  if (user.data && !isReauthenticationRequired(user.data)) {
+    return <Navigate replace to={returnTo} />
+  }
 
   return (
     <AuthCard
@@ -213,7 +233,9 @@ export function SetPasswordPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [token] = useState(() => new URLSearchParams(location.search).get("token") ?? "")
+  const [{ token, scrubbedUrl }] = useState(() =>
+    passwordSetupLocation(location.hash, location.pathname, location.search)
+  )
   const [password, setPasswordValue] = useState("")
   const [confirmation, setConfirmation] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -227,9 +249,9 @@ export function SetPasswordPage() {
     },
   })
 
-  useEffect(() => {
-    if (location.search) navigate(location.pathname, { replace: true })
-  }, [location.pathname, location.search, navigate])
+  useLayoutEffect(() => {
+    if (location.hash) navigate(scrubbedUrl, { replace: true })
+  }, [location.hash, navigate, scrubbedUrl])
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -260,10 +282,19 @@ export function SetPasswordPage() {
     )
   }
 
+  const errorCode = apiErrorCode(mutation.error)
+  const passwordError =
+    mutation.error instanceof ApiError && errorCode === "password_policy_rejected"
+      ? mutation.error.message
+      : null
   const apiError = mutation.error
-    ? mutation.error instanceof ApiError && mutation.error.status === 400
+    ? isServiceConfigurationError(mutation.error)
+      ? SERVICE_CONFIGURATION_ERROR_MESSAGE
+      : errorCode === "password_link_invalid"
       ? "This password link is invalid or expired. Ask your administrator for a new link."
-      : "Your password could not be set. Check the connection and try again."
+      : passwordError
+        ? null
+        : "Your password could not be set. Check the connection and try again."
     : null
   const passwordType = showPassword ? "text" : "password"
 
@@ -278,7 +309,8 @@ export function SetPasswordPage() {
             New password
           </label>
           <Input
-            aria-describedby="password-help"
+            aria-describedby={passwordError ? "password-help password-error" : "password-help"}
+            aria-invalid={Boolean(passwordError)}
             autoComplete="new-password"
             autoFocus
             id="new-password"
@@ -292,6 +324,11 @@ export function SetPasswordPage() {
           <p className="text-xs text-muted-foreground" id="password-help">
             Use 15 to 128 characters.
           </p>
+          {passwordError ? (
+            <p className="text-sm text-destructive" id="password-error">
+              {passwordError}
+            </p>
+          ) : null}
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="confirm-password">

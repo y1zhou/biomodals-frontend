@@ -1,11 +1,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { BriefcaseBusiness, FlaskConical, LogOut, UserRound } from "lucide-react"
-import { useState } from "react"
 import { Link, Outlet, useNavigate } from "react-router"
 
-import { ApiError, logout, MissingCsrfError } from "@/api/client"
+import {
+  ApiError,
+  SERVICE_CONFIGURATION_ERROR_MESSAGE,
+  apiErrorCode,
+  isServiceConfigurationError,
+  logout,
+  MissingCsrfError,
+} from "@/api/client"
 import { ReauthenticationDialog } from "@/auth"
-import { currentUserKey, useCurrentUser } from "@/auth-state"
+import {
+  authenticatedPrincipal,
+  currentUserKey,
+  isReauthenticationRequired,
+  useCurrentUser,
+  useExpireSession,
+  type CurrentUserState,
+} from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -24,7 +37,6 @@ export default function AppShell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useCurrentUser()
-  const [needsAuthentication, setNeedsAuthentication] = useState(false)
 
   function finishLogout() {
     queryClient.clear()
@@ -37,10 +49,23 @@ export default function AppShell() {
     retry: false,
     onSuccess: finishLogout,
     onError(error) {
-      if (error instanceof MissingCsrfError) setNeedsAuthentication(true)
-      else if (error instanceof ApiError && error.status === 401) finishLogout()
+      if (
+        error instanceof ApiError &&
+        !(error instanceof MissingCsrfError) &&
+        error.status === 401
+      ) {
+        finishLogout()
+      }
     },
   })
+  const logoutReauthenticationError =
+    logoutMutation.error instanceof MissingCsrfError ||
+    apiErrorCode(logoutMutation.error) === "csrf_invalid"
+      ? logoutMutation.error
+      : null
+  useExpireSession(logoutReauthenticationError)
+  const reauthenticationRequired = isReauthenticationRequired(user.data)
+  const currentUser = authenticatedPrincipal(user.data)
 
   return (
     <div className="min-h-svh">
@@ -51,7 +76,7 @@ export default function AppShell() {
             <Link className={buttonVariants({ variant: "ghost" })} to="/">
               Tools
             </Link>
-            {user.data ? (
+            {currentUser ? (
               <>
                 <Link className={buttonVariants({ variant: "ghost" })} to="/jobs">
                   <BriefcaseBusiness aria-hidden="true" data-icon="inline-start" />
@@ -60,14 +85,14 @@ export default function AppShell() {
                 <details className="group relative ml-1">
                   <summary className="flex size-9 cursor-pointer list-none items-center justify-center rounded-full border bg-muted text-sm font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
                     <span className="sr-only">Open User menu</span>
-                    {user.data.display_name.slice(0, 1).toLocaleUpperCase() || (
+                    {currentUser.display_name.slice(0, 1).toLocaleUpperCase() || (
                       <UserRound aria-hidden="true" className="size-4" />
                     )}
                   </summary>
                   <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border bg-popover p-2 text-popover-foreground shadow-lg">
                     <div className="px-2 py-2">
-                      <p className="truncate text-sm font-medium">{user.data.display_name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{user.data.email}</p>
+                      <p className="truncate text-sm font-medium">{currentUser.display_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
                     </div>
                     <div className="my-1 border-t" />
                     <Button
@@ -81,7 +106,9 @@ export default function AppShell() {
                     </Button>
                     {logoutMutation.isError ? (
                       <p aria-live="polite" className="px-2 py-1 text-xs text-destructive">
-                        Sign out failed. Try again.
+                        {isServiceConfigurationError(logoutMutation.error)
+                          ? SERVICE_CONFIGURATION_ERROR_MESSAGE
+                          : "Sign out failed. Try again."}
                       </p>
                     ) : null}
                   </div>
@@ -99,13 +126,14 @@ export default function AppShell() {
       </header>
       <Outlet />
       <ReauthenticationDialog
-        description="The CSRF credential is missing. Sign in again, then choose Sign out once more."
-        onCancel={() => setNeedsAuthentication(false)}
+        description="Your session is no longer usable. This page will stay in place while you sign in again; retry your action afterward."
+        onCancel={() => {
+          queryClient.setQueryData<CurrentUserState>(currentUserKey, null)
+        }}
         onSuccess={() => {
-          setNeedsAuthentication(false)
           logoutMutation.reset()
         }}
-        open={needsAuthentication}
+        open={reauthenticationRequired}
       />
     </div>
   )

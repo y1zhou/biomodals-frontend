@@ -186,10 +186,44 @@ export interface components {
              */
             readonly simulation_time_ns: number;
         };
+        /**
+         * ComputeUnavailableResponse
+         * @description Remote compute could not accept the durable Job.
+         */
+        readonly ComputeUnavailableResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "compute_unavailable";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * ErrorResponse
+         * @description Stable JSON error response.
+         */
+        readonly ErrorResponse: {
+            /** Detail */
+            readonly detail: string;
+        };
         /** HTTPValidationError */
         readonly HTTPValidationError: {
             /** Detail */
             readonly detail?: readonly components["schemas"]["ValidationError"][];
+        };
+        /**
+         * JobNotCancellableResponse
+         * @description Cancellation raced with a state that no longer accepts it.
+         */
+        readonly JobNotCancellableResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_not_cancellable";
+            /** Detail */
+            readonly detail: string;
         };
         /**
          * JobState
@@ -209,12 +243,14 @@ export interface components {
              * Format: date-time
              */
             readonly created_at: string;
-            /** Detail */
-            readonly detail?: string | null;
             /** Display Name */
             readonly display_name: string;
             /** Download Url */
             readonly download_url?: string | null;
+            /** Error Code */
+            readonly error_code?: ("compute_failed" | "result_invalid" | "result_unavailable") | null;
+            /** Error Message */
+            readonly error_message?: string | null;
             /** Job Id */
             readonly job_id: string;
             readonly state: components["schemas"]["JobState"];
@@ -237,6 +273,71 @@ export interface components {
             readonly email: string;
             /** Password */
             readonly password: string;
+        };
+        /**
+         * MutationForbiddenResponse
+         * @description Unsafe request rejected for origin or CSRF state.
+         */
+        readonly MutationForbiddenResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "csrf_invalid" | "origin_not_allowed";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * OriginErrorResponse
+         * @description Browser origin rejected before an unsafe request.
+         */
+        readonly OriginErrorResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "origin_not_allowed";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * PasswordErrorResponse
+         * @description Password Setup errors with distinct recovery behavior.
+         */
+        readonly PasswordErrorResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "password_link_invalid" | "password_policy_rejected";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * PayloadTooLargeResponse
+         * @description Submission exceeded the configured request boundary.
+         */
+        readonly PayloadTooLargeResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "payload_too_large";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * PdbInvalidResponse
+         * @description Semantic PDB validation failure.
+         */
+        readonly PdbInvalidResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "pdb_invalid";
+            /** Detail */
+            readonly detail: string;
         };
         /**
          * PrincipalView
@@ -262,6 +363,19 @@ export interface components {
             readonly password: string;
             /** Token */
             readonly token: string;
+        };
+        /**
+         * SubmissionConflictResponse
+         * @description Submission conflicts with idempotency or active-job state.
+         */
+        readonly SubmissionConflictResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "idempotency_conflict" | "active_job_limit_reached";
+            /** Detail */
+            readonly detail: string;
         };
         /** ValidationError */
         readonly ValidationError: {
@@ -309,6 +423,24 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PrincipalView"];
                 };
             };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["OriginErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -324,7 +456,7 @@ export interface operations {
         readonly parameters: {
             readonly query?: never;
             readonly header: {
-                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login. */
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
                 readonly "X-CSRF-Token": string;
             };
             readonly path?: never;
@@ -338,6 +470,24 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
+                };
             };
             /** @description Validation Error */
             readonly 422: {
@@ -368,6 +518,15 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PrincipalView"];
                 };
             };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     readonly set_password_api_v1_auth_set_password_post: {
@@ -386,10 +545,30 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Sets the HttpOnly session cookie and the readable `biomodals-csrf` cookie used as `X-CSRF-Token`. */
+                    readonly "Set-Cookie"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["PrincipalView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PasswordErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["OriginErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -408,7 +587,7 @@ export interface operations {
             readonly query?: never;
             readonly header: {
                 readonly "Idempotency-Key": string;
-                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login. */
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
                 readonly "X-CSRF-Token": string;
             };
             readonly path?: never;
@@ -429,6 +608,51 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobView"];
                 };
             };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PdbInvalidResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SubmissionConflictResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -436,6 +660,15 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ComputeUnavailableResponse"];
                 };
             };
         };
@@ -456,6 +689,15 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": readonly components["schemas"]["JobView"][];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -480,6 +722,24 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobView"];
                 };
             };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -495,7 +755,7 @@ export interface operations {
         readonly parameters: {
             readonly query?: never;
             readonly header: {
-                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login. */
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
                 readonly "X-CSRF-Token": string;
             };
             readonly path: {
@@ -512,6 +772,42 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobNotCancellableResponse"];
                 };
             };
             /** @description Validation Error */

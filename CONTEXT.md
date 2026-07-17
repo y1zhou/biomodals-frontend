@@ -22,6 +22,16 @@ _Avoid_: Local Job, client-side Job
 A person with a BioModals account who owns and can return to Jobs.
 _Avoid_: Client, account
 
+**Password Link**:
+A one-time credential that authorizes a User to choose a password during initial
+Password Setup or an administrator-assisted Password Reset.
+_Avoid_: Login link, invitation link
+
+**Password Setup**:
+The act of consuming a Password Link to choose a password and establish a fresh
+authenticated Session, replacing any prior Sessions for that User.
+_Avoid_: Login, signup
+
 **Submission**:
 A User's single intent to create a Job from selected Input.
 _Avoid_: Request, run
@@ -36,8 +46,10 @@ browser session that created it and is successful only when its Result is ready.
 _Avoid_: Task, Modal call
 
 **Job Status**:
-The authoritative lifecycle state of a Job: queued, running, cancelling,
-succeeded, failed, cancelled, or expired.
+The authoritative lifecycle state of a Job. The live states are queued,
+running, finalizing, cancel_requested, succeeded, partial, failed, and
+cancelled. Expired is planned for a retained Job whose Result has passed its
+retention period.
 _Avoid_: Upload state, progress state
 
 **Progress**:
@@ -55,7 +67,7 @@ User-supplied data consumed by a Tool.
 _Avoid_: Payload
 
 **Result**:
-The retrievable output of a succeeded Job.
+The retrievable output of a succeeded or partial Job.
 _Avoid_: Response, artifact
 
 **Retry**:
@@ -72,10 +84,17 @@ The irreversible removal of a Job and its retained data.
 _Avoid_: Cancellation, archival
 
 **Capacity Limit**:
-A per-User or system-wide bound on how many Jobs may run concurrently.
-_Avoid_: Submission limit, rate limit
+An operational bound on how many Jobs may execute concurrently. Accepted Jobs
+wait when execution capacity is full.
+_Avoid_: Active Job Limit, rate limit
+
+**Active Job Limit**:
+A per-User and workload bound on how many non-terminal Jobs the User may own at
+once. A Submission beyond the limit is rejected before a Job is created.
+_Avoid_: Capacity Limit, rate limit
 
 **Job Error**:
-The safe, user-facing explanation of why a Job failed and what the User can do
-next.
+The stable machine-readable code and safe user-facing explanation of why a Job
+failed. The interface derives the next action and includes the Job identifier
+for support.
 _Avoid_: Raw exception, remote log

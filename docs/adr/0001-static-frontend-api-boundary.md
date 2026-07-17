@@ -17,6 +17,9 @@ per-Tool applications, or a backend-driven catalog for the initial product.
   do not match real files.
 - FastAPI's OpenAPI document is the API source of truth. TypeScript API types
   will be generated after that schema is stable rather than maintained by hand.
+- OpenAPI does not describe SPA navigation routes. Any backend-generated
+  frontend link is a stable cross-repository contract tested by both the
+  producer and the receiving route.
 - TanStack Query owns backend state; ordinary React state owns local interface
   state. A second global state system is not justified by the current scope.
 - Caddy and FastAPI configuration remain outside this repository.

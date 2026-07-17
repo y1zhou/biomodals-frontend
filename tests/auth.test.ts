@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test"
 
-import { csrfToken, MissingCsrfError, readCookie } from "../src/api/client"
-import { safeReturnTo } from "../src/auth-state"
+import { ApiError, apiErrorCode, csrfToken, MissingCsrfError, readCookie } from "../src/api/client"
+import {
+  REAUTHENTICATION_REQUIRED,
+  isReauthenticationRequired,
+  passwordSetupLocation,
+  requiresReauthentication,
+  safeReturnTo,
+} from "../src/auth-state"
 
 describe("readCookie", () => {
   test("reads and decodes the requested cookie", () => {
@@ -31,5 +37,35 @@ describe("safeReturnTo", () => {
     expect(safeReturnTo("https://example.com", "https://biomodals.test")).toBe("/")
     expect(safeReturnTo("//example.com", "https://biomodals.test")).toBe("/")
     expect(safeReturnTo("/login", "https://biomodals.test")).toBe("/")
+  })
+})
+
+describe("Password Setup URL", () => {
+  test("reads the fragment token and returns the scrubbed route", () => {
+    expect(passwordSetupLocation("#token=a%2Bb%3D", "/set-password", "?source=admin")).toEqual({
+      token: "a+b=",
+      scrubbedUrl: "/set-password?source=admin",
+    })
+  })
+})
+
+describe("coded API errors", () => {
+  test("reads only string error codes", () => {
+    expect(apiErrorCode(new ApiError(400, { code: "password_link_invalid", detail: "Expired" }))).toBe(
+      "password_link_invalid"
+    )
+    expect(apiErrorCode(new ApiError(400, { code: 3, detail: "Broken" }))).toBeNull()
+  })
+
+  test("reauthenticates for missing sessions and rejected CSRF", () => {
+    expect(requiresReauthentication(new ApiError(401))).toBeTrue()
+    expect(requiresReauthentication(new ApiError(403, { code: "csrf_invalid", detail: "Stale" }))).toBeTrue()
+    expect(requiresReauthentication(new ApiError(403, { code: "origin_not_allowed", detail: "Origin" }))).toBeFalse()
+  })
+
+  test("represents an invalid session without retaining the cached User", () => {
+    expect(isReauthenticationRequired(REAUTHENTICATION_REQUIRED)).toBeTrue()
+    expect(isReauthenticationRequired({ display_name: "Alice" })).toBeFalse()
+    expect("email" in REAUTHENTICATION_REQUIRED).toBeFalse()
   })
 })
