@@ -9,13 +9,17 @@ Requires [Bun](https://bun.sh/).
 
 ```sh
 bun install
+cp .env.example .env
 bun dev
 ```
 
 The Vite development server listens on `0.0.0.0` so the MVP can be opened from
-another machine on the development network. It proxies `/api/*`, `/docs`, and
-`/openapi.json` to `http://127.0.0.1:8000`; do not expose this development
-server to an untrusted network.
+another machine on the development network. `BIOMODALS_PUBLIC_URL` sets the
+allowed reverse-proxy hostname and the Origin forwarded to FastAPI;
+`BIOMODALS_API_PROXY_TARGET` sets the server-only API upstream. Vite proxies
+`/api/*`, `/docs`, `/redoc`, and `/openapi.json`; do not expose this development
+server to an untrusted network. Use the same `BIOMODALS_PUBLIC_URL` in the
+backend's configured `.env` file.
 Production builds use same-origin `/api` URLs and expect the deployment proxy to
 route them to FastAPI.
 
@@ -59,6 +63,7 @@ to `index.html` for paths that do not match real files. Vite's preview server is
 for local verification, not production hosting. Whether `/docs` is exposed in
 production is a deployment-proxy decision outside this repository.
 
-The frontend intentionally has no backend URL environment variable. It always
-uses relative `/api` URLs: Vite owns the single development proxy target, and
-the production reverse proxy serves the frontend and API under one origin.
+The browser intentionally has no configurable API base URL and always uses
+relative `/api` URLs. `BIOMODALS_API_PROXY_TARGET` only configures Vite's local
+development proxy; the deployment reverse proxy serves the frontend and API
+under one origin.
