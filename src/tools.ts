@@ -1,4 +1,4 @@
-import { Database, Dna, FlaskConical, type LucideIcon } from "lucide-react"
+import { FlaskConical, type LucideIcon } from "lucide-react"
 
 export interface Tool {
   slug: string
@@ -10,25 +10,11 @@ export interface Tool {
 
 export const tools: Tool[] = [
   {
-    slug: "sequence-converter",
-    name: "Sequence converter",
-    description: "Convert and inspect common biological sequence formats.",
-    tags: ["FASTA", "FASTQ"],
-    icon: Dna,
-  },
-  {
-    slug: "structure-prediction",
-    name: "Structure prediction",
-    description: "Submit sequences for remote protein structure prediction.",
-    tags: ["Protein", "Modal"],
+    slug: "gromacs",
+    name: "GROMACS MD simulation",
+    description: "Prepare a PDB structure and run a configurable molecular dynamics simulation remotely.",
+    tags: ["PDB", "Molecular dynamics", "Remote compute", "Protein structure"],
     icon: FlaskConical,
-  },
-  {
-    slug: "dataset-inspector",
-    name: "Dataset inspector",
-    description: "Preview and validate tabular biological datasets.",
-    tags: ["CSV", "Validation"],
-    icon: Database,
   },
 ]
 

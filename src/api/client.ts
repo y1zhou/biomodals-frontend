@@ -7,6 +7,15 @@ export type LoginInput = components["schemas"]["LoginRequest"]
 export type Principal = components["schemas"]["PrincipalView"]
 export type SetPasswordInput = components["schemas"]["SetPasswordRequest"]
 
+export interface GromacsSubmission {
+  cpuOnly: boolean
+  displayName: string | null
+  idempotencyKey: string
+  pdb: File
+  runPdbfixer: boolean
+  simulationTimeNs: number
+}
+
 export class ApiError extends Error {
   readonly body: unknown
   readonly status: number
@@ -90,5 +99,59 @@ export async function logout() {
   await requestJson<undefined>("/api/v1/auth/logout", {
     method: "POST",
     headers: { "X-CSRF-Token": csrfToken() },
+  })
+}
+
+function xhrBody(xhr: XMLHttpRequest) {
+  return xhr.response ?? undefined
+}
+
+export function submitGromacsJob(
+  input: GromacsSubmission,
+  signal: AbortSignal,
+  onProgress: (percent: number | null) => void
+) {
+  return new Promise<Job>((resolve, reject) => {
+    const form = new FormData()
+    form.append("pdb", input.pdb)
+    if (input.displayName) form.append("display_name", input.displayName)
+    form.append("simulation_time_ns", String(input.simulationTimeNs))
+    form.append("run_pdbfixer", String(input.runPdbfixer))
+    form.append("cpu_only", String(input.cpuOnly))
+
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", "/api/v1/gromacs/jobs")
+    xhr.responseType = "json"
+    xhr.withCredentials = true
+    xhr.setRequestHeader("Accept", "application/json")
+    xhr.setRequestHeader("Idempotency-Key", input.idempotencyKey)
+
+    try {
+      xhr.setRequestHeader("X-CSRF-Token", csrfToken())
+    } catch (error) {
+      reject(error)
+      return
+    }
+
+    const abort = () => xhr.abort()
+    signal.addEventListener("abort", abort, { once: true })
+    xhr.upload.addEventListener("progress", (event) => {
+      onProgress(event.lengthComputable ? Math.round((event.loaded / event.total) * 100) : null)
+    })
+    xhr.addEventListener("load", () => {
+      signal.removeEventListener("abort", abort)
+      const body = xhrBody(xhr)
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as Job)
+      else reject(new ApiError(xhr.status, body))
+    })
+    xhr.addEventListener("error", () => {
+      signal.removeEventListener("abort", abort)
+      reject(new ApiError(0))
+    })
+    xhr.addEventListener("abort", () => {
+      signal.removeEventListener("abort", abort)
+      reject(new DOMException("Upload cancelled", "AbortError"))
+    })
+    xhr.send(form)
   })
 }

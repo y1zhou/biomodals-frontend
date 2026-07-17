@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowUpRight, CloudUpload, Search } from "lucide-react"
-import { useState } from "react"
-import { Link, Route, Routes, useParams } from "react-router"
+import { ArrowUpRight, LoaderCircle, Search } from "lucide-react"
+import { lazy, Suspense, useState } from "react"
+import { Link, Route, Routes } from "react-router"
 
 import AppShell from "@/AppShell"
 import { LoginPage, ProtectedRoute, SetPasswordPage } from "@/auth"
@@ -16,6 +16,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { filterTools, tools } from "@/tools"
+
+const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
+const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
 
 function LandingPage() {
   const [query, setQuery] = useState("")
@@ -104,48 +107,22 @@ function LandingPage() {
   )
 }
 
-function ToolPage() {
-  const { slug } = useParams()
-  const tool = tools.find((candidate) => candidate.slug === slug)
-
-  if (!tool) return <NotFoundPage />
-
-  const Icon = tool.icon
-
-  return (
-    <main className="mx-auto max-w-5xl px-6 py-14 lg:px-8 lg:py-20">
-      <Link className={cn(buttonVariants({ variant: "ghost" }), "mb-10")} to="/">
-        <ArrowLeft aria-hidden="true" data-icon="inline-start" />
-        All Tools
-      </Link>
-      <div className="flex items-start gap-4">
-        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-muted">
-          <Icon aria-hidden="true" className="size-6" />
-        </span>
-        <div>
-          <h1 className="font-heading text-3xl font-semibold tracking-tight">{tool.name}</h1>
-          <p className="mt-2 max-w-2xl leading-7 text-muted-foreground">{tool.description}</p>
-        </div>
-      </div>
-
-      <div className="mt-12 grid min-h-72 place-items-center rounded-xl border border-dashed bg-muted/30 px-6 py-16 text-center">
-        <div>
-          <CloudUpload aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
-          <h2 className="mt-5 font-heading text-lg font-semibold">Tool interface coming next</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            Authentication and the API boundary are ready for this Tool&apos;s Submission workflow.
-          </p>
-        </div>
-      </div>
-    </main>
-  )
-}
-
 function ProtectedPlaceholder({ title }: { title: string }) {
   return (
     <main className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8">
       <h1 className="font-heading text-3xl font-semibold">{title}</h1>
       <p className="mt-3 text-muted-foreground">This authenticated screen is being built now.</p>
+    </main>
+  )
+}
+
+function RouteLoading() {
+  return (
+    <main className="grid min-h-[60svh] place-items-center px-6">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+        Loading Tool…
+      </div>
     </main>
   )
 }
@@ -166,18 +143,20 @@ function NotFoundPage() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<AppShell />}>
-        <Route element={<LandingPage />} path="/" />
-        <Route element={<ToolPage />} path="/tools/:slug" />
-        <Route element={<LoginPage />} path="/login" />
-        <Route element={<SetPasswordPage />} path="/set-password" />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<ProtectedPlaceholder title="My Jobs" />} path="/jobs" />
-          <Route element={<ProtectedPlaceholder title="New GROMACS simulation" />} path="/tools/gromacs/new" />
+    <Suspense fallback={<RouteLoading />}>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route element={<LandingPage />} path="/" />
+          <Route element={<GromacsOverviewPage />} path="/tools/gromacs" />
+          <Route element={<LoginPage />} path="/login" />
+          <Route element={<SetPasswordPage />} path="/set-password" />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<ProtectedPlaceholder title="My Jobs" />} path="/jobs" />
+            <Route element={<GromacsSubmissionPage />} path="/tools/gromacs/new" />
+          </Route>
+          <Route element={<NotFoundPage />} path="*" />
         </Route>
-        <Route element={<NotFoundPage />} path="*" />
-      </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   )
 }

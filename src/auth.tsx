@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Eye, EyeOff, LoaderCircle } from "lucide-react"
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import {
   Navigate,
   Outlet,
@@ -126,6 +126,48 @@ export function LoginForm({ onSuccess, submitLabel = "Sign in" }: LoginFormProps
         {submitLabel}
       </Button>
     </form>
+  )
+}
+
+export function ReauthenticationDialog({
+  open,
+  onCancel,
+  onSuccess,
+}: {
+  open: boolean
+  onCancel: () => void
+  onSuccess: () => void
+}) {
+  const dialog = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    if (open && !dialog.current?.open) dialog.current?.showModal()
+    if (!open && dialog.current?.open) dialog.current.close()
+  }, [open])
+
+  return (
+    <dialog
+      aria-labelledby="reauthenticate-title"
+      className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-foreground/30"
+      onCancel={(event) => {
+        event.preventDefault()
+        onCancel()
+      }}
+      ref={dialog}
+    >
+      <div className="p-6">
+        <h2 className="font-heading text-xl font-semibold" id="reauthenticate-title">
+          Sign in again
+        </h2>
+        <p className="mb-6 mt-2 text-sm leading-6 text-muted-foreground">
+          Your session expired. Your selected PDB and settings will stay on this page.
+        </p>
+        <LoginForm onSuccess={onSuccess} submitLabel="Sign in and return" />
+        <Button className="mt-2 w-full" onClick={onCancel} type="button" variant="ghost">
+          Cancel
+        </Button>
+      </div>
+    </dialog>
   )
 }
 
