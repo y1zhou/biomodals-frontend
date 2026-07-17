@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -73,16 +72,16 @@ function LandingPage() {
                   <Link className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50" key={tool.slug} to={toolOverviewPath(tool)}>
                     <Card className="h-full transition-[transform,box-shadow] duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
                       <CardHeader>
-                        <div className="mb-5 grid size-10 place-items-center rounded-lg bg-muted text-foreground">
-                          <Icon aria-hidden="true" className="size-5" />
+                        <div className="mb-5 flex items-start justify-between">
+                          <span className="grid size-10 place-items-center rounded-lg bg-muted text-foreground">
+                            <Icon aria-hidden="true" className="size-5" />
+                          </span>
+                          <ArrowUpRight aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                         </div>
                         <CardTitle>{tool.name}</CardTitle>
                         <CardDescription className="mt-1 leading-6">
                           {tool.description}
                         </CardDescription>
-                        <CardAction>
-                          <ArrowUpRight aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                        </CardAction>
                         <div className="mt-5 flex flex-wrap gap-1.5">
                           {tool.tags.map((tag) => (
                             <Badge key={tag} variant="outline">

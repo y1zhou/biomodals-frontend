@@ -1,4 +1,4 @@
-import { FlaskConical, type LucideIcon } from "lucide-react"
+import { Atom, type LucideIcon } from "lucide-react"
 
 export interface Tool {
   slug: string
@@ -13,7 +13,7 @@ export const gromacsTool = {
   name: "GROMACS MD simulation",
   description: "Prepare a PDB structure and run a configurable molecular dynamics simulation remotely.",
   tags: ["PDB", "Molecular dynamics", "Remote compute", "Protein structure"],
-  icon: FlaskConical,
+  icon: Atom,
 } satisfies Tool
 
 export function toolOverviewPath(tool: Pick<Tool, "slug">) {
