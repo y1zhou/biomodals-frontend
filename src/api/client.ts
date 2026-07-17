@@ -95,6 +95,21 @@ export function setPassword(input: SetPasswordInput) {
   })
 }
 
+export function listJobs(signal?: AbortSignal) {
+  return requestJson<Job[]>("/api/v1/jobs", { signal })
+}
+
+export function inspectJob(jobId: string, signal?: AbortSignal) {
+  return requestJson<Job>(`/api/v1/jobs/${encodeURIComponent(jobId)}`, { signal })
+}
+
+export function cancelJob(jobId: string) {
+  return requestJson<Job>(`/api/v1/jobs/${encodeURIComponent(jobId)}/cancel`, {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken() },
+  })
+}
+
 export async function logout() {
   await requestJson<undefined>("/api/v1/auth/logout", {
     method: "POST",

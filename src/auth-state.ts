@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect } from "react"
 
-import { currentUser } from "@/api/client"
+import { ApiError, currentUser } from "@/api/client"
 
 export const currentUserKey = ["auth", "current-user"] as const
 
@@ -9,6 +10,16 @@ export function useCurrentUser() {
     queryKey: currentUserKey,
     queryFn: ({ signal }) => currentUser(signal),
   })
+}
+
+export function useExpireSession(error: unknown) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 401) {
+      queryClient.setQueryData(currentUserKey, null)
+    }
+  }, [error, queryClient])
 }
 
 export function safeReturnTo(value: string | null, origin = "http://localhost") {

@@ -7,7 +7,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react"
-import { useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router"
 
 import {
@@ -37,9 +37,23 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MiB`
 }
 
+const fieldIds: Record<SubmissionField, string> = {
+  pdb: "pdb-file",
+  display_name: "display-name",
+  simulation_time_ns: "simulation-time",
+  run_pdbfixer: "run-pdbfixer",
+  cpu_only: "cpu-only",
+}
+
+function focusFirstFieldError(errors: Partial<Record<SubmissionField, string>>) {
+  const firstField = Object.keys(errors)[0] as SubmissionField | undefined
+  if (firstField) requestAnimationFrame(() => document.getElementById(fieldIds[firstField])?.focus())
+}
+
 export default function GromacsSubmissionPage() {
   const navigate = useNavigate()
   const abortController = useRef<AbortController | null>(null)
+  const formAlert = useRef<HTMLDivElement>(null)
   const idempotencyKey = useRef<string | null>(null)
   const [pdb, setPdb] = useState<File | null>(null)
   const [displayName, setDisplayName] = useState("")
@@ -63,7 +77,9 @@ export default function GromacsSubmissionPage() {
     },
     onError(error) {
       abortController.current = null
-      setFieldErrors(apiFieldErrors(error))
+      const errors = apiFieldErrors(error)
+      setFieldErrors(errors)
+      focusFirstFieldError(errors)
       if (error instanceof ApiError && error.status === 401) setNeedsAuthentication(true)
       if (error instanceof ApiError && error.status === 409) idempotencyKey.current = null
     },
@@ -93,7 +109,10 @@ export default function GromacsSubmissionPage() {
     if (timeError) nextErrors.simulation_time_ns = timeError
     if (displayName.length > 120) nextErrors.display_name = "Use no more than 120 characters."
     setFieldErrors(nextErrors)
-    if (Object.keys(nextErrors).length || !pdb) return
+    if (Object.keys(nextErrors).length || !pdb) {
+      focusFirstFieldError(nextErrors)
+      return
+    }
 
     const controller = new AbortController()
     const key = idempotencyKey.current ?? crypto.randomUUID()
@@ -136,6 +155,10 @@ export default function GromacsSubmissionPage() {
   const isUploading = mutation.isPending
   const simulationNumber = Number(simulationTime)
 
+  useEffect(() => {
+    if (formError) formAlert.current?.focus()
+  }, [formError])
+
   return (
     <>
       <main className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
@@ -160,7 +183,7 @@ export default function GromacsSubmissionPage() {
               <CardHeader>
                 <CardTitle>Structure</CardTitle>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Choose one `.pdb` file. The web uploader supports up to 100 MiB.
+                  Choose one .pdb file. The web uploader supports up to 100 MiB.
                 </p>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -271,6 +294,7 @@ export default function GromacsSubmissionPage() {
                     checked={runPdbfixer}
                     className="mt-1 size-4 accent-foreground"
                     disabled={isUploading}
+                    id="run-pdbfixer"
                     onChange={(event) => {
                       resetIntent()
                       setRunPdbfixer(event.target.checked)
@@ -292,6 +316,7 @@ export default function GromacsSubmissionPage() {
                       checked={cpuOnly}
                       className="mt-1 size-4 accent-foreground"
                       disabled={isUploading}
+                      id="cpu-only"
                       onChange={(event) => {
                         resetIntent()
                         setCpuOnly(event.target.checked)
@@ -368,7 +393,12 @@ export default function GromacsSubmissionPage() {
               )}
 
               {formError ? (
-                <div aria-live="polite" className={cn("rounded-lg px-3 py-2 text-sm", wasCancelled ? "bg-muted text-foreground" : "bg-destructive/10 text-destructive")}>
+                <div
+                  className={cn("rounded-lg px-3 py-2 text-sm", wasCancelled ? "bg-muted text-foreground" : "bg-destructive/10 text-destructive")}
+                  ref={formAlert}
+                  role="alert"
+                  tabIndex={-1}
+                >
                   <div className="flex gap-2">
                     {wasCancelled ? (
                       <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />

@@ -19,6 +19,8 @@ import { filterTools, tools } from "@/tools"
 
 const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
+const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
+const JobsPage = lazy(() => import("@/pages/JobsPage"))
 
 function LandingPage() {
   const [query, setQuery] = useState("")
@@ -107,15 +109,6 @@ function LandingPage() {
   )
 }
 
-function ProtectedPlaceholder({ title }: { title: string }) {
-  return (
-    <main className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8">
-      <h1 className="font-heading text-3xl font-semibold">{title}</h1>
-      <p className="mt-3 text-muted-foreground">This authenticated screen is being built now.</p>
-    </main>
-  )
-}
-
 function RouteLoading() {
   return (
     <main className="grid min-h-[60svh] place-items-center px-6">
@@ -151,8 +144,9 @@ export default function App() {
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
-            <Route element={<ProtectedPlaceholder title="My Jobs" />} path="/jobs" />
+            <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path="/tools/gromacs/new" />
+            <Route element={<JobDetailPage />} path="/tools/gromacs/jobs/:jobId" />
           </Route>
           <Route element={<NotFoundPage />} path="*" />
         </Route>

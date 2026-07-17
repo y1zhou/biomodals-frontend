@@ -27,7 +27,7 @@ const features = [
   {
     icon: SlidersHorizontal,
     title: "Choose the simulation",
-    description: "Set 1–200 nanoseconds, optionally repair common structure issues with PDBFixer, or force CPU execution.",
+    description: "Set 1–200 nanoseconds, optionally repair common structure issues with PDBFixer, or use CPU-only execution.",
   },
   {
     icon: Clock3,
