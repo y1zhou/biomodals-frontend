@@ -5,6 +5,18 @@ export type JobState = components["schemas"]["JobState"]
 export type LoginInput = components["schemas"]["LoginRequest"]
 export type Principal = components["schemas"]["PrincipalView"]
 export type SetPasswordInput = components["schemas"]["SetPasswordRequest"]
+export type AdminUser = components["schemas"]["AdminUserView"]
+export type CreateAdminUserInput = components["schemas"]["CreateAdminUserRequest"]
+export type CreatedAdminUser = components["schemas"]["CreatedAdminUserView"]
+export type UpdateAdminUserInput = components["schemas"]["UpdateAdminUserRequest"]
+export type PasswordLink = components["schemas"]["PasswordLinkView"]
+export type AdminModal = components["schemas"]["AdminModalView"]
+export type AdminModalEnvironment = components["schemas"]["AdminModalEnvironmentView"]
+export type AdminModalTool = components["schemas"]["AdminModalToolView"]
+export type UpdateAdminModalEnvironmentInput =
+  components["schemas"]["UpdateAdminModalEnvironmentRequest"]
+export type UpdateAdminModalToolInput =
+  components["schemas"]["UpdateAdminModalToolRequest"]
 
 export const SERVICE_CONFIGURATION_ERROR_MESSAGE =
   "BioModals is not configured to accept requests from this site. Contact an administrator."
@@ -134,6 +146,74 @@ export async function logout() {
     method: "POST",
     headers: { "X-CSRF-Token": csrfToken() },
   })
+}
+
+export function listAdminUsers(signal?: AbortSignal) {
+  return requestJson<AdminUser[]>("/api/v1/admin/users", { signal })
+}
+
+export function createAdminUser(input: CreateAdminUserInput) {
+  return requestJson<CreatedAdminUser>("/api/v1/admin/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+    },
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateAdminUser(userId: string, input: UpdateAdminUserInput) {
+  return requestJson<AdminUser>(`/api/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+    },
+    body: JSON.stringify(input),
+  })
+}
+
+export function createAdminPasswordLink(userId: string) {
+  return requestJson<PasswordLink>(
+    `/api/v1/admin/users/${encodeURIComponent(userId)}/password-link`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken() },
+    }
+  )
+}
+
+export function inspectAdminModal(signal?: AbortSignal) {
+  return requestJson<AdminModal>("/api/v1/admin/modal", { signal })
+}
+
+export function updateAdminModalEnvironment(input: UpdateAdminModalEnvironmentInput) {
+  return requestJson<AdminModalEnvironment>("/api/v1/admin/modal/environment", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+    },
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateAdminModalTool(
+  workload: string,
+  input: UpdateAdminModalToolInput
+) {
+  return requestJson<AdminModalTool>(
+    `/api/v1/admin/modal/tools/${encodeURIComponent(workload)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken(),
+      },
+      body: JSON.stringify(input),
+    }
+  )
 }
 
 function xhrBody(xhr: XMLHttpRequest) {

@@ -1,9 +1,9 @@
 import { ArrowUpRight, LoaderCircle, Search } from "lucide-react"
 import { lazy, Suspense, useState } from "react"
-import { Link, Route, Routes } from "react-router"
+import { Link, Navigate, Route, Routes } from "react-router"
 
 import AppShell from "@/AppShell"
-import { LoginPage, ProtectedRoute, SetPasswordPage } from "@/auth"
+import { AdminRoute, LoginPage, ProtectedRoute, SetPasswordPage } from "@/auth"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -20,6 +20,9 @@ const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
+const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
+const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
+const UsersAdminPage = lazy(() => import("@/pages/admin/UsersAdminPage"))
 
 function LandingPage() {
   const [query, setQuery] = useState("")
@@ -55,11 +58,8 @@ function LandingPage() {
           </div>
         </section>
 
-        <section aria-labelledby="tools-heading" className="mt-14 lg:mt-20">
-          <h2 className="font-heading text-xl font-semibold" id="tools-heading">
-            Tools
-          </h2>
-          <p aria-live="polite" className="mt-1 text-sm text-muted-foreground">
+        <section aria-label="Tools" className="mt-8">
+          <p aria-live="polite" className="text-sm text-muted-foreground">
             {visibleTools.length} {visibleTools.length === 1 ? "Tool" : "Tools"}
           </p>
 
@@ -146,6 +146,13 @@ export default function App() {
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
             <Route element={<JobDetailPage />} path={gromacsPaths.jobRoute} />
+            <Route element={<AdminRoute />}>
+              <Route element={<AdminLayout />} path="/admin">
+                <Route element={<Navigate replace to="users" />} index />
+                <Route element={<UsersAdminPage />} path="users" />
+                <Route element={<ModalAdminPage />} path="modal" />
+              </Route>
+            </Route>
           </Route>
           <Route element={<NotFoundPage />} path="*" />
         </Route>

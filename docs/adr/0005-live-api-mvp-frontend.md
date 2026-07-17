@@ -44,8 +44,9 @@ navigation uses real links.
 ## Accounts and sessions
 
 MVP Users are provisioned by an administrator. There is no self-service signup,
-profile editor, or authenticated password-change interface. The User menu shows
-the current display name and email and offers only Sign out. Login and expired
+profile editor, or authenticated password-change interface. The original User
+menu showed the current display name and email and offered only Sign out;
+Administrator navigation and controls are added by ADR 0006. Login and expired
 Password Link failures direct the User to an administrator when appropriate.
 
 A one-time Password Link opens `/set-password#token=...`. Keeping the token in
@@ -202,11 +203,12 @@ errors remain inline beside the Submit action.
 After a `202` response, the frontend immediately navigates to
 `/tools/gromacs/jobs/:jobId`; the durable Job page owns all subsequent state.
 
-## Active Job Limit
+## Active Job Limit (superseded by ADR 0006)
 
-The MVP enforces a configurable per-User, per-workload Active Job Limit that
-counts every non-terminal Job. A Submission beyond the limit is rejected before
-a Job is created with `409 active_job_limit_reached`. This is distinct from an
+The original MVP enforced a configurable per-User, per-workload Active Job
+Limit. ADR 0006 replaces that overloaded policy with separate User, Tool, and
+Global Active Job Limits. A Submission beyond any limit is rejected before a
+Job is created with `409 active_job_limit_reached`. This is distinct from an
 execution Capacity Limit, where an accepted Job waits for capacity.
 
 A durable admission queue is deferred because the API does not yet retain Input

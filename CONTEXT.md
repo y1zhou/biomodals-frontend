@@ -22,6 +22,11 @@ _Avoid_: Local Job, client-side Job
 A person with a BioModals account who owns and can return to Jobs.
 _Avoid_: Client, account
 
+**Administrator**:
+An active User trusted to provision and manage Users and change non-secret
+Runtime Settings through the Admin interface.
+_Avoid_: service user, operator token
+
 **Password Link**:
 A one-time credential that authorizes a User to choose a password during initial
 Password Setup or an administrator-assisted Password Reset.
@@ -88,10 +93,31 @@ An operational bound on how many Jobs may execute concurrently. Accepted Jobs
 wait when execution capacity is full.
 _Avoid_: Active Job Limit, rate limit
 
-**Active Job Limit**:
-A per-User and workload bound on how many non-terminal Jobs the User may own at
-once. A Submission beyond the limit is rejected before a Job is created.
-_Avoid_: Capacity Limit, rate limit
+**User Active Job Limit**:
+A per-User bound on how many non-terminal Jobs the User may own across all
+Tools. A Submission beyond the limit is rejected before a Job is created.
+_Avoid_: Tool Active Job Limit, Capacity Limit, rate limit
+
+**Tool Active Job Limit**:
+A per-Tool bound on how many non-terminal Jobs may exist across all Users. A
+Submission beyond the limit is rejected before a Job is created.
+_Avoid_: User Active Job Limit, Modal container limit
+
+**Global Active Job Limit**:
+A service-wide bound on how many non-terminal Jobs may exist across all Users
+and Tools. A Submission beyond the limit is rejected before a Job is created.
+_Avoid_: Capacity Limit, concurrency limit
+
+**Runtime Setting**:
+A non-secret service or Tool value that an Administrator may change in the
+database and that takes effect without restarting the backend unless an
+explicit process environment variable controls it.
+_Avoid_: Modal credential, frontend API URL
+
+**Modal Configuration Snapshot**:
+The Modal Environment and deployed Modal app name captured on a Job when it is
+admitted, so later Runtime Setting changes affect only subsequent Jobs.
+_Avoid_: current Modal config, mutable Job config
 
 **Job Error**:
 The stable machine-readable code and safe user-facing explanation of why a Job

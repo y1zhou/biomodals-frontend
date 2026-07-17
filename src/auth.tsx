@@ -70,6 +70,17 @@ export function ProtectedRoute() {
   return <Outlet />
 }
 
+export function AdminRoute() {
+  const user = useCurrentUser()
+
+  if (user.isPending) return <LoadingPage />
+  if (user.isError || !user.data) return <Navigate replace to="/" />
+  if (isReauthenticationRequired(user.data)) return <Outlet />
+  if (!user.data.is_admin) return <Navigate replace to="/" />
+
+  return <Outlet />
+}
+
 interface LoginFormProps {
   onSuccess: (user: Principal) => void
   submitLabel?: string

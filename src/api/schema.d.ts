@@ -4,6 +4,109 @@
  */
 
 export interface paths {
+    readonly "/api/v1/admin/modal": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Modal Configuration */
+        readonly get: operations["modal_configuration_api_v1_admin_modal_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/modal/environment": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        /** Update Modal Environment */
+        readonly patch: operations["update_modal_environment_api_v1_admin_modal_environment_patch"];
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/modal/tools/{workload}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        /** Update Modal Tool */
+        readonly patch: operations["update_modal_tool_api_v1_admin_modal_tools__workload__patch"];
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/users": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** List Users */
+        readonly get: operations["list_users_api_v1_admin_users_get"];
+        readonly put?: never;
+        /** Create User */
+        readonly post: operations["create_user_api_v1_admin_users_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/users/{user_id}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        /** Update User */
+        readonly patch: operations["update_user_api_v1_admin_users__user_id__patch"];
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/users/{user_id}/password-link": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Create Password Link */
+        readonly post: operations["create_password_link_api_v1_admin_users__user_id__password_link_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/auth/login": {
         readonly parameters: {
             readonly query?: never;
@@ -161,6 +264,146 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AdminForbiddenResponse
+         * @description Authenticated User lacks administrator access.
+         */
+        readonly AdminForbiddenResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "admin_required";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AdminModalEnvironmentView
+         * @description Service-user identity and cross-Tool Modal settings.
+         */
+        readonly AdminModalEnvironmentView: {
+            readonly global_active_job_limit: components["schemas"]["IntegerSettingView"];
+            readonly modal_environment: components["schemas"]["TextSettingView"];
+            /** Service Token Id */
+            readonly service_token_id: string;
+        };
+        /**
+         * AdminModalToolView
+         * @description One fixed workload's deployment and admission state.
+         */
+        readonly AdminModalToolView: {
+            readonly active_job_limit: components["schemas"]["IntegerSettingView"];
+            readonly modal_app_name: components["schemas"]["TextSettingView"];
+            /** Running Jobs */
+            readonly running_jobs: number;
+            /** Workload */
+            readonly workload: string;
+        };
+        /**
+         * AdminModalView
+         * @description Complete Modal Admin page document.
+         */
+        readonly AdminModalView: {
+            readonly environment: components["schemas"]["AdminModalEnvironmentView"];
+            /** Tools */
+            readonly tools: readonly components["schemas"]["AdminModalToolView"][];
+        };
+        /**
+         * AdminMutationForbiddenResponse
+         * @description Admin mutation rejected for authorization, origin, or CSRF state.
+         */
+        readonly AdminMutationForbiddenResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "admin_required" | "csrf_invalid" | "origin_not_allowed";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AdminSettingConflictResponse
+         * @description Database edit is shadowed by a process environment variable.
+         */
+        readonly AdminSettingConflictResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "setting_overridden";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AdminSettingInvalidResponse
+         * @description Structurally valid Runtime Setting content failed validation.
+         */
+        readonly AdminSettingInvalidResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "setting_invalid";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AdminUserAlreadyExistsResponse
+         * @description Provisioning reused an existing normalized email address.
+         */
+        readonly AdminUserAlreadyExistsResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "user_already_exists";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AdminUserInvalidResponse
+         * @description Structurally valid provisioning fields failed identity validation.
+         */
+        readonly AdminUserInvalidResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "user_invalid";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AdminUserView
+         * @description Administrator-visible identity and admission policy.
+         */
+        readonly AdminUserView: {
+            /** Active */
+            readonly active: boolean;
+            /** Active Job Limit */
+            readonly active_job_limit: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            readonly created_at: string;
+            /** Display Name */
+            readonly display_name: string;
+            /** Email */
+            readonly email: string;
+            /** Is Admin */
+            readonly is_admin: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            readonly updated_at: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            readonly user_id: string;
+        };
         /** Body_submit_job_api_v1_gromacs_jobs_post */
         readonly Body_submit_job_api_v1_gromacs_jobs_post: {
             /**
@@ -200,6 +443,32 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * CreateAdminUserRequest
+         * @description Administrator-provisioned User fields.
+         */
+        readonly CreateAdminUserRequest: {
+            /** Active Job Limit */
+            readonly active_job_limit?: number | null;
+            /** Display Name */
+            readonly display_name: string;
+            /** Email */
+            readonly email: string;
+            /**
+             * Is Admin
+             * @default false
+             */
+            readonly is_admin: boolean;
+        };
+        /**
+         * CreatedAdminUserView
+         * @description New User plus the one-time Password Link shown exactly once.
+         */
+        readonly CreatedAdminUserView: {
+            /** Password Link */
+            readonly password_link: string;
+            readonly user: components["schemas"]["AdminUserView"];
+        };
+        /**
          * ErrorResponse
          * @description Stable JSON error response.
          */
@@ -211,6 +480,34 @@ export interface components {
         readonly HTTPValidationError: {
             /** Detail */
             readonly detail?: readonly components["schemas"]["ValidationError"][];
+        };
+        /**
+         * InactiveUserResponse
+         * @description A Password Link was requested for a disabled User.
+         */
+        readonly InactiveUserResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "user_inactive";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * IntegerSettingView
+         * @description One effective integer setting and its controlling source.
+         */
+        readonly IntegerSettingView: {
+            /** Editable */
+            readonly editable: boolean;
+            /**
+             * Source
+             * @enum {string}
+             */
+            readonly source: "process_environment" | "database" | "configuration_file" | "default";
+            /** Value */
+            readonly value: number;
         };
         /**
          * JobNotCancellableResponse
@@ -265,6 +562,19 @@ export interface components {
             readonly workload: string;
         };
         /**
+         * LastActiveAdminResponse
+         * @description A User update would remove the final active administrator.
+         */
+        readonly LastActiveAdminResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "last_active_admin";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
          * LoginRequest
          * @description Credentials submitted only by the browser login form.
          */
@@ -314,6 +624,14 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * PasswordLinkView
+         * @description One newly issued one-time Password Link.
+         */
+        readonly PasswordLinkView: {
+            /** Password Link */
+            readonly password_link: string;
+        };
+        /**
          * PayloadTooLargeResponse
          * @description Submission exceeded the configured request boundary.
          */
@@ -348,6 +666,8 @@ export interface components {
             readonly display_name: string;
             /** Email */
             readonly email: string;
+            /** Is Admin */
+            readonly is_admin: boolean;
             /**
              * User Id
              * Format: uuid
@@ -377,6 +697,53 @@ export interface components {
             /** Detail */
             readonly detail: string;
         };
+        /**
+         * TextSettingView
+         * @description One effective text setting and its controlling source.
+         */
+        readonly TextSettingView: {
+            /** Editable */
+            readonly editable: boolean;
+            /**
+             * Source
+             * @enum {string}
+             */
+            readonly source: "process_environment" | "database" | "configuration_file" | "default";
+            /** Value */
+            readonly value: string;
+        };
+        /**
+         * UpdateAdminModalEnvironmentRequest
+         * @description Editable cross-Tool Modal configuration.
+         */
+        readonly UpdateAdminModalEnvironmentRequest: {
+            /** Global Active Job Limit */
+            readonly global_active_job_limit?: number | null;
+            /** Modal Environment */
+            readonly modal_environment?: string | null;
+        };
+        /**
+         * UpdateAdminModalToolRequest
+         * @description Editable per-Tool Modal configuration.
+         */
+        readonly UpdateAdminModalToolRequest: {
+            /** Active Job Limit */
+            readonly active_job_limit?: number | null;
+            /** Modal App Name */
+            readonly modal_app_name?: string | null;
+        };
+        /**
+         * UpdateAdminUserRequest
+         * @description Editable User status and admission policy fields.
+         */
+        readonly UpdateAdminUserRequest: {
+            /** Active */
+            readonly active?: boolean | null;
+            /** Active Job Limit */
+            readonly active_job_limit?: number | null;
+            /** Is Admin */
+            readonly is_admin?: boolean | null;
+        };
         /** ValidationError */
         readonly ValidationError: {
             /** Context */
@@ -399,6 +766,453 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readonly modal_configuration_api_v1_admin_modal_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminModalView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+        };
+    };
+    readonly update_modal_environment_api_v1_admin_modal_environment_patch: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["UpdateAdminModalEnvironmentRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminModalEnvironmentView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminSettingInvalidResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    readonly update_modal_tool_api_v1_admin_modal_tools__workload__patch: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly workload: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["UpdateAdminModalToolRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminModalToolView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminSettingInvalidResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    readonly list_users_api_v1_admin_users_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": readonly components["schemas"]["AdminUserView"][];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+        };
+    };
+    readonly create_user_api_v1_admin_users_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["CreateAdminUserRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CreatedAdminUserView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminUserInvalidResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminUserAlreadyExistsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    readonly update_user_api_v1_admin_users__user_id__patch: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly user_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["UpdateAdminUserRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminUserView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["LastActiveAdminResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    readonly create_password_link_api_v1_admin_users__user_id__password_link_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly user_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PasswordLinkView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["InactiveUserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     readonly login_api_v1_auth_login_post: {
         readonly parameters: {
             readonly query?: never;

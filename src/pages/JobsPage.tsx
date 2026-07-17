@@ -151,9 +151,9 @@ export default function JobsPage() {
             <RefreshCw aria-hidden="true" className={cn(jobsQuery.isFetching && "animate-spin")} />
             Refresh
           </Button>
-          <Link className={buttonVariants()} to={gromacsPaths.submission}>
+          <Link className={buttonVariants()} to="/">
             <Plus aria-hidden="true" data-icon="inline-start" />
-            New simulation
+            New job
           </Link>
         </div>
       </div>
@@ -195,10 +195,10 @@ export default function JobsPage() {
           <FlaskConical aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
           <h2 className="mt-5 font-heading text-lg font-semibold">No Jobs yet</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Start a GROMACS simulation and it will remain recoverable here.
+            Start a new Job and it will remain recoverable here.
           </p>
-          <Link className={cn(buttonVariants(), "mt-6")} to={gromacsPaths.submission}>
-            Start a simulation
+          <Link className={cn(buttonVariants(), "mt-6")} to="/">
+            Start a new job
           </Link>
         </div>
       )}

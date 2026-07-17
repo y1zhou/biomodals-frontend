@@ -114,7 +114,7 @@ export function submissionErrorMessage(error: unknown, hasFieldErrors: boolean) 
     return "Remote compute is temporarily unavailable. Try the same Submission again."
   }
   if (code === "active_job_limit_reached") {
-    return "You already have the maximum number of active Jobs. Try this same Submission after one finishes."
+    return "The maximum number of active Jobs has been reached. Try this same Submission after one finishes."
   }
   if (code === "idempotency_conflict") {
     return "This key was already used for a different Submission. Review it and submit again."
