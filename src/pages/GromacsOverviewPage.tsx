@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Clock3,
   FileUp,
-  FlaskConical,
   PackageCheck,
   SlidersHorizontal,
 } from "lucide-react"
@@ -13,16 +12,15 @@ import { useCurrentUser } from "@/auth-state"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { WEB_UPLOAD_LIMIT_LABEL } from "@/gromacs"
 import { cn } from "@/lib/utils"
-import { tools } from "@/tools"
-
-const tool = tools[0]
+import { gromacsPaths, gromacsTool } from "@/tools"
 
 const features = [
   {
     icon: FileUp,
     title: "Bring one PDB structure",
-    description: "Choose a Protein Data Bank structure from your computer. The web uploader supports files up to 100 MiB.",
+    description: `Choose a Protein Data Bank structure from your computer. The web uploader supports files up to ${WEB_UPLOAD_LIMIT_LABEL}.`,
   },
   {
     icon: SlidersHorizontal,
@@ -43,9 +41,10 @@ const features = [
 
 export default function GromacsOverviewPage() {
   const user = useCurrentUser()
+  const ToolIcon = gromacsTool.icon
   const target = user.data
-    ? "/tools/gromacs/new"
-    : "/login?returnTo=%2Ftools%2Fgromacs%2Fnew"
+    ? gromacsPaths.submission
+    : `/login?returnTo=${encodeURIComponent(gromacsPaths.submission)}`
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12 lg:px-8 lg:py-20">
@@ -57,16 +56,16 @@ export default function GromacsOverviewPage() {
       <section className="grid items-start gap-10 lg:grid-cols-[1fr_22rem] lg:gap-16">
         <div>
           <span className="grid size-12 place-items-center rounded-xl bg-muted">
-            <FlaskConical aria-hidden="true" className="size-6" />
+            <ToolIcon aria-hidden="true" className="size-6" />
           </span>
           <h1 className="mt-6 font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-            {tool.name}
+            {gromacsTool.name}
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-            {tool.description}
+            {gromacsTool.description}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            {tool.tags.map((tag) => (
+            {gromacsTool.tags.map((tag) => (
               <Badge key={tag} variant="outline">
                 {tag}
               </Badge>

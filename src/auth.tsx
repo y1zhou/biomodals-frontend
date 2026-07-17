@@ -130,10 +130,12 @@ export function LoginForm({ onSuccess, submitLabel = "Sign in" }: LoginFormProps
 }
 
 export function ReauthenticationDialog({
+  description = "Your session expired. Your selected PDB and settings will stay on this page.",
   open,
   onCancel,
   onSuccess,
 }: {
+  description?: string
   open: boolean
   onCancel: () => void
   onSuccess: () => void
@@ -160,7 +162,7 @@ export function ReauthenticationDialog({
           Sign in again
         </h2>
         <p className="mb-6 mt-2 text-sm leading-6 text-muted-foreground">
-          Your session expired. Your selected PDB and settings will stay on this page.
+          {description}
         </p>
         <LoginForm onSuccess={onSuccess} submitLabel="Sign in and return" />
         <Button className="mt-2 w-full" onClick={onCancel} type="button" variant="ghost">

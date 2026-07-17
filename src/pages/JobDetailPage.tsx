@@ -19,22 +19,16 @@ import JobStatusBadge from "@/components/JobStatusBadge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
+  formatTimestamp,
   isActiveJob,
   jobKey,
   jobListKey,
   jobPollingInterval,
   jobPresentation,
+  useDocumentVisibility,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-
-const timestamp = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-})
-
-function formatTimestamp(value: string | null | undefined) {
-  return value ? timestamp.format(new Date(value)) : "—"
-}
+import { gromacsPaths, gromacsTool } from "@/tools"
 
 async function copyText(value: string) {
   if (navigator.clipboard) return navigator.clipboard.writeText(value)
@@ -61,7 +55,7 @@ function JobUnavailable() {
         <Link className={buttonVariants()} to="/jobs">
           My Jobs
         </Link>
-        <Link className={buttonVariants({ variant: "outline" })} to="/tools/gromacs">
+        <Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.overview}>
           GROMACS Tool
         </Link>
       </div>
@@ -74,6 +68,7 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient()
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [copied, setCopied] = useState(false)
+  const visibility = useDocumentVisibility()
   const jobQuery = useQuery({
     queryKey: jobKey(jobId),
     queryFn: ({ signal }) => inspectJob(jobId, signal),
@@ -83,7 +78,7 @@ export default function JobDetailPage() {
       return failureCount < 1
     },
     refetchInterval(query) {
-      return jobPollingInterval(query.state.data, document.visibilityState)
+      return jobPollingInterval(query.state.data, visibility)
     },
     refetchIntervalInBackground: true,
     refetchOnWindowFocus(query) {
@@ -165,7 +160,7 @@ export default function JobDetailPage() {
         <section className="mt-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">GROMACS MD simulation</p>
+              <p className="text-sm font-medium text-muted-foreground">{gromacsTool.name}</p>
               <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
                 {job.display_name}
               </h1>
@@ -176,7 +171,7 @@ export default function JobDetailPage() {
           {jobQuery.isError ? (
             <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
               <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              Status could not be refreshed. Showing the last known state from {formatTimestamp(job.updated_at)}.
+              Status could not be refreshed. Last successful refresh: {formatTimestamp(jobQuery.dataUpdatedAt)}.
             </div>
           ) : null}
 
@@ -191,6 +186,9 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent>
               <p className="max-w-2xl leading-7">{presentation.description}</p>
+              <p className="mt-2 text-xs opacity-80">
+                Job updated {formatTimestamp(job.updated_at)} · Last checked {formatTimestamp(jobQuery.dataUpdatedAt)}
+              </p>
               {job.warnings?.length ? (
                 <div className="mt-5 rounded-lg border border-current/20 bg-background/70 p-4">
                   <h2 className="text-sm font-semibold">Warnings</h2>
@@ -223,7 +221,7 @@ export default function JobDetailPage() {
                   </a>
                 ) : null}
                 {canStartAgain ? (
-                  <Link className={buttonVariants()} to="/tools/gromacs/new">
+                  <Link className={buttonVariants()} to={gromacsPaths.submission}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new simulation
                   </Link>
@@ -244,7 +242,7 @@ export default function JobDetailPage() {
                     <dd className="text-right font-medium">{formatTimestamp(job.created_at)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">Last updated</dt>
+                    <dt className="text-muted-foreground">Job updated</dt>
                     <dd className="text-right font-medium">{formatTimestamp(job.updated_at)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">

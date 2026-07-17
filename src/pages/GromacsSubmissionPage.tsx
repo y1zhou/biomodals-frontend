@@ -21,6 +21,8 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
+  WEB_UPLOAD_LIMIT_BYTES,
+  WEB_UPLOAD_LIMIT_LABEL,
   apiFieldErrors,
   normalizedDisplayName,
   pdbFileError,
@@ -28,6 +30,7 @@ import {
   type SubmissionField,
 } from "@/gromacs"
 import { cn } from "@/lib/utils"
+import { gromacsPaths, gromacsTool } from "@/tools"
 
 function filenameDisplayName(filename: string) {
   return filename.replace(/\.pdb$/i, "")
@@ -73,7 +76,7 @@ export default function GromacsSubmissionPage() {
     retry: false,
     onSuccess(job) {
       abortController.current = null
-      navigate(`/tools/gromacs/jobs/${job.job_id}`, { replace: true })
+      navigate(gromacsPaths.job(job.job_id), { replace: true })
     },
     onError(error) {
       abortController.current = null
@@ -162,13 +165,13 @@ export default function GromacsSubmissionPage() {
   return (
     <>
       <main className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
-        <Link className={cn(buttonVariants({ variant: "ghost" }), "mb-8")} to="/tools/gromacs">
+        <Link className={cn(buttonVariants({ variant: "ghost" }), "mb-8")} to={gromacsPaths.overview}>
           <ArrowLeft aria-hidden="true" data-icon="inline-start" />
           GROMACS overview
         </Link>
 
         <div className="mb-10">
-          <Badge variant="secondary">GROMACS MD simulation</Badge>
+          <Badge variant="secondary">{gromacsTool.name}</Badge>
           <h1 className="mt-4 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
             Start a simulation
           </h1>
@@ -183,7 +186,7 @@ export default function GromacsSubmissionPage() {
               <CardHeader>
                 <CardTitle>Structure</CardTitle>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Choose one .pdb file. The web uploader supports up to 100 MiB.
+                  Choose one .pdb file. The web uploader supports up to {WEB_UPLOAD_LIMIT_LABEL}.
                 </p>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -204,7 +207,7 @@ export default function GromacsSubmissionPage() {
                   {fieldErrors.pdb ? (
                     <p className="text-sm text-destructive" id="pdb-error">
                       {fieldErrors.pdb}{" "}
-                      {pdb?.size && pdb.size > 100 * 1024 * 1024 ? (
+                      {pdb?.size && pdb.size > WEB_UPLOAD_LIMIT_BYTES ? (
                         <a className="underline underline-offset-4" href="/docs" rel="noreferrer" target="_blank">
                           Use the API for larger files.
                         </a>

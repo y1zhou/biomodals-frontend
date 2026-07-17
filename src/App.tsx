@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { filterTools, tools } from "@/tools"
+import { filterTools, gromacsPaths, toolOverviewPath, tools } from "@/tools"
 
 const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
@@ -70,7 +70,7 @@ function LandingPage() {
                 const Icon = tool.icon
 
                 return (
-                  <Link className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50" key={tool.slug} to={`/tools/${tool.slug}`}>
+                  <Link className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50" key={tool.slug} to={toolOverviewPath(tool)}>
                     <Card className="h-full transition-[transform,box-shadow] duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
                       <CardHeader>
                         <div className="mb-5 grid size-10 place-items-center rounded-lg bg-muted text-foreground">
@@ -140,13 +140,13 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route element={<LandingPage />} path="/" />
-          <Route element={<GromacsOverviewPage />} path="/tools/gromacs" />
+          <Route element={<GromacsOverviewPage />} path={gromacsPaths.overview} />
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
             <Route element={<JobsPage />} path="/jobs" />
-            <Route element={<GromacsSubmissionPage />} path="/tools/gromacs/new" />
-            <Route element={<JobDetailPage />} path="/tools/gromacs/jobs/:jobId" />
+            <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
+            <Route element={<JobDetailPage />} path={gromacsPaths.jobRoute} />
           </Route>
           <Route element={<NotFoundPage />} path="*" />
         </Route>

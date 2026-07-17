@@ -1,7 +1,32 @@
+import { useEffect, useState } from "react"
+
 import type { Job, JobState } from "@/api/client"
 
 export const jobListKey = ["jobs"] as const
 export const jobKey = (jobId: string) => ["jobs", jobId] as const
+
+const timestamp = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+})
+
+export function formatTimestamp(value: string | number | null | undefined) {
+  return value ? timestamp.format(new Date(value)) : "—"
+}
+
+export function useDocumentVisibility() {
+  const [visibility, setVisibility] = useState<DocumentVisibilityState>(
+    () => document.visibilityState
+  )
+
+  useEffect(() => {
+    const update = () => setVisibility(document.visibilityState)
+    document.addEventListener("visibilitychange", update)
+    return () => document.removeEventListener("visibilitychange", update)
+  }, [])
+
+  return visibility
+}
 
 export const activeJobStates = new Set<JobState>([
   "queued",

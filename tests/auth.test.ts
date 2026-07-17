@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { readCookie } from "../src/api/client"
+import { csrfToken, MissingCsrfError, readCookie } from "../src/api/client"
 import { safeReturnTo } from "../src/auth-state"
 
 describe("readCookie", () => {
@@ -10,6 +10,13 @@ describe("readCookie", () => {
 
   test("returns null when the cookie is absent", () => {
     expect(readCookie("session=hidden", "biomodals-csrf")).toBeNull()
+  })
+})
+
+describe("csrfToken", () => {
+  test("requires the readable CSRF cookie", () => {
+    expect(csrfToken("biomodals-csrf=token")).toBe("token")
+    expect(() => csrfToken("")).toThrow(MissingCsrfError)
   })
 })
 

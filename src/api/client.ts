@@ -28,6 +28,13 @@ export class ApiError extends Error {
   }
 }
 
+export class MissingCsrfError extends ApiError {
+  constructor() {
+    super(401, { detail: "Authentication required" })
+    this.name = "MissingCsrfError"
+  }
+}
+
 function apiErrorMessage(body: unknown) {
   if (!body || typeof body !== "object" || !("detail" in body)) return null
   return typeof body.detail === "string" ? body.detail : null
@@ -64,9 +71,9 @@ export function readCookie(cookieHeader: string, name: string) {
   return null
 }
 
-export function csrfToken() {
-  const token = readCookie(document.cookie, "biomodals-csrf")
-  if (!token) throw new ApiError(401, { detail: "Authentication required" })
+export function csrfToken(cookieHeader = document.cookie) {
+  const token = readCookie(cookieHeader, "biomodals-csrf")
+  if (!token) throw new MissingCsrfError()
   return token
 }
 

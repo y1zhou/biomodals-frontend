@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import type { Job } from "../src/api/client"
 import {
+  formatTimestamp,
   isActiveJob,
   jobPollingInterval,
   jobPresentation,
@@ -21,6 +22,11 @@ function job(jobId: string, state: Job["state"], createdAt: string): Job {
 }
 
 describe("Job lifecycle presentation", () => {
+  test("formats missing timestamps consistently", () => {
+    expect(formatTimestamp(null)).toBe("—")
+    expect(formatTimestamp(0)).toBe("—")
+  })
+
   test("classifies active and terminal states", () => {
     expect(isActiveJob("queued")).toBeTrue()
     expect(isActiveJob("cancel_requested")).toBeTrue()

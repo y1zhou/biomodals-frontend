@@ -63,9 +63,10 @@ password fields, a visibility control, and local validation of the OpenAPI
 
 Successful login and password setup both establish an HTTP-only session cookie
 and the readable `biomodals-csrf` cookie. They return the authenticated User;
-password setup signs the User in without another login. The password-setup
-OpenAPI response must document the same cookie behavior already documented by
-the login response.
+password setup signs the User in without another login. The live OpenAPI
+response currently documents those cookies for login but not password setup.
+That documentation gap belongs to the backend and does not change the MVP
+frontend flow.
 
 Every authenticated mutation reads the current `biomodals-csrf` value from
 `document.cookie` immediately before the request and sends it as the required

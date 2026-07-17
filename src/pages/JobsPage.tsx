@@ -15,26 +15,27 @@ import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
+  formatTimestamp,
   isActiveJob,
   jobKey,
   jobListKey,
   jobPollingInterval,
   latestJob,
   newestJobsFirst,
+  useDocumentVisibility,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-import { tools } from "@/tools"
+import { gromacsPaths, gromacsTool, tools } from "@/tools"
 
-const timestamp = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-})
-
-function formatTimestamp(value: string) {
-  return timestamp.format(new Date(value))
-}
-
-function JobRow({ job: initialJob, updatedAt }: { job: Job; updatedAt: number }) {
+function JobRow({
+  job: initialJob,
+  updatedAt,
+  visibility,
+}: {
+  job: Job
+  updatedAt: number
+  visibility: DocumentVisibilityState
+}) {
   const jobQuery = useQuery({
     queryKey: jobKey(initialJob.job_id),
     queryFn: ({ signal }) => inspectJob(initialJob.job_id, signal),
@@ -46,7 +47,7 @@ function JobRow({ job: initialJob, updatedAt }: { job: Job; updatedAt: number })
       return failureCount < 1
     },
     refetchInterval(query) {
-      return jobPollingInterval(query.state.data, document.visibilityState)
+      return jobPollingInterval(query.state.data, visibility)
     },
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: false,
@@ -54,7 +55,7 @@ function JobRow({ job: initialJob, updatedAt }: { job: Job; updatedAt: number })
   useExpireSession(jobQuery.error)
   const job = latestJob(initialJob, jobQuery.data)
   const tool = tools.find((candidate) => candidate.slug === job.workload)
-  const path = tool ? `/tools/${tool.slug}/jobs/${job.job_id}` : "/jobs"
+  const path = tool?.slug === gromacsTool.slug ? gromacsPaths.job(job.job_id) : "/jobs"
 
   return (
     <tr className="border-b last:border-0">
@@ -87,6 +88,7 @@ function JobRow({ job: initialJob, updatedAt }: { job: Job; updatedAt: number })
 }
 
 export default function JobsPage() {
+  const visibility = useDocumentVisibility()
   const jobsQuery = useQuery({
     queryKey: jobListKey,
     queryFn: ({ signal }) => listJobs(signal),
@@ -151,7 +153,7 @@ export default function JobsPage() {
             <RefreshCw aria-hidden="true" className={cn(jobsQuery.isFetching && "animate-spin")} />
             Refresh
           </Button>
-          <Link className={buttonVariants()} to="/tools/gromacs/new">
+          <Link className={buttonVariants()} to={gromacsPaths.submission}>
             <Plus aria-hidden="true" data-icon="inline-start" />
             New simulation
           </Link>
@@ -180,7 +182,12 @@ export default function JobsPage() {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <JobRow job={job} key={job.job_id} updatedAt={jobsQuery.dataUpdatedAt} />
+                <JobRow
+                  job={job}
+                  key={job.job_id}
+                  updatedAt={jobsQuery.dataUpdatedAt}
+                  visibility={visibility}
+                />
               ))}
             </tbody>
           </table>
@@ -192,7 +199,7 @@ export default function JobsPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Start a GROMACS simulation and it will remain recoverable here.
           </p>
-          <Link className={cn(buttonVariants(), "mt-6")} to="/tools/gromacs/new">
+          <Link className={cn(buttonVariants(), "mt-6")} to={gromacsPaths.submission}>
             Start a simulation
           </Link>
         </div>

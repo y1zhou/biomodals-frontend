@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { BriefcaseBusiness, FlaskConical, LogOut, UserRound } from "lucide-react"
+import { useState } from "react"
 import { Link, Outlet, useNavigate } from "react-router"
 
-import { ApiError, logout } from "@/api/client"
+import { ApiError, logout, MissingCsrfError } from "@/api/client"
+import { ReauthenticationDialog } from "@/auth"
 import { currentUserKey, useCurrentUser } from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -22,6 +24,7 @@ export default function AppShell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useCurrentUser()
+  const [needsAuthentication, setNeedsAuthentication] = useState(false)
 
   function finishLogout() {
     queryClient.clear()
@@ -34,7 +37,8 @@ export default function AppShell() {
     retry: false,
     onSuccess: finishLogout,
     onError(error) {
-      if (error instanceof ApiError && error.status === 401) finishLogout()
+      if (error instanceof MissingCsrfError) setNeedsAuthentication(true)
+      else if (error instanceof ApiError && error.status === 401) finishLogout()
     },
   })
 
@@ -94,6 +98,15 @@ export default function AppShell() {
         </div>
       </header>
       <Outlet />
+      <ReauthenticationDialog
+        description="The CSRF credential is missing. Sign in again, then choose Sign out once more."
+        onCancel={() => setNeedsAuthentication(false)}
+        onSuccess={() => {
+          setNeedsAuthentication(false)
+          logoutMutation.reset()
+        }}
+        open={needsAuthentication}
+      />
     </div>
   )
 }

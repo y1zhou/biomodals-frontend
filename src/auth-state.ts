@@ -9,6 +9,10 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: currentUserKey,
     queryFn: ({ signal }) => currentUser(signal),
+    // Mutations detect expiry. Automatic rechecks could unmount a selected File.
+    staleTime: Infinity,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
   })
 }
 

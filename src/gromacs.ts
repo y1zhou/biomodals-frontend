@@ -1,6 +1,8 @@
 import { ApiError, type HttpValidationError } from "@/api/client"
 
-export const WEB_UPLOAD_LIMIT_BYTES = 100 * 1024 * 1024
+export const WEB_UPLOAD_LIMIT_MIB = 100
+export const WEB_UPLOAD_LIMIT_BYTES = WEB_UPLOAD_LIMIT_MIB * 1024 * 1024
+export const WEB_UPLOAD_LIMIT_LABEL = `${WEB_UPLOAD_LIMIT_MIB} MiB`
 
 export type SubmissionField =
   | "pdb"
@@ -24,7 +26,9 @@ export function normalizedDisplayName(value: string) {
 export function pdbFileError(file: File | null) {
   if (!file) return "Choose a PDB file."
   if (!file.name.toLocaleLowerCase().endsWith(".pdb")) return "Choose a file ending in .pdb."
-  if (file.size > WEB_UPLOAD_LIMIT_BYTES) return "The web uploader supports files up to 100 MiB."
+  if (file.size > WEB_UPLOAD_LIMIT_BYTES) {
+    return `The web uploader supports files up to ${WEB_UPLOAD_LIMIT_LABEL}.`
+  }
   return null
 }
 

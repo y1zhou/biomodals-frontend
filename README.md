@@ -12,7 +12,10 @@ bun install
 bun dev
 ```
 
-The Vite development server proxies `/api/*` to `http://127.0.0.1:8000`.
+The Vite development server listens on `0.0.0.0` so the MVP can be opened from
+another machine on the development network. It proxies `/api/*`, `/docs`, and
+`/openapi.json` to `http://127.0.0.1:8000`; do not expose this development
+server to an untrusted network.
 Production builds use same-origin `/api` URLs and expect the deployment proxy to
 route them to FastAPI.
 
@@ -23,25 +26,23 @@ bun dev          # start Vite
 bun run lint     # run Oxlint
 bun test         # run Bun tests
 bun run build    # typecheck and build dist/
+bun run api:generate # regenerate types from the live local OpenAPI document
+bun run api:check    # fail when generated API types are stale
 bun run preview  # preview dist/ locally
 ```
 
 ## Current state
 
-The app has a searchable landing page, a typed catalog of clearly labelled
-example Tools, internal placeholder routes, and TanStack Query at the
-application root. The real Tool inventory and the stable FastAPI OpenAPI schema
-have not yet been supplied.
+The MVP has a searchable typed Tool Catalog and one real Tool, `GROMACS MD
+simulation`. It includes administrator-provisioned account flows, a protected
+multipart Submission with upload progress and idempotency, durable Job detail,
+active-only polling, cancellation, a responsive My Jobs table, and direct
+Result downloads. API types in `src/api/schema.d.ts` are generated from the
+live FastAPI OpenAPI document.
 
-To add a real Tool, add its metadata to `src/tools.ts` and introduce a
-lazy-loaded internal route module. Keep the card as a real link and prefer
+To add another Tool, add its metadata to `src/tools.ts` and introduce a
+lazy-loaded internal route module. Keep Tool cards as real links and prefer
 native browser controls for simple interactions such as file selection.
-
-The first recommended vertical slice is one real Tool covering input
-validation, upload progress, idempotent Job creation, polling, failure and
-cancellation states, recovery through Job History, and direct Result download.
-Generate the TypeScript API types from FastAPI only after its OpenAPI schema is
-stable.
 
 ## Project documentation
 
@@ -54,4 +55,5 @@ stable.
 
 The production build is a browser-routed SPA. Its static server must fall back
 to `index.html` for paths that do not match real files. Vite's preview server is
-for local verification, not production hosting.
+for local verification, not production hosting. Whether `/docs` is exposed in
+production is a deployment-proxy decision outside this repository.
