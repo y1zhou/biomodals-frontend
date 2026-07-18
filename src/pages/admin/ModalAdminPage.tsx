@@ -43,7 +43,9 @@ function ToolRow({
     () => setActiveJobLimit(String(tool.active_job_limit.value)),
     [tool.active_job_limit.value]
   )
-  const pending = save.isPending && save.variables?.workload === tool.workload
+  const saving = save.isPending
+  const rowError =
+    save.isError && save.variables?.workload === tool.workload ? save.error : null
   const normalizedAppName = appName.trim()
 
   return (
@@ -81,7 +83,7 @@ function ToolRow({
           <Button
             aria-label={`Save Modal settings for ${tool.workload}`}
             disabled={
-              pending ||
+              saving ||
               Number(activeJobLimit) < 1 ||
               (tool.modal_app_name.editable && !normalizedAppName) ||
               (!tool.modal_app_name.editable && !tool.active_job_limit.editable)
@@ -105,6 +107,12 @@ function ToolRow({
             <Save aria-hidden="true" />
           </Button>
         </div>
+        {rowError ? (
+          <p className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert">
+            <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
+            {errorMessage(rowError)}
+          </p>
+        ) : null}
       </td>
     </tr>
   )
@@ -171,10 +179,8 @@ export default function ModalAdminPage() {
   }
 
   if (!modal.data) {
-    return <p className="text-sm text-destructive">{errorMessage(modal.error)}</p>
+    return <p className="text-sm text-destructive" role="alert">{errorMessage(modal.error)}</p>
   }
-
-  const mutationError = environmentUpdate.error ?? toolUpdate.error
 
   return (
     <div className="space-y-8">
@@ -246,6 +252,12 @@ export default function ModalAdminPage() {
               </div>
             </div>
           </form>
+          {environmentUpdate.error ? (
+            <p className="mt-4 flex items-center gap-2 text-sm text-destructive" role="alert">
+              <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
+              {errorMessage(environmentUpdate.error)}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -272,12 +284,6 @@ export default function ModalAdminPage() {
         </div>
       </section>
 
-      {mutationError ? (
-        <p className="flex items-center gap-2 text-sm text-destructive">
-          <AlertTriangle aria-hidden="true" className="size-4" />
-          {errorMessage(mutationError)}
-        </p>
-      ) : null}
     </div>
   )
 }

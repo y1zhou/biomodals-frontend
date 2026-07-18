@@ -4,14 +4,35 @@ import { ApiError } from "../src/api/client"
 import {
   WEB_UPLOAD_LIMIT_BYTES,
   apiFieldErrors,
+  forgetPendingIdempotencyKey,
   normalizedDisplayName,
   pdbFileError,
+  readPendingIdempotencyKey,
+  rememberPendingIdempotencyKey,
   shouldRotateIdempotencyKey,
   simulationTimeError,
   submissionErrorMessage,
 } from "../src/gromacs"
 
 describe("GROMACS Submission validation", () => {
+  test("retains an ambiguous Submission key for later navigation", () => {
+    const values = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      removeItem: (key: string) => void values.delete(key),
+      setItem: (key: string, value: string) => void values.set(key, value),
+    }
+
+    rememberPendingIdempotencyKey(storage, "11111111-1111-4111-8111-111111111111")
+    expect(readPendingIdempotencyKey(storage)).toBe(
+      "11111111-1111-4111-8111-111111111111"
+    )
+    forgetPendingIdempotencyKey(storage)
+    expect(readPendingIdempotencyKey(storage)).toBeNull()
+    rememberPendingIdempotencyKey(storage, "not-a-uuid")
+    expect(readPendingIdempotencyKey(storage)).toBeNull()
+  })
+
   test("normalizes optional display names", () => {
     expect(normalizedDisplayName("  kinase run  ")).toBe("kinase run")
     expect(normalizedDisplayName("   ")).toBeNull()
@@ -111,5 +132,12 @@ describe("GROMACS Submission validation", () => {
 
     expect(submissionErrorMessage(mixedValidation, true)).toContain("rejected")
     expect(submissionErrorMessage(wrongOrigin, false)).toContain("not configured")
+  })
+
+  test("treats a cancelled upload as an unknown submission outcome", () => {
+    const error = new DOMException("cancelled", "AbortError")
+
+    expect(submissionErrorMessage(error, false)).toContain("may already have created")
+    expect(submissionErrorMessage(error, false)).toContain("check My Jobs")
   })
 })

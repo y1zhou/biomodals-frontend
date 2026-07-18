@@ -153,6 +153,7 @@ export default function JobDetailPage() {
   const stateDescription =
     job.state === "failed" ? jobFailureMessage(job) : presentation.description
   const stages = gromacsStageTimeline(job)
+  const currentStage = stages.find((stage) => stage.state === "current")
 
   return (
     <>
@@ -173,6 +174,13 @@ export default function JobDetailPage() {
         </div>
 
         <section className="mt-8">
+          <p aria-atomic="true" aria-live="polite" className="sr-only">
+            Job status: {presentation.label}.
+            {currentStage ? ` Current stage: ${currentStage.label}.` : ""}
+            {currentStage?.functionName
+              ? ` Deployed Function: ${currentStage.functionName}.`
+              : ""}
+          </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">{gromacsTool.name}</p>

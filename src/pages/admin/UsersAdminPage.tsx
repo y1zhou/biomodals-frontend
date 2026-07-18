@@ -38,8 +38,13 @@ function UserRow({
 }) {
   const [activeJobLimit, setActiveJobLimit] = useState(String(user.active_job_limit))
   useEffect(() => setActiveJobLimit(String(user.active_job_limit)), [user.active_job_limit])
-  const updating = update.isPending && update.variables?.userId === user.user_id
-  const resetting = reset.isPending && reset.variables === user.user_id
+  const busy = update.isPending || reset.isPending
+  const rowError =
+    update.isError && update.variables?.userId === user.user_id
+      ? update.error
+      : reset.isError && reset.variables === user.user_id
+        ? reset.error
+        : null
 
   return (
     <tr className="border-b last:border-0">
@@ -69,7 +74,7 @@ function UserRow({
           />
           <Button
             aria-label={`Save Active Job Limit for ${user.display_name}`}
-            disabled={updating || Number(activeJobLimit) < 1}
+            disabled={busy || Number(activeJobLimit) < 1}
             onClick={() =>
               update.mutate({
                 userId: user.user_id,
@@ -86,7 +91,7 @@ function UserRow({
       <td className="px-4 py-4 align-top">
         <div className="flex min-w-52 flex-wrap gap-2">
           <Button
-            disabled={updating}
+            disabled={busy}
             onClick={() =>
               update.mutate({
                 userId: user.user_id,
@@ -99,7 +104,7 @@ function UserRow({
             {user.is_admin ? "Remove admin" : "Make admin"}
           </Button>
           <Button
-            disabled={updating}
+            disabled={busy}
             onClick={() =>
               update.mutate({
                 userId: user.user_id,
@@ -112,7 +117,7 @@ function UserRow({
             {user.active ? "Disable" : "Enable"}
           </Button>
           <Button
-            disabled={!user.active || resetting}
+            disabled={!user.active || busy}
             onClick={() => reset.mutate(user.user_id)}
             size="sm"
             variant="ghost"
@@ -121,6 +126,12 @@ function UserRow({
             New password link
           </Button>
         </div>
+        {rowError ? (
+          <p className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert">
+            <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
+            {errorMessage(rowError)}
+          </p>
+        ) : null}
       </td>
     </tr>
   )
@@ -203,8 +214,6 @@ export default function UsersAdminPage() {
     })
   }
 
-  const mutationError = create.error ?? update.error ?? reset.error
-
   return (
     <div className="space-y-8">
       <Card>
@@ -272,10 +281,10 @@ export default function UsersAdminPage() {
               <Input className="mt-3 font-mono text-xs" readOnly value={passwordLink} />
             </div>
           ) : null}
-          {mutationError ? (
-            <p className="mt-4 flex items-center gap-2 text-sm text-destructive">
+          {create.error ? (
+            <p className="mt-4 flex items-center gap-2 text-sm text-destructive" role="alert">
               <AlertTriangle aria-hidden="true" className="size-4" />
-              {errorMessage(mutationError)}
+              {errorMessage(create.error)}
             </p>
           ) : null}
         </CardContent>

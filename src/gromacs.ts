@@ -8,6 +8,39 @@ import {
 export const WEB_UPLOAD_LIMIT_MIB = 10
 export const WEB_UPLOAD_LIMIT_BYTES = WEB_UPLOAD_LIMIT_MIB * 1024 * 1024
 export const WEB_UPLOAD_LIMIT_LABEL = `${WEB_UPLOAD_LIMIT_MIB} MiB`
+const PENDING_IDEMPOTENCY_KEY = "biomodals:gromacs:pending-idempotency-key"
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+type PendingSubmissionStorage = Pick<Storage, "getItem" | "removeItem" | "setItem">
+
+export function readPendingIdempotencyKey(storage: PendingSubmissionStorage) {
+  try {
+    const value = storage.getItem(PENDING_IDEMPOTENCY_KEY)
+    return value && UUID_PATTERN.test(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function rememberPendingIdempotencyKey(
+  storage: PendingSubmissionStorage,
+  key: string
+) {
+  try {
+    storage.setItem(PENDING_IDEMPOTENCY_KEY, key)
+  } catch {
+    // The in-memory key still protects retries while this page remains mounted.
+  }
+}
+
+export function forgetPendingIdempotencyKey(storage: PendingSubmissionStorage) {
+  try {
+    storage.removeItem(PENDING_IDEMPOTENCY_KEY)
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
 
 export type SubmissionField =
   | "pdb"
@@ -98,7 +131,7 @@ export function submissionErrorMessage(error: unknown, hasFieldErrors: boolean) 
   if (!error) return null
   if (hasFieldErrors && !hasUnrecognizedValidationErrors(error)) return null
   if (error instanceof DOMException && error.name === "AbortError") {
-    return "Upload cancelled. Your PDB and settings are still here."
+    return "Upload stopped. The server may already have created a Job; check My Jobs before submitting again."
   }
   if (!(error instanceof ApiError)) {
     return "The Submission could not be completed. Check the fields and try again."

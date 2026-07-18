@@ -27,6 +27,10 @@ The User Active Job Limit counts all non-terminal Jobs owned by one User across
 all Tools. Its default is copied onto the User at provisioning and the resulting
 per-User value is stored in SQLite.
 
+Table mutations are serialized so one shared mutation cannot reassign an
+earlier failure to a different User row. Create-form errors remain with the
+Create User form, and row mutation errors remain with the initiating row.
+
 ## Modal administration
 
 The Modal page has Environment and Tools sections. Environment displays the
@@ -38,6 +42,9 @@ name, editable deployed Modal app name, backend-observed count of Jobs in the
 `running` state, and editable Tool Active Job Limit. The workload name remains
 code-owned because workload routes and compute adapters are registered code,
 not dynamic catalog records.
+
+Tool-row saves are likewise serialized and display failures in the initiating
+row. Environment-setting failures remain inside the Environment section.
 
 The Tool Active Job Limit counts non-terminal Jobs for one workload across all
 Users. The Global Active Job Limit counts non-terminal Jobs across all Users and

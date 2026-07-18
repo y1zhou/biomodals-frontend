@@ -149,9 +149,15 @@ Raising the limit is deferred until real Inputs require it and the API has a
 staged or streaming transfer path with an explicit resource budget.
 
 Upload uses a cancellable multipart `XMLHttpRequest` so the interface can show
-determinate transfer progress. `Cancel upload` aborts the transfer and returns
-to the editable form. Upload progress and cancellation are separate from the
-Job lifecycle and Job Cancellation.
+determinate transfer progress. While a Submission is pending, internal SPA
+navigation is blocked by a confirmation and a document-level exit invokes the
+browser's unload warning. If the User confirms navigation or selects `Cancel
+upload`, the frontend aborts its local transfer wait and returns control to the
+User, but it does not claim that the server stopped: a Job may already have
+been created. The inline result links to My Jobs, and the Submission intent
+retains its idempotency key in tab-scoped session storage until a definitive
+Job or idempotency conflict is returned. Upload progress and cancellation are
+separate from the Job lifecycle and Job Cancellation.
 
 The Submission response contract is:
 
@@ -261,8 +267,10 @@ response is declared in OpenAPI.
 
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.
-It does not fabricate a lifecycle timeline or numeric Progress from the current
-state alone. An unchanged `updated_at` is not treated as stale because the API
+It also presents the fixed GROMACS stage sequence and highlights the current
+stage and deployed Function reported by `JobView.stage`. This stage table does
+not invent per-stage timestamps, durations, completed Functions, or numeric
+Progress. An unchanged `updated_at` is not treated as stale because the API
 does not provide a heartbeat contract.
 
 Missing and unauthorized Jobs share the same `Job unavailable` screen so a Job

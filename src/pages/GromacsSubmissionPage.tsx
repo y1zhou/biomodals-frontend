@@ -2,13 +2,12 @@ import { useMutation } from "@tanstack/react-query"
 import {
   AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
   CloudUpload,
   RefreshCw,
   X,
 } from "lucide-react"
-import { useEffect, useRef, useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router"
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import { Link, useBeforeUnload, useBlocker, useNavigate } from "react-router"
 
 import {
   ApiError,
@@ -24,8 +23,11 @@ import { Input } from "@/components/ui/input"
 import {
   WEB_UPLOAD_LIMIT_LABEL,
   apiFieldErrors,
+  forgetPendingIdempotencyKey,
   normalizedDisplayName,
   pdbFileError,
+  readPendingIdempotencyKey,
+  rememberPendingIdempotencyKey,
   shouldRotateIdempotencyKey,
   simulationTimeError,
   submissionErrorMessage,
@@ -58,8 +60,14 @@ function focusFirstFieldError(errors: Partial<Record<SubmissionField, string>>) 
 export default function GromacsSubmissionPage() {
   const navigate = useNavigate()
   const abortController = useRef<AbortController | null>(null)
+  const allowNavigation = useRef(false)
+  const leavingSubmission = useRef(false)
   const formAlert = useRef<HTMLDivElement>(null)
-  const idempotencyKey = useRef<string | null>(null)
+  const [initialIdempotencyKey] = useState(() =>
+    readPendingIdempotencyKey(window.sessionStorage)
+  )
+  const idempotencyKey = useRef<string | null>(initialIdempotencyKey)
+  const restoredIntent = useRef(initialIdempotencyKey !== null)
   const [pdb, setPdb] = useState<File | null>(null)
   const [displayName, setDisplayName] = useState("")
   const [simulationTime, setSimulationTime] = useState("5")
@@ -75,21 +83,64 @@ export default function GromacsSubmissionPage() {
       submitGromacsJob(input, signal, setProgress),
     retry: false,
     onSuccess(job) {
+      allowNavigation.current = true
       abortController.current = null
-      navigate(gromacsPaths.job(job.job_id), { replace: true })
+      idempotencyKey.current = null
+      forgetPendingIdempotencyKey(window.sessionStorage)
+      if (!leavingSubmission.current) {
+        navigate(gromacsPaths.job(job.job_id), { replace: true })
+      }
     },
     onError(error) {
       abortController.current = null
       const errors = apiFieldErrors(error)
       setFieldErrors(errors)
       focusFirstFieldError(errors)
-      if (shouldRotateIdempotencyKey(error)) idempotencyKey.current = null
+      if (shouldRotateIdempotencyKey(error)) {
+        idempotencyKey.current = null
+        restoredIntent.current = false
+        forgetPendingIdempotencyKey(window.sessionStorage)
+      }
     },
   })
   useExpireSession(mutation.error)
+  const isSubmissionPending = mutation.isPending
+  const shouldBlockNavigation = useCallback(
+    () => isSubmissionPending && !allowNavigation.current,
+    [isSubmissionPending]
+  )
+  const blocker = useBlocker(shouldBlockNavigation)
+  useBeforeUnload(
+    useCallback(
+      (event: BeforeUnloadEvent) => {
+        if (!isSubmissionPending || allowNavigation.current) return
+        event.preventDefault()
+        event.returnValue = true
+      },
+      [isSubmissionPending]
+    )
+  )
+
+  useEffect(() => {
+    if (blocker.state !== "blocked") return
+    const leave = window.confirm(
+      "The server may already create this Job even if you leave now. Leave and check My Jobs?"
+    )
+    if (leave) {
+      allowNavigation.current = true
+      leavingSubmission.current = true
+      abortController.current?.abort()
+      blocker.proceed()
+    } else {
+      blocker.reset()
+    }
+  }, [blocker])
 
   function resetIntent() {
-    idempotencyKey.current = null
+    if (!restoredIntent.current) {
+      idempotencyKey.current = null
+      forgetPendingIdempotencyKey(window.sessionStorage)
+    }
     setFieldErrors({})
     if (!mutation.isPending) mutation.reset()
   }
@@ -102,6 +153,7 @@ export default function GromacsSubmissionPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (abortController.current) return
 
     const nextErrors: Partial<Record<SubmissionField, string>> = {}
     const pdbError = pdbFileError(pdb)
@@ -117,7 +169,9 @@ export default function GromacsSubmissionPage() {
 
     const controller = new AbortController()
     const key = idempotencyKey.current ?? crypto.randomUUID()
+    allowNavigation.current = false
     idempotencyKey.current = key
+    rememberPendingIdempotencyKey(window.sessionStorage, key)
     abortController.current = controller
     setProgress(0)
     mutation.mutate({
@@ -149,8 +203,7 @@ export default function GromacsSubmissionPage() {
     errorCode === "active_job_limit_reached" ||
     errorCode === "idempotency_conflict"
   const shouldCheckJobs =
-    apiError?.status === 0 || errorCode === "active_job_limit_reached"
-  const isUploading = mutation.isPending
+    wasCancelled || apiError?.status === 0 || errorCode === "active_job_limit_reached"
   const simulationNumber = Number(simulationTime)
 
   useEffect(() => {
@@ -193,7 +246,7 @@ export default function GromacsSubmissionPage() {
                     accept=".pdb"
                     aria-describedby={fieldErrors.pdb ? "pdb-error" : "pdb-help"}
                     aria-invalid={Boolean(fieldErrors.pdb)}
-                    disabled={isUploading}
+                    disabled={isSubmissionPending}
                     id="pdb-file"
                     onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
                     required
@@ -217,7 +270,7 @@ export default function GromacsSubmissionPage() {
                   <Input
                     aria-describedby={fieldErrors.display_name ? "display-name-error" : undefined}
                     aria-invalid={Boolean(fieldErrors.display_name)}
-                    disabled={isUploading}
+                    disabled={isSubmissionPending}
                     id="display-name"
                     maxLength={120}
                     onChange={(event) => {
@@ -250,7 +303,7 @@ export default function GromacsSubmissionPage() {
                   <Input
                     aria-describedby={fieldErrors.simulation_time_ns ? "simulation-time-error" : "simulation-time-help"}
                     aria-invalid={Boolean(fieldErrors.simulation_time_ns)}
-                    disabled={isUploading}
+                    disabled={isSubmissionPending}
                     id="simulation-time"
                     inputMode="numeric"
                     max={200}
@@ -286,7 +339,7 @@ export default function GromacsSubmissionPage() {
                   <input
                     checked={runPdbfixer}
                     className="mt-1 size-4 accent-foreground"
-                    disabled={isUploading}
+                    disabled={isSubmissionPending}
                     id="run-pdbfixer"
                     onChange={(event) => {
                       resetIntent()
@@ -308,7 +361,7 @@ export default function GromacsSubmissionPage() {
                     <input
                       checked={cpuOnly}
                       className="mt-1 size-4 accent-foreground"
-                      disabled={isUploading}
+                      disabled={isSubmissionPending}
                       id="cpu-only"
                       onChange={(event) => {
                         resetIntent()
@@ -357,7 +410,7 @@ export default function GromacsSubmissionPage() {
                 </div>
               </dl>
 
-              {isUploading ? (
+              {isSubmissionPending ? (
                 <div aria-live="polite" className="space-y-2 rounded-lg bg-muted p-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">Uploading Input</span>
@@ -393,11 +446,7 @@ export default function GromacsSubmissionPage() {
                   tabIndex={-1}
                 >
                   <div className="flex gap-2">
-                    {wasCancelled ? (
-                      <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                    ) : (
-                      <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                    )}
+                    <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                     <span>{formError}</span>
                   </div>
                   {shouldCheckJobs ? (
