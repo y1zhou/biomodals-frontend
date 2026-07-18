@@ -1,6 +1,7 @@
 import type { components } from "@/api/schema"
 
 export type Job = components["schemas"]["JobView"]
+export type JobStage = components["schemas"]["JobStageView"]
 export type JobState = components["schemas"]["JobState"]
 export type LoginInput = components["schemas"]["LoginRequest"]
 export type Principal = components["schemas"]["PrincipalView"]

@@ -523,6 +523,19 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * JobStageView
+         * @description Safe current execution stage without a provider call identifier.
+         */
+        readonly JobStageView: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "preparation" | "nvt_analysis" | "npt_analysis" | "production" | "production_analysis" | "result_packaging";
+            /** Function Name */
+            readonly function_name?: ("prepare_tpr_cpu" | "prepare_tpr_gpu" | "collect_traj_stats" | "production_run_cpu" | "production_run_gpu") | null;
+        };
+        /**
          * JobState
          * @description Durable provider-neutral job states.
          * @enum {string}
@@ -550,6 +563,7 @@ export interface components {
             readonly error_message?: string | null;
             /** Job Id */
             readonly job_id: string;
+            readonly stage?: components["schemas"]["JobStageView"] | null;
             readonly state: components["schemas"]["JobState"];
             /**
              * Updated At

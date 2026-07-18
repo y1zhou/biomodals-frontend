@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { ApiError, type Job } from "../src/api/client"
 import {
   formatTimestamp,
+  gromacsStageTimeline,
   isActiveJob,
   isJobNotCancellableError,
   isJobUnavailableError,
@@ -115,5 +116,35 @@ describe("Job lifecycle presentation", () => {
     expect(jobPresentation.finalizing.label).toBe("Preparing result")
     expect(jobPresentation.partial.label).toBe("Completed with warnings")
     expect(jobPresentation.succeeded.label).toBe("Completed")
+  })
+
+  test("shows completed, current, and upcoming GROMACS stages", () => {
+    const running = {
+      ...job("one", "running", "2026-07-17T00:00:00Z"),
+      stage: {
+        code: "npt_analysis" as const,
+        function_name: "collect_traj_stats" as const,
+      },
+    }
+
+    expect(gromacsStageTimeline(running).map((stage) => stage.state)).toEqual([
+      "completed",
+      "completed",
+      "current",
+      "upcoming",
+      "upcoming",
+      "upcoming",
+    ])
+    expect(gromacsStageTimeline(running)[2]?.functionName).toBe(
+      "collect_traj_stats"
+    )
+
+    expect(
+      gromacsStageTimeline({
+        ...running,
+        state: "succeeded",
+        stage: { code: "result_packaging" },
+      }).every((stage) => stage.state === "completed")
+    ).toBeTrue()
   })
 })

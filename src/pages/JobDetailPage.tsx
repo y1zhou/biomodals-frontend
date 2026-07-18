@@ -26,6 +26,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   formatTimestamp,
+  gromacsStageTimeline,
   isActiveJob,
   isJobNotCancellableError,
   isJobUnavailableError,
@@ -151,6 +152,7 @@ export default function JobDetailPage() {
   const canStartAgain = job.state === "failed" || job.state === "cancelled"
   const stateDescription =
     job.state === "failed" ? jobFailureMessage(job) : presentation.description
+  const stages = gromacsStageTimeline(job)
 
   return (
     <>
@@ -240,6 +242,92 @@ export default function JobDetailPage() {
                   </Link>
                 ) : null}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Execution stages</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                The highlighted step is the latest state reported by BioModals.
+              </p>
+            </CardHeader>
+            <CardContent className="px-0">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[36rem] text-left text-sm">
+                  <caption className="sr-only">GROMACS execution stages</caption>
+                  <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-6 py-3 font-medium" scope="col">
+                        Stage
+                      </th>
+                      <th className="px-6 py-3 font-medium" scope="col">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 font-medium" scope="col">
+                        Deployed Function
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {stages.map((stage, index) => {
+                      const current = stage.state === "current"
+                      const statusLabel =
+                        stage.state === "completed"
+                          ? "Completed"
+                          : stage.state === "upcoming"
+                            ? "Not started"
+                            : presentation.label
+
+                      return (
+                        <tr
+                          aria-current={current ? "step" : undefined}
+                          className={cn(current && "bg-muted/50")}
+                          key={stage.code}
+                        >
+                          <th className="px-6 py-4 font-medium" scope="row">
+                            <span className="mr-3 text-xs text-muted-foreground">
+                              {index + 1}
+                            </span>
+                            {stage.label}
+                          </th>
+                          <td
+                            className={cn(
+                              "px-6 py-4",
+                              stage.state === "completed"
+                                ? "text-emerald-700"
+                                : stage.state === "upcoming"
+                                  ? "text-muted-foreground"
+                                  : "font-medium"
+                            )}
+                          >
+                            {statusLabel}
+                          </td>
+                          <td className="px-6 py-4">
+                            {current && stage.functionName ? (
+                              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                                {stage.functionName}
+                              </code>
+                            ) : current &&
+                              stage.code === "result_packaging" ? (
+                              <span className="text-muted-foreground">
+                                Not applicable (API service)
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {!job.stage && isActiveJob(job.state) ? (
+                <p className="px-6 pt-4 text-sm text-muted-foreground">
+                  No deployed Function has started yet.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
 

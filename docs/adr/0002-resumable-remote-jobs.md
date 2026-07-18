@@ -28,6 +28,13 @@ The backend alone decides Job Status, including failure. If updates become
 stale, the frontend shows the last update and a warning but does not infer that
 the Job has stalled or failed. The warning threshold remains to be chosen.
 
+`JobView.stage` is a workload-specific current-stage snapshot. For GROMACS it
+contains a stable stage code and, when a deployed Function is associated with
+that stage, its safe Function name. The detail page may show earlier stages as
+completed because GROMACS execution is strictly sequential, but it does not
+invent stage timestamps. Modal call IDs, App names, Environments, and storage
+paths remain private.
+
 ## Polling and capacity
 
 The first version uses HTTP polling instead of server-sent events or WebSockets.

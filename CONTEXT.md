@@ -62,6 +62,13 @@ The latest known observation about active Job work, expressed as determinate
 completed/total work or an indeterminate phase and message.
 _Avoid_: Job Status, progress log
 
+**Job Stage**:
+The current workload-specific step of a Job and, when applicable, the deployed
+function associated with that step. Earlier stages may be shown as completed
+when the workload guarantees sequential execution, but stage timestamps are not
+a history or log.
+_Avoid_: Job Status, Modal call
+
 **Job History**:
 The retained record through which a User finds current and past Jobs across all
 Tools.

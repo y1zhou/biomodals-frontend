@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react"
 
-import { ApiError, apiErrorCode, type Job, type JobState } from "@/api/client"
+import {
+  ApiError,
+  apiErrorCode,
+  type Job,
+  type JobStage,
+  type JobState,
+} from "@/api/client"
 
 export const jobListKey = ["jobs"] as const
 export const jobKey = (jobId: string) => ["jobs", jobId] as const
@@ -82,6 +88,37 @@ export function jobFailureMessage(job: Job) {
     return job.error_message
   }
   return "This simulation could not be completed."
+}
+
+const gromacsStageDefinitions: readonly {
+  code: JobStage["code"]
+  label: string
+}[] = [
+  { code: "preparation", label: "Prepare simulation" },
+  { code: "nvt_analysis", label: "Analyze NVT equilibration" },
+  { code: "npt_analysis", label: "Analyze NPT equilibration" },
+  { code: "production", label: "Run production simulation" },
+  { code: "production_analysis", label: "Analyze production trajectory" },
+  { code: "result_packaging", label: "Prepare Result archive" },
+]
+
+export function gromacsStageTimeline(job: Job) {
+  const currentIndex = gromacsStageDefinitions.findIndex(
+    ({ code }) => code === job.stage?.code
+  )
+  const completed = job.state === "succeeded" || job.state === "partial"
+
+  return gromacsStageDefinitions.map((stage, index) => ({
+    ...stage,
+    functionName:
+      index === currentIndex ? (job.stage?.function_name ?? null) : null,
+    state:
+      completed || (currentIndex >= 0 && index < currentIndex)
+        ? ("completed" as const)
+        : index === currentIndex
+          ? ("current" as const)
+          : ("upcoming" as const),
+  }))
 }
 
 export const jobPresentation: Record<
