@@ -94,7 +94,7 @@ const gromacsStageDefinitions: readonly {
   code: JobStage["code"]
   label: string
 }[] = [
-  { code: "preparation", label: "Prepare simulation" },
+  { code: "preparation", label: "Prepare and equilibrate simulation" },
   { code: "nvt_analysis", label: "Analyze NVT equilibration" },
   { code: "npt_analysis", label: "Analyze NPT equilibration" },
   { code: "production", label: "Run production simulation" },

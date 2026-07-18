@@ -135,6 +135,9 @@ describe("Job lifecycle presentation", () => {
       "upcoming",
       "upcoming",
     ])
+    expect(gromacsStageTimeline(running)[0]?.label).toBe(
+      "Prepare and equilibrate simulation"
+    )
     expect(gromacsStageTimeline(running)[2]?.functionName).toBe(
       "collect_traj_stats"
     )
