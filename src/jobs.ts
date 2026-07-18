@@ -99,7 +99,7 @@ const gromacsStageDefinitions: readonly {
   { code: "npt_analysis", label: "Analyze NPT equilibration" },
   { code: "production", label: "Run production simulation" },
   { code: "production_analysis", label: "Analyze production trajectory" },
-  { code: "result_packaging", label: "Prepare Result archive" },
+  { code: "result_packaging", label: "Prepare result archive" },
 ]
 
 export function gromacsStageTimeline(job: Job) {
@@ -107,18 +107,28 @@ export function gromacsStageTimeline(job: Job) {
     ({ code }) => code === job.stage?.code
   )
   const completed = job.state === "succeeded" || job.state === "partial"
+  const stageHistory = new Map(
+    (job.stage_history ?? []).map((stage) => [stage.code, stage])
+  )
 
-  return gromacsStageDefinitions.map((stage, index) => ({
-    ...stage,
-    functionName:
-      index === currentIndex ? (job.stage?.function_name ?? null) : null,
-    state:
-      completed || (currentIndex >= 0 && index < currentIndex)
-        ? ("completed" as const)
-        : index === currentIndex
-          ? ("current" as const)
-          : ("upcoming" as const),
-  }))
+  return gromacsStageDefinitions.map((stage, index) => {
+    const timing = stageHistory.get(stage.code)
+    return {
+      ...stage,
+      functionName:
+        index === currentIndex ? (job.stage?.function_name ?? null) : null,
+      startedAt: timing?.started_at ?? null,
+      completedAt: timing?.completed_at ?? null,
+      state:
+        completed ||
+        Boolean(timing?.completed_at) ||
+        (currentIndex >= 0 && index < currentIndex)
+          ? ("completed" as const)
+          : index === currentIndex
+            ? ("current" as const)
+            : ("upcoming" as const),
+    }
+  })
 }
 
 export const jobPresentation: Record<
@@ -137,7 +147,7 @@ export const jobPresentation: Record<
   },
   finalizing: {
     label: "Preparing result",
-    description: "The simulation finished and BioModals is preparing the Result archive.",
+    description: "The simulation finished and BioModals is preparing the result archive.",
     className: "border-blue-300 bg-blue-50 text-blue-800",
   },
   cancel_requested: {
@@ -147,12 +157,12 @@ export const jobPresentation: Record<
   },
   succeeded: {
     label: "Completed",
-    description: "The complete Result is ready to download.",
+    description: "The complete result is ready to download.",
     className: "border-emerald-300 bg-emerald-50 text-emerald-800",
   },
   partial: {
     label: "Completed with warnings",
-    description: "A useful partial Result is ready. Review the warnings before using it.",
+    description: "A useful partial result is ready. Review the warnings before using it.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
   failed: {
@@ -162,7 +172,84 @@ export const jobPresentation: Record<
   },
   cancelled: {
     label: "Cancelled",
-    description: "The remote work stopped before producing a Result.",
+    description: "The remote work stopped before producing a result.",
     className: "border-slate-300 bg-slate-100 text-slate-800",
   },
+}
+
+export type JobTableColumn = "job" | "tool" | "status" | "created" | "updated"
+export type JobTableFilters = Record<JobTableColumn, string>
+export interface JobTableSort {
+  column: JobTableColumn
+  direction: "ascending" | "descending"
+}
+
+function jobSortValue(
+  job: Job,
+  column: JobTableColumn,
+  toolName: (workload: string) => string
+) {
+  switch (column) {
+    case "job":
+      return job.display_name
+    case "tool":
+      return toolName(job.workload)
+    case "status":
+      return jobPresentation[job.state].label
+    case "created":
+      return job.created_at
+    case "updated":
+      return job.updated_at
+  }
+}
+
+function localDate(value: string) {
+  const date = new Date(value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+export function filterAndSortJobs(
+  jobs: readonly Job[],
+  filters: JobTableFilters,
+  sort: JobTableSort,
+  toolName: (workload: string) => string
+) {
+  const normalized = Object.fromEntries(
+    Object.entries(filters).map(([column, value]) => [
+      column,
+      value.trim().toLocaleLowerCase(),
+    ])
+  ) as JobTableFilters
+  const visible = jobs.filter((job) => {
+    if (
+      normalized.job &&
+      !`${job.display_name} ${job.job_id}`.toLocaleLowerCase().includes(normalized.job)
+    ) {
+      return false
+    }
+    if (
+      normalized.tool &&
+      !`${toolName(job.workload)} ${job.workload}`
+        .toLocaleLowerCase()
+        .includes(normalized.tool)
+    ) {
+      return false
+    }
+    if (normalized.status && job.state !== normalized.status) return false
+    if (normalized.created && localDate(job.created_at) !== normalized.created) return false
+    if (normalized.updated && localDate(job.updated_at) !== normalized.updated) return false
+    return true
+  })
+  const direction = sort.direction === "ascending" ? 1 : -1
+  return visible.sort((left, right) => {
+    const comparison = jobSortValue(left, sort.column, toolName).localeCompare(
+      jobSortValue(right, sort.column, toolName),
+      undefined,
+      { numeric: true, sensitivity: "base" }
+    )
+    return direction * (comparison || left.job_id.localeCompare(right.job_id))
+  })
 }

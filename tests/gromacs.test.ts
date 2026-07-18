@@ -101,8 +101,8 @@ describe("GROMACS Submission validation", () => {
 
     expect(shouldRotateIdempotencyKey(conflict)).toBeTrue()
     expect(shouldRotateIdempotencyKey(atLimit)).toBeFalse()
-    expect(submissionErrorMessage(conflict, false)).toContain("different Submission")
-    expect(submissionErrorMessage(atLimit, false)).toContain("active Jobs")
+    expect(submissionErrorMessage(conflict, false)).toContain("different submission")
+    expect(submissionErrorMessage(atLimit, false)).toContain("active jobs")
     expect(submissionErrorMessage(unavailable, false)).toContain("temporarily unavailable")
   })
 

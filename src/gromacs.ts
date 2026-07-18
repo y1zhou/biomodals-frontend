@@ -131,29 +131,29 @@ export function submissionErrorMessage(error: unknown, hasFieldErrors: boolean) 
   if (!error) return null
   if (hasFieldErrors && !hasUnrecognizedValidationErrors(error)) return null
   if (error instanceof DOMException && error.name === "AbortError") {
-    return "Upload stopped. The server may already have created a Job; check My Jobs before submitting again."
+    return "Upload stopped. The server may already have created a job; check My Jobs before submitting again."
   }
   if (!(error instanceof ApiError)) {
-    return "The Submission could not be completed. Check the fields and try again."
+    return "The submission could not be completed. Check the fields and try again."
   }
 
   const code = apiErrorCode(error)
   if (error.status === 401 || code === "csrf_invalid") return null
   if (isServiceConfigurationError(error)) return SERVICE_CONFIGURATION_ERROR_MESSAGE
   if (error.status === 422) {
-    return "The API rejected the Submission. Review the form and try again."
+    return "The API rejected the submission. Review the form and try again."
   }
   if (code === "compute_unavailable") {
-    return "Remote compute is temporarily unavailable. Try the same Submission again."
+    return "Remote compute is temporarily unavailable. Try the same submission again."
   }
   if (code === "active_job_limit_reached") {
-    return "The maximum number of active Jobs has been reached. Try this same Submission after one finishes."
+    return "The maximum number of active jobs has been reached. Try this same submission after one finishes."
   }
   if (code === "idempotency_conflict") {
-    return "This key was already used for a different Submission. Review it and submit again."
+    return "This key was already used for a different submission. Review it and submit again."
   }
   if (error.status === 0) {
-    return "We could not confirm whether the Job was created. Retry this Submission or check My Jobs."
+    return "We could not confirm whether the job was created. Retry this submission or check My Jobs."
   }
-  return "The Submission could not be completed. Check the fields and try again."
+  return "The submission could not be completed. Check the fields and try again."
 }

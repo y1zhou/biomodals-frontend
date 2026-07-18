@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { toolName } from "@/tools"
 
 function errorMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "The Modal configuration request failed."
@@ -47,10 +48,11 @@ function ToolRow({
   const rowError =
     save.isError && save.variables?.workload === tool.workload ? save.error : null
   const normalizedAppName = appName.trim()
+  const displayName = toolName(tool.workload)
 
   return (
     <tr className="border-b last:border-0">
-      <td className="px-4 py-4 align-top font-mono text-sm">{tool.workload}</td>
+      <td className="px-4 py-4 align-top text-sm font-medium">{displayName}</td>
       <td className="px-4 py-4 align-top">
         <Input
           aria-label={`Modal app name for ${tool.workload}`}
@@ -68,7 +70,7 @@ function ToolRow({
         <div className="flex min-w-44 items-start gap-2">
           <div className="grow">
             <Input
-              aria-label={`Active Job Limit for ${tool.workload}`}
+              aria-label={`Active job limit for ${displayName}`}
               disabled={!tool.active_job_limit.editable}
               min={1}
               onChange={(event) => setActiveJobLimit(event.target.value)}
@@ -81,7 +83,7 @@ function ToolRow({
             />
           </div>
           <Button
-            aria-label={`Save Modal settings for ${tool.workload}`}
+            aria-label={`Save Modal settings for ${displayName}`}
             disabled={
               saving ||
               Number(activeJobLimit) < 1 ||
@@ -216,7 +218,7 @@ export default function ModalAdminPage() {
             </label>
             <div className="grid content-start gap-1.5">
               <label className="text-sm font-medium" htmlFor="global-active-job-limit">
-                Global Active Job Limit
+                Global active job limit
               </label>
               <div className="flex items-start gap-2">
                 <div className="grow">
@@ -269,10 +271,10 @@ export default function ModalAdminPage() {
           <table className="w-full min-w-[54rem] border-collapse text-left">
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 font-medium" scope="col">API workload name</th>
+                <th className="px-4 py-3 font-medium" scope="col">Tool</th>
                 <th className="px-4 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="px-4 py-3 font-medium" scope="col">Current running Jobs</th>
-                <th className="px-4 py-3 font-medium" scope="col">Active Job Limit</th>
+                <th className="px-4 py-3 font-medium" scope="col">Current running jobs</th>
+                <th className="px-4 py-3 font-medium" scope="col">Active job limit</th>
               </tr>
             </thead>
             <tbody>

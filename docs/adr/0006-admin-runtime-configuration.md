@@ -37,11 +37,12 @@ The Modal page has Environment and Tools sections. Environment displays the
 Modal service-user token ID, the effective Modal Environment, and the Global
 Active Job Limit. It never returns or stores the Modal token secret.
 
-The Tools section is a four-column table containing the fixed API workload
-name, editable deployed Modal app name, backend-observed count of Jobs in the
-`running` state, and editable Tool Active Job Limit. The workload name remains
-code-owned because workload routes and compute adapters are registered code,
-not dynamic catalog records.
+The Tools section is a four-column table containing the user-facing Tool name,
+editable deployed Modal app name, backend-observed count of Jobs in the
+`running` state, and editable Tool Active Job Limit. The frontend derives the
+display name from its typed Tool Catalog using the fixed API workload key. The
+workload key remains code-owned because workload routes and compute adapters
+are registered code, not dynamic catalog records.
 
 Tool-row saves are likewise serialized and display failures in the initiating
 row. Environment-setting failures remain inside the Environment section.
@@ -99,8 +100,8 @@ contract.
 
 ## Pre-release persistence reset
 
-This change replaces the pre-release SQLite schema with version 4. As already
-allowed by ADR 0005, deployments discard version 3 state and initialize a fresh
-database rather than shipping a migration before the first release. The first
-new User must be provisioned as an Administrator. This reset allowance ends at
-the first release.
+The current pre-release SQLite schema is version 6. Version 5 development
+databases receive the additive stage-history column automatically; older
+pre-release state may still be discarded and initialized fresh as allowed by
+ADR 0005. The first new User must be provisioned as an Administrator. This
+reset allowance ends at the first release.

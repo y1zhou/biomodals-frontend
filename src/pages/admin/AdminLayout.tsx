@@ -18,7 +18,7 @@ export default function AdminLayout() {
         <div>
           <h1 className="font-heading text-3xl font-semibold tracking-tight">Admin</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage Users and live service configuration.
+            Manage users and live service configuration.
           </p>
         </div>
       </div>

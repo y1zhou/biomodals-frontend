@@ -31,6 +31,10 @@ export const gromacsPaths = {
 
 export const tools: Tool[] = [gromacsTool]
 
+export function toolName(workload: string) {
+  return tools.find((tool) => tool.slug === workload)?.name ?? workload
+}
+
 export function filterTools(catalog: Tool[], query: string) {
   const normalizedQuery = query.trim().toLocaleLowerCase()
 

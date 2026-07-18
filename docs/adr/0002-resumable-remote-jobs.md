@@ -30,10 +30,21 @@ the Job has stalled or failed. The warning threshold remains to be chosen.
 
 `JobView.stage` is a workload-specific current-stage snapshot. For GROMACS it
 contains a stable stage code and, when a deployed Function is associated with
-that stage, its safe Function name. The detail page may show earlier stages as
-completed because GROMACS execution is strictly sequential, but it does not
-invent stage timestamps. Modal call IDs, App names, Environments, and storage
-paths remain private.
+that stage, its safe Function name. `JobView.stage_history` retains the ordered
+start and completion timestamps recorded at backend stage transitions. The
+detail page may infer that legacy earlier stages completed because GROMACS
+execution is strictly sequential, but it never invents timestamps. Modal call
+IDs, App names, Environments, and storage paths remain private.
+
+The deployed GROMACS App uses one `run_name` for both its Volume directory and
+scientific filenames. The API therefore derives each new run name from a
+sanitized, readable display-name slug followed by the full Job UUID. The slug
+makes filenames recognizable, while the UUID prevents a repeated display name
+from reusing another Job's checkpoints or outputs. This preserves the
+established App interface; separating the directory identity from filenames
+would require an explicit future App contract change. Existing `api-<UUID>`
+run names remain readable for legacy Result recovery but are not created for
+new Jobs.
 
 ## Polling and capacity
 

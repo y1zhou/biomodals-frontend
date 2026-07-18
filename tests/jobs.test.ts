@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { ApiError, type Job } from "../src/api/client"
 import {
   formatTimestamp,
+  filterAndSortJobs,
   gromacsStageTimeline,
   isActiveJob,
   isJobNotCancellableError,
@@ -124,7 +125,27 @@ describe("Job lifecycle presentation", () => {
       stage: {
         code: "npt_analysis" as const,
         function_name: "collect_traj_stats" as const,
+        started_at: "2026-07-17T00:04:00Z",
       },
+      stage_history: [
+        {
+          code: "preparation" as const,
+          function_name: "prepare_tpr_gpu" as const,
+          started_at: "2026-07-17T00:00:00Z",
+          completed_at: "2026-07-17T00:02:00Z",
+        },
+        {
+          code: "nvt_analysis" as const,
+          function_name: "collect_traj_stats" as const,
+          started_at: "2026-07-17T00:02:00Z",
+          completed_at: "2026-07-17T00:04:00Z",
+        },
+        {
+          code: "npt_analysis" as const,
+          function_name: "collect_traj_stats" as const,
+          started_at: "2026-07-17T00:04:00Z",
+        },
+      ],
     }
 
     expect(gromacsStageTimeline(running).map((stage) => stage.state)).toEqual([
@@ -141,6 +162,14 @@ describe("Job lifecycle presentation", () => {
     expect(gromacsStageTimeline(running)[2]?.functionName).toBe(
       "collect_traj_stats"
     )
+    expect(gromacsStageTimeline(running)[0]).toMatchObject({
+      startedAt: "2026-07-17T00:00:00Z",
+      completedAt: "2026-07-17T00:02:00Z",
+    })
+    expect(gromacsStageTimeline(running)[2]).toMatchObject({
+      startedAt: "2026-07-17T00:04:00Z",
+      completedAt: null,
+    })
 
     expect(
       gromacsStageTimeline({
@@ -149,5 +178,46 @@ describe("Job lifecycle presentation", () => {
         stage: { code: "result_packaging" },
       }).every((stage) => stage.state === "completed")
     ).toBeTrue()
+  })
+
+  test("filters and sorts every Job History column without mutating jobs", () => {
+    const older = {
+      ...job("older", "running", "2026-07-16T00:00:00Z"),
+      display_name: "Kinase trial",
+      updated_at: "2026-07-17T04:00:00Z",
+    }
+    const newer = {
+      ...job("newer", "succeeded", "2026-07-17T00:00:00Z"),
+      display_name: "Receptor trial",
+      updated_at: "2026-07-18T04:00:00Z",
+    }
+    const input = [older, newer]
+    const toolName = () => "GROMACS MD simulation"
+
+    expect(
+      filterAndSortJobs(
+        input,
+        { job: "receptor", tool: "", status: "", created: "", updated: "" },
+        { column: "job", direction: "ascending" },
+        toolName
+      ).map((candidate) => candidate.job_id)
+    ).toEqual(["newer"])
+    expect(
+      filterAndSortJobs(
+        input,
+        { job: "", tool: "gromacs", status: "running", created: "2026-07-16", updated: "2026-07-17" },
+        { column: "updated", direction: "descending" },
+        toolName
+      ).map((candidate) => candidate.job_id)
+    ).toEqual(["older"])
+    expect(
+      filterAndSortJobs(
+        input,
+        { job: "", tool: "", status: "", created: "", updated: "" },
+        { column: "job", direction: "ascending" },
+        toolName
+      ).map((candidate) => candidate.job_id)
+    ).toEqual(["older", "newer"])
+    expect(input.map((candidate) => candidate.job_id)).toEqual(["older", "newer"])
   })
 })

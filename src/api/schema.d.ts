@@ -524,7 +524,7 @@ export interface components {
         };
         /**
          * JobStageView
-         * @description Safe current execution stage without a provider call identifier.
+         * @description Safe execution stage timing without a provider call identifier.
          */
         readonly JobStageView: {
             /**
@@ -532,8 +532,12 @@ export interface components {
              * @enum {string}
              */
             readonly code: "preparation" | "nvt_analysis" | "npt_analysis" | "production" | "production_analysis" | "result_packaging";
+            /** Completed At */
+            readonly completed_at?: string | null;
             /** Function Name */
             readonly function_name?: ("prepare_tpr_cpu" | "prepare_tpr_gpu" | "collect_traj_stats" | "production_run_cpu" | "production_run_gpu") | null;
+            /** Started At */
+            readonly started_at?: string | null;
         };
         /**
          * JobState
@@ -564,6 +568,8 @@ export interface components {
             /** Job Id */
             readonly job_id: string;
             readonly stage?: components["schemas"]["JobStageView"] | null;
+            /** Stage History */
+            readonly stage_history?: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];
             /**
              * Updated At

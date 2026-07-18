@@ -124,7 +124,7 @@ export default function GromacsSubmissionPage() {
   useEffect(() => {
     if (blocker.state !== "blocked") return
     const leave = window.confirm(
-      "The server may already create this Job even if you leave now. Leave and check My Jobs?"
+      "The server may already have created this job even if you leave now. Leave and check My Jobs?"
     )
     if (leave) {
       allowNavigation.current = true
@@ -224,7 +224,7 @@ export default function GromacsSubmissionPage() {
             Start a simulation
           </h1>
           <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-            Choose a PDB structure and configure one durable remote Job. You can leave after the Upload completes.
+            Choose a PDB structure and configure one durable remote job. You can leave after the upload completes.
           </p>
         </div>
 
@@ -258,7 +258,7 @@ export default function GromacsSubmissionPage() {
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground" id="pdb-help">
-                      Your Input is uploaded only when you submit.
+                      Your input is uploaded only when you submit.
                     </p>
                   )}
                 </div>
@@ -388,7 +388,7 @@ export default function GromacsSubmissionPage() {
             <CardContent className="space-y-5">
               <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-muted-foreground">PDB Input</dt>
+                  <dt className="text-muted-foreground">PDB input</dt>
                   <dd className="mt-1 break-all font-medium">{pdb?.name ?? "Not selected"}</dd>
                   {pdb ? <dd className="text-xs text-muted-foreground">{formatBytes(pdb.size)}</dd> : null}
                 </div>
@@ -413,7 +413,7 @@ export default function GromacsSubmissionPage() {
               {isSubmissionPending ? (
                 <div aria-live="polite" className="space-y-2 rounded-lg bg-muted p-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Uploading Input</span>
+                    <span className="font-medium">Uploading input</span>
                     <span>{progress === null ? "…" : `${progress}%`}</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-background">
@@ -424,7 +424,7 @@ export default function GromacsSubmissionPage() {
                   </div>
                   <Button className="w-full" onClick={cancelUpload} type="button" variant="outline">
                     <X aria-hidden="true" />
-                    Cancel Upload
+                    Cancel upload
                   </Button>
                 </div>
               ) : (

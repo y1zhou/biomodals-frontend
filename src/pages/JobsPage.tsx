@@ -1,32 +1,41 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
+  ArrowUpDown,
   BriefcaseBusiness,
   FlaskConical,
   LoaderCircle,
   Plus,
   RefreshCw,
 } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router"
 
 import { ApiError, inspectJob, listJobs, type Job } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
+  filterAndSortJobs,
   formatTimestamp,
   isActiveJob,
   jobKey,
   jobListKey,
   jobPollingInterval,
   latestJob,
-  newestJobsFirst,
+  jobPresentation,
   shouldRetryJobQuery,
   useDocumentVisibility,
+  type JobTableColumn,
+  type JobTableFilters,
+  type JobTableSort,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-import { gromacsPaths, gromacsTool, tools } from "@/tools"
+import { gromacsPaths, gromacsTool, toolName, tools } from "@/tools"
 
 function JobRow({
   job: initialJob,
@@ -37,6 +46,7 @@ function JobRow({
   updatedAt: number
   visibility: DocumentVisibilityState
 }) {
+  const queryClient = useQueryClient()
   const jobQuery = useQuery({
     queryKey: jobKey(initialJob.job_id),
     queryFn: ({ signal }) => inspectJob(initialJob.job_id, signal),
@@ -55,6 +65,21 @@ function JobRow({
   const tool = tools.find((candidate) => candidate.slug === job.workload)
   const path = tool?.slug === gromacsTool.slug ? gromacsPaths.job(job.job_id) : "/jobs"
 
+  useEffect(() => {
+    if (!jobQuery.data) return
+    queryClient.setQueryData<Job[]>(jobListKey, (jobs) => {
+      if (!jobs) return jobs
+      let changed = false
+      const updated = jobs.map((candidate) => {
+        if (candidate.job_id !== jobQuery.data?.job_id) return candidate
+        const latest = latestJob(candidate, jobQuery.data)
+        changed ||= latest !== candidate
+        return latest
+      })
+      return changed ? updated : jobs
+    })
+  }, [jobQuery.data, queryClient])
+
   return (
     <tr className="border-b last:border-0">
       <td className="px-4 py-4 align-top">
@@ -62,11 +87,11 @@ function JobRow({
           {job.display_name}
           <ArrowRight aria-hidden="true" className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
         </Link>
-        <p className="mt-1 font-mono text-[0.7rem] text-muted-foreground sm:hidden">
+        <p className="mt-1 font-mono text-[0.7rem] text-muted-foreground">
           {job.job_id}
         </p>
       </td>
-      <td className="hidden px-4 py-4 align-top text-sm text-muted-foreground sm:table-cell">
+      <td className="px-4 py-4 align-top text-sm text-muted-foreground">
         {tool?.name ?? job.workload}
       </td>
       <td className="px-4 py-4 align-top">
@@ -75,18 +100,67 @@ function JobRow({
           <p className="mt-1 text-xs text-amber-700">Refresh failed</p>
         ) : null}
       </td>
-      <td className="hidden px-4 py-4 align-top text-sm text-muted-foreground md:table-cell">
+      <td className="px-4 py-4 align-top text-sm text-muted-foreground">
         {formatTimestamp(job.created_at)}
       </td>
-      <td className="hidden px-4 py-4 align-top text-sm text-muted-foreground lg:table-cell">
+      <td className="px-4 py-4 align-top text-sm text-muted-foreground">
         {formatTimestamp(job.updated_at)}
       </td>
     </tr>
   )
 }
 
+const emptyFilters: JobTableFilters = {
+  job: "",
+  tool: "",
+  status: "",
+  created: "",
+  updated: "",
+}
+
+function SortableHeader({
+  column,
+  label,
+  sort,
+  onSort,
+}: {
+  column: JobTableColumn
+  label: string
+  sort: JobTableSort
+  onSort: (column: JobTableColumn) => void
+}) {
+  const active = sort.column === column
+  const Icon = !active
+    ? ArrowUpDown
+    : sort.direction === "ascending"
+      ? ArrowUp
+      : ArrowDown
+
+  return (
+    <th
+      aria-sort={active ? sort.direction : "none"}
+      className="px-4 py-3 font-medium"
+      scope="col"
+    >
+      <button
+        className="inline-flex items-center gap-1.5 hover:text-foreground"
+        onClick={() => onSort(column)}
+        type="button"
+      >
+        {label}
+        <Icon aria-hidden="true" className="size-3.5" />
+      </button>
+    </th>
+  )
+}
+
 export default function JobsPage() {
   const visibility = useDocumentVisibility()
+  const [filters, setFilters] = useState<JobTableFilters>(emptyFilters)
+  const [sort, setSort] = useState<JobTableSort>({
+    column: "created",
+    direction: "descending",
+  })
   const jobsQuery = useQuery({
     queryKey: jobListKey,
     queryFn: ({ signal }) => listJobs(signal),
@@ -126,7 +200,22 @@ export default function JobsPage() {
     )
   }
 
-  const jobs = newestJobsFirst(jobsQuery.data)
+  const jobs = filterAndSortJobs(jobsQuery.data, filters, sort, toolName)
+  const filtersActive = Object.values(filters).some(Boolean)
+
+  function updateFilter(column: JobTableColumn, value: string) {
+    setFilters((current) => ({ ...current, [column]: value }))
+  }
+
+  function updateSort(column: JobTableColumn) {
+    setSort((current) => ({
+      column,
+      direction:
+        current.column === column && current.direction === "ascending"
+          ? "descending"
+          : "ascending",
+    }))
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
@@ -139,7 +228,7 @@ export default function JobsPage() {
             <h1 className="font-heading text-3xl font-semibold tracking-tight">My Jobs</h1>
           </div>
           <p className="mt-3 text-muted-foreground">
-            Current and past remote computations across BioModals Tools.
+            Current and past remote computations across BioModals tools.
           </p>
         </div>
         <div className="flex gap-3">
@@ -165,37 +254,108 @@ export default function JobsPage() {
         </div>
       ) : null}
 
-      {jobs.length ? (
+      {jobsQuery.data.length ? (
         <div className="mt-8 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[38rem] border-collapse text-left">
-            <caption className="sr-only">Your BioModals Jobs, newest first</caption>
+          <table className="w-full min-w-[64rem] border-collapse text-left">
+            <caption className="sr-only">Your BioModals jobs</caption>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 font-medium" scope="col">Job</th>
-                <th className="hidden px-4 py-3 font-medium sm:table-cell" scope="col">Tool</th>
-                <th className="px-4 py-3 font-medium" scope="col">Status</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell" scope="col">Created</th>
-                <th className="hidden px-4 py-3 font-medium lg:table-cell" scope="col">Updated</th>
+                <SortableHeader column="job" label="Job" onSort={updateSort} sort={sort} />
+                <SortableHeader column="tool" label="Tool" onSort={updateSort} sort={sort} />
+                <SortableHeader column="status" label="Status" onSort={updateSort} sort={sort} />
+                <SortableHeader column="created" label="Created" onSort={updateSort} sort={sort} />
+                <SortableHeader column="updated" label="Updated" onSort={updateSort} sort={sort} />
+              </tr>
+              <tr className="border-t bg-card normal-case tracking-normal">
+                <th className="px-4 pb-3" scope="col">
+                  <Input
+                    aria-label="Filter jobs by name or ID"
+                    onChange={(event) => updateFilter("job", event.target.value)}
+                    placeholder="Filter jobs"
+                    type="search"
+                    value={filters.job}
+                  />
+                </th>
+                <th className="px-4 pb-3" scope="col">
+                  <select
+                    aria-label="Filter jobs by tool"
+                    className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground"
+                    onChange={(event) => updateFilter("tool", event.target.value)}
+                    value={filters.tool}
+                  >
+                    <option value="">All tools</option>
+                    {tools.map((tool) => (
+                      <option key={tool.slug} value={tool.slug}>{tool.name}</option>
+                    ))}
+                  </select>
+                </th>
+                <th className="px-4 pb-3" scope="col">
+                  <select
+                    aria-label="Filter jobs by status"
+                    className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground"
+                    onChange={(event) => updateFilter("status", event.target.value)}
+                    value={filters.status}
+                  >
+                    <option value="">All statuses</option>
+                    {Object.entries(jobPresentation).map(([state, presentation]) => (
+                      <option key={state} value={state}>{presentation.label}</option>
+                    ))}
+                  </select>
+                </th>
+                <th className="px-4 pb-3" scope="col">
+                  <Input
+                    aria-label="Filter jobs by creation date"
+                    onChange={(event) => updateFilter("created", event.target.value)}
+                    type="date"
+                    value={filters.created}
+                  />
+                </th>
+                <th className="px-4 pb-3" scope="col">
+                  <Input
+                    aria-label="Filter jobs by update date"
+                    onChange={(event) => updateFilter("updated", event.target.value)}
+                    type="date"
+                    value={filters.updated}
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job) => (
-                <JobRow
-                  job={job}
-                  key={job.job_id}
-                  updatedAt={jobsQuery.dataUpdatedAt}
-                  visibility={visibility}
-                />
-              ))}
+              {jobs.length ? (
+                jobs.map((job) => (
+                  <JobRow
+                    job={job}
+                    key={job.job_id}
+                    updatedAt={jobsQuery.dataUpdatedAt}
+                    visibility={visibility}
+                  />
+                ))
+              ) : (
+                <tr>
+                  <td className="px-4 py-10 text-center text-sm text-muted-foreground" colSpan={5}>
+                    No jobs match these filters.
+                    {filtersActive ? (
+                      <Button
+                        className="ml-3"
+                        onClick={() => setFilters(emptyFilters)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       ) : (
         <div className="mt-8 rounded-xl border border-dashed px-6 py-16 text-center">
           <FlaskConical aria-hidden="true" className="mx-auto size-8 text-muted-foreground" />
-          <h2 className="mt-5 font-heading text-lg font-semibold">No Jobs yet</h2>
+          <h2 className="mt-5 font-heading text-lg font-semibold">No jobs yet</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Start a new Job and it will remain recoverable here.
+            Start a new job and it will remain recoverable here.
           </p>
           <Link className={cn(buttonVariants(), "mt-6")} to="/">
             Start a new job

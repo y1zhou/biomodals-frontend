@@ -60,14 +60,14 @@ function JobUnavailable() {
       <XCircle aria-hidden="true" className="mx-auto size-9 text-muted-foreground" />
       <h1 className="mt-5 font-heading text-3xl font-semibold">Job unavailable</h1>
       <p className="mt-3 leading-7 text-muted-foreground">
-        This Job does not exist or is not available to your User.
+        This job does not exist or is not available to you.
       </p>
       <div className="mt-7 flex justify-center gap-3">
         <Link className={buttonVariants()} to="/jobs">
           My Jobs
         </Link>
         <Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.overview}>
-          GROMACS Tool
+          GROMACS tool
         </Link>
       </div>
     </main>
@@ -118,7 +118,7 @@ export default function JobDetailPage() {
       <main className="grid min-h-[60svh] place-items-center px-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-          Loading Job…
+          Loading job…
         </div>
       </main>
     )
@@ -154,6 +154,9 @@ export default function JobDetailPage() {
     job.state === "failed" ? jobFailureMessage(job) : presentation.description
   const stages = gromacsStageTimeline(job)
   const currentStage = stages.find((stage) => stage.state === "current")
+  const runningFunction = job.state === "running"
+    ? currentStage?.functionName
+    : null
 
   return (
     <>
@@ -177,8 +180,8 @@ export default function JobDetailPage() {
           <p aria-atomic="true" aria-live="polite" className="sr-only">
             Job status: {presentation.label}.
             {currentStage ? ` Current stage: ${currentStage.label}.` : ""}
-            {currentStage?.functionName
-              ? ` Deployed Function: ${currentStage.functionName}.`
+            {runningFunction
+              ? ` Running function: ${runningFunction}.`
               : ""}
           </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -231,7 +234,7 @@ export default function JobDetailPage() {
                     }}
                     variant="destructive"
                   >
-                    Cancel Job
+                    Cancel job
                   </Button>
                 ) : null}
                 {canDownload ? (
@@ -240,7 +243,7 @@ export default function JobDetailPage() {
                     href={`/api/v1/jobs/${encodeURIComponent(job.job_id)}/download`}
                   >
                     <Download aria-hidden="true" data-icon="inline-start" />
-                    Download Result
+                    Download result
                   </a>
                 ) : null}
                 {canStartAgain ? (
@@ -257,12 +260,12 @@ export default function JobDetailPage() {
             <CardHeader>
               <CardTitle>Execution stages</CardTitle>
               <p className="text-sm text-muted-foreground">
-                The highlighted step is the latest state reported by BioModals.
+                The highlighted step is the latest state reported by BioModals. Timestamps show when BioModals recorded each transition.
               </p>
             </CardHeader>
             <CardContent className="px-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[36rem] text-left text-sm">
+                <table className="w-full min-w-[64rem] text-left text-sm">
                   <caption className="sr-only">GROMACS execution stages</caption>
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
                     <tr>
@@ -273,7 +276,13 @@ export default function JobDetailPage() {
                         Status
                       </th>
                       <th className="px-6 py-3 font-medium" scope="col">
-                        Deployed Function
+                        Running function
+                      </th>
+                      <th className="px-6 py-3 font-medium" scope="col">
+                        Started
+                      </th>
+                      <th className="px-6 py-3 font-medium" scope="col">
+                        Completed
                       </th>
                     </tr>
                   </thead>
@@ -312,7 +321,7 @@ export default function JobDetailPage() {
                             {statusLabel}
                           </td>
                           <td className="px-6 py-4">
-                            {current && stage.functionName ? (
+                            {current && job.state === "running" && stage.functionName ? (
                               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                                 {stage.functionName}
                               </code>
@@ -325,15 +334,21 @@ export default function JobDetailPage() {
                               <span className="text-muted-foreground">—</span>
                             )}
                           </td>
+                          <td className="px-6 py-4 text-muted-foreground">
+                            {formatTimestamp(stage.startedAt)}
+                          </td>
+                          <td className="px-6 py-4 text-muted-foreground">
+                            {formatTimestamp(stage.completedAt)}
+                          </td>
                         </tr>
                       )
                     })}
                   </tbody>
                 </table>
               </div>
-              {!job.stage && isActiveJob(job.state) ? (
+              {!currentStage && isActiveJob(job.state) ? (
                 <p className="px-6 pt-4 text-sm text-muted-foreground">
-                  No deployed Function has started yet.
+                  BioModals is moving to the next stage. No running function is currently recorded.
                 </p>
               ) : null}
             </CardContent>
@@ -382,7 +397,7 @@ export default function JobDetailPage() {
                   variant="outline"
                 >
                   {copied ? <Check aria-hidden="true" /> : <Clipboard aria-hidden="true" />}
-                  {copied ? "Copied" : "Copy Job ID"}
+                  {copied ? "Copied" : "Copy job ID"}
                 </Button>
               </CardContent>
             </Card>
@@ -400,7 +415,7 @@ export default function JobDetailPage() {
       >
         <div className="p-6">
           <h2 className="font-heading text-xl font-semibold" id="cancel-job-title">
-            Cancel this Job?
+            Cancel this job?
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Cancellation is best effort. The simulation may complete before the remote work stops.
@@ -428,7 +443,7 @@ export default function JobDetailPage() {
               {cancelMutation.isPending ? (
                 <LoaderCircle aria-hidden="true" className="animate-spin" />
               ) : null}
-              Request Cancellation
+              Request cancellation
             </Button>
           </div>
         </div>

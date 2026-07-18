@@ -39,19 +39,19 @@ function LandingPage() {
             Useful biology tools, ready in your browser.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Search the collection, open a Tool, and submit your data. Compute-heavy Jobs run remotely while you stay in control here.
+            Search the collection, open a tool, and submit your data. Compute-heavy jobs run remotely while you stay in control here.
           </p>
 
           <div className="relative mt-8 max-w-xl">
             <label className="sr-only" htmlFor="tool-search">
-              Search Tools
+              Search tools
             </label>
             <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-11 bg-background pl-9 shadow-sm"
               id="tool-search"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search Tools, formats, or workflows…"
+              placeholder="Search tools, formats, or workflows…"
               type="search"
               value={query}
             />
@@ -60,7 +60,7 @@ function LandingPage() {
 
         <section aria-label="Tools" className="mt-8">
           <p aria-live="polite" className="text-sm text-muted-foreground">
-            {visibleTools.length} {visibleTools.length === 1 ? "Tool" : "Tools"}
+            {visibleTools.length} {visibleTools.length === 1 ? "tool" : "tools"}
           </p>
 
           {visibleTools.length > 0 ? (
@@ -98,7 +98,7 @@ function LandingPage() {
           ) : (
             <div className="mt-6 rounded-xl border border-dashed px-6 py-14 text-center">
               <Search aria-hidden="true" className="mx-auto size-6 text-muted-foreground" />
-              <p className="mt-4 font-medium">No Tools match “{query}”</p>
+              <p className="mt-4 font-medium">No tools match “{query}”</p>
               <p className="mt-1 text-sm text-muted-foreground">Try a broader search.</p>
             </div>
           )}
@@ -113,7 +113,7 @@ function RouteLoading() {
     <main className="grid min-h-[60svh] place-items-center px-6">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-        Loading Tool…
+        Loading tool…
       </div>
     </main>
   )
@@ -126,7 +126,7 @@ function NotFoundPage() {
         <p className="text-sm font-medium text-muted-foreground">404</p>
         <h1 className="mt-2 font-heading text-3xl font-semibold">Page not found</h1>
         <Link className={cn(buttonVariants(), "mt-6")} to="/">
-          Back to Tools
+          Back to tools
         </Link>
       </div>
     </main>

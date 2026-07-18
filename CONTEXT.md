@@ -64,10 +64,14 @@ _Avoid_: Job Status, progress log
 
 **Job Stage**:
 The current workload-specific step of a Job and, when applicable, the deployed
-function associated with that step. Earlier stages may be shown as completed
-when the workload guarantees sequential execution, but stage timestamps are not
-a history or log.
+function associated with that step.
 _Avoid_: Job Status, Modal call
+
+**Stage History**:
+The ordered start and completion times that the backend retained while a Job
+moved through its workload-specific stages. It is a timing record, not a Modal
+call graph, provider log, or source of raw provider identifiers.
+_Avoid_: Job Status, audit log, Modal call graph
 
 **Job History**:
 The retained record through which a User finds current and past Jobs across all

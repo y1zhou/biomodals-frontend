@@ -93,7 +93,7 @@ export default function AppShell() {
                 </Link>
                 <Menu.Root>
                   <Menu.Trigger className="ml-1 flex size-9 cursor-pointer items-center justify-center rounded-full border bg-muted text-sm font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
-                    <span className="sr-only">Open User menu</span>
+                    <span className="sr-only">Open user menu</span>
                     {currentUser.display_name.slice(0, 1).toLocaleUpperCase() || (
                       <UserRound aria-hidden="true" className="size-4" />
                     )}

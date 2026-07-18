@@ -41,6 +41,11 @@ A persistent header exposes Tools, My Jobs, and User controls. Signed-out
 visitors see Sign in instead of My Jobs and the User menu. Tool and Job
 navigation uses real links.
 
+User-facing copy follows sentence case. BioModals, GROMACS, Modal, PDB,
+PDBFixer, API, other acronyms, and explicit page names such as My Jobs keep
+their meaningful capitalization; generic nouns do not gain domain-specific
+capitalization in ordinary prose.
+
 ## Accounts and sessions
 
 MVP Users are provisioned by an administrator. There is no self-service signup,
@@ -268,8 +273,9 @@ response is declared in OpenAPI.
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.
 It also presents the fixed GROMACS stage sequence and highlights the current
-stage and deployed Function reported by `JobView.stage`. This stage table does
-not invent per-stage timestamps, durations, completed Functions, or numeric
+stage and running Function reported by `JobView.stage`. The stage table shows
+the start and completion timestamps retained in `JobView.stage_history`, but
+does not invent missing timestamps, durations, completed Functions, or numeric
 Progress. An unchanged `updated_at` is not treated as stale because the API
 does not provide a heartbeat contract.
 
@@ -288,11 +294,13 @@ If polling fails, the page retains the last known Job state and last successful
 update time, shows that refresh failed, keeps Refresh available, and continues
 the normal cadence. A transport failure never changes the Job to `failed`.
 
-My Jobs is a responsive semantic table sorted newest-first by `created_at`.
-It is initially unpaginated and has no search or status filters. It shows the
+My Jobs is a responsive semantic table initially sorted newest-first by
+`created_at`. Every displayed column is independently sortable and filterable:
+Job name or identifier uses text matching, Tool and status use catalog-backed
+choices, and created and updated times use local calendar dates. It shows the
 display name, catalog-derived Tool name, state, creation time, and last update;
 the Job name is a real link to its Tool-scoped detail route. Narrow layouts
-reduce nonessential columns while preserving table semantics.
+preserve every column through horizontal scrolling and retain table semantics.
 
 The collection endpoint is loaded initially, after manual Refresh, and once
 when the page regains focus. Between collection loads, only individual active
@@ -371,8 +379,8 @@ expanding the backend to the longer-term model.
 
 The MVP deliberately omits self-service signup, password changes, numeric Job
 Progress, Retry from retained Input, Job Deletion, expiry handling, configuration
-recall, Job History pagination and filters, and dark-mode controls because the
-live API does not support them or the first vertical slice does not need them.
+recall, Job History pagination, and dark-mode controls because the live API does
+not support them or the first vertical slice does not need them.
 
 The glossary and ADR-0002 through ADR-0004 now align with these MVP decisions.
 `expired` remains explicitly planned for Result-retention handling. Deferred

@@ -24,18 +24,23 @@ const features = [
   },
   {
     icon: SlidersHorizontal,
-    title: "Choose the simulation",
+    title: "Configure the simulation",
     description: "Set 1–200 nanoseconds, optionally repair common structure issues with PDBFixer, or use CPU-only execution.",
   },
   {
     icon: Clock3,
-    title: "Leave and return",
-    description: "The remote Job keeps running after you leave. My Jobs gives you a durable recovery path.",
+    title: "Run in the background",
+    description: (
+      <>
+        The remote job keeps running after you leave. Follow its progress and return
+        to completed results from <Link className="font-medium underline underline-offset-4" to="/jobs">My Jobs</Link>.
+      </>
+    ),
   },
   {
     icon: PackageCheck,
-    title: "Download one Result",
-    description: "Completed and partially completed simulations provide a ZIP Result directly from BioModals.",
+    title: "Download one result",
+    description: "Completed and partially completed simulations provide a ZIP result directly from BioModals.",
   },
 ]
 
@@ -51,7 +56,7 @@ export default function GromacsOverviewPage() {
     <main className="mx-auto max-w-6xl px-6 py-12 lg:px-8 lg:py-20">
       <Link className={cn(buttonVariants({ variant: "ghost" }), "mb-10")} to="/">
         <ArrowLeft aria-hidden="true" data-icon="inline-start" />
-        All Tools
+        All tools
       </Link>
 
       <section className="grid items-start gap-10 lg:grid-cols-[1fr_22rem] lg:gap-16">
@@ -78,7 +83,7 @@ export default function GromacsOverviewPage() {
           <CardHeader>
             <CardTitle>Ready to simulate?</CardTitle>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Sign in before selecting a PDB so your Input stays in place.
+              Sign in before selecting a PDB so your input stays in place.
             </p>
           </CardHeader>
           <CardContent>
@@ -95,7 +100,7 @@ export default function GromacsOverviewPage() {
 
       <section aria-labelledby="workflow-heading" className="mt-20">
         <h2 className="font-heading text-2xl font-semibold" id="workflow-heading">
-          From structure to Result
+          From structure to result
         </h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {features.map(({ icon: Icon, title, description }) => (

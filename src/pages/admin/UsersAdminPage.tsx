@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
 function errorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : "The Admin request failed. Try again."
+  return error instanceof ApiError ? error.message : "The admin request failed. Try again."
 }
 
 function UserRow({
@@ -65,7 +65,7 @@ function UserRow({
       <td className="px-4 py-4 align-top">
         <div className="flex min-w-36 items-center gap-2">
           <Input
-            aria-label={`Active Job Limit for ${user.display_name}`}
+            aria-label={`Active job limit for ${user.display_name}`}
             className="w-20"
             min={1}
             onChange={(event) => setActiveJobLimit(event.target.value)}
@@ -73,7 +73,7 @@ function UserRow({
             value={activeJobLimit}
           />
           <Button
-            aria-label={`Save Active Job Limit for ${user.display_name}`}
+            aria-label={`Save active job limit for ${user.display_name}`}
             disabled={busy || Number(activeJobLimit) < 1}
             onClick={() =>
               update.mutate({
@@ -218,7 +218,7 @@ export default function UsersAdminPage() {
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Create User</CardTitle>
+          <CardTitle>Create user</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" onSubmit={submit}>
@@ -241,7 +241,7 @@ export default function UsersAdminPage() {
               />
             </label>
             <label className="grid gap-1.5 text-sm font-medium">
-              Active Job Limit (optional)
+              Active job limit (optional)
               <Input
                 min={1}
                 onChange={(event) => setActiveJobLimit(event.target.value)}
@@ -274,9 +274,9 @@ export default function UsersAdminPage() {
           </form>
           {passwordLink ? (
             <div className="mt-5 rounded-lg border bg-muted/40 p-4">
-              <p className="text-sm font-medium">One-time Password Link</p>
+              <p className="text-sm font-medium">One-time password link</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Give this link to the User through a trusted channel.
+                Give this link to the user through a trusted channel.
               </p>
               <Input className="mt-3 font-mono text-xs" readOnly value={passwordLink} />
             </div>
@@ -303,7 +303,7 @@ export default function UsersAdminPage() {
         {users.isPending ? (
           <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-            Loading Users…
+            Loading users…
           </div>
         ) : users.data ? (
           <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
@@ -313,7 +313,7 @@ export default function UsersAdminPage() {
                   <th className="px-4 py-3 font-medium" scope="col">User</th>
                   <th className="px-4 py-3 font-medium" scope="col">Status</th>
                   <th className="px-4 py-3 font-medium" scope="col">Role</th>
-                  <th className="px-4 py-3 font-medium" scope="col">Active Job Limit</th>
+                  <th className="px-4 py-3 font-medium" scope="col">Active job limit</th>
                   <th className="px-4 py-3 font-medium" scope="col">Actions</th>
                 </tr>
               </thead>
