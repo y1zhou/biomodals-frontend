@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, Check, Copy, LoaderCircle, Save } from "lucide-react"
-import { useEffect, useState, type FormEvent } from "react"
+import { AlertTriangle, Check, Copy, LoaderCircle, RotateCcw, Save } from "lucide-react"
+import { useEffect, useState, type ComponentProps, type FormEvent } from "react"
 
-import { adminModalKey, settingSourceLabel } from "@/admin"
+import {
+  adminModalKey,
+  changedModalEnvironmentSettings,
+  changedModalToolSettings,
+  settingSourceNote,
+  type SettingSource,
+} from "@/admin"
 import {
   ApiError,
   inspectAdminModal,
@@ -11,7 +17,6 @@ import {
   type AdminModalTool,
 } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,12 +27,67 @@ function errorMessage(error: unknown) {
   return error instanceof ApiError ? error.message : "The Modal configuration request failed."
 }
 
-function Source({ source, editable }: { source: Parameters<typeof settingSourceLabel>[0]; editable: boolean }) {
+function SourceNote({ source }: { source: SettingSource }) {
+  const note = settingSourceNote(source)
+  return note ? <span className="mt-1 text-xs text-muted-foreground">{note}</span> : null
+}
+
+function RuntimeSettingInput({
+  label,
+  onChange,
+  onRestoreOverride,
+  pending,
+  setting,
+  value,
+  ...inputProps
+}: Omit<
+  ComponentProps<typeof Input>,
+  "className" | "disabled" | "onChange" | "value"
+> & {
+  label: string
+  onChange: (value: string) => void
+  onRestoreOverride: () => void
+  pending: boolean
+  setting: { editable: boolean; source: SettingSource; value: string | number }
+  value: string
+}) {
+  const canRestore =
+    setting.source === "database" || value !== String(setting.value)
+  const restoreDescription = `Restore ${label} to its configured default`
+
   return (
-    <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-      <Badge variant="outline">{settingSourceLabel(source)}</Badge>
-      {!editable ? "Read-only while the process override is set." : null}
-    </span>
+    <>
+      <div className="flex">
+        <Input
+          {...inputProps}
+          className={setting.editable ? "rounded-r-none" : undefined}
+          disabled={!setting.editable}
+          onChange={(event) => onChange(event.target.value)}
+          value={value}
+        />
+        {setting.editable ? (
+          <Button
+            aria-label={restoreDescription}
+            className="rounded-l-none border-l-0"
+            disabled={pending || !canRestore}
+            onClick={() => {
+              if (setting.source === "database") {
+                onRestoreOverride()
+                return
+              }
+              onChange(String(setting.value))
+            }}
+            size="icon"
+            title={restoreDescription}
+            type="button"
+            variant="outline"
+          >
+            <RotateCcw aria-hidden="true" />
+          </Button>
+        ) : null}
+      </div>
+      <SourceNote source={setting.source} />
+    </>
   )
 }
 
@@ -40,53 +100,67 @@ function ToolRow({
 }) {
   const [appName, setAppName] = useState(tool.modal_app_name.value)
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
-  useEffect(() => setAppName(tool.modal_app_name.value), [tool.modal_app_name.value])
+  useEffect(
+    () => setAppName(tool.modal_app_name.value),
+    [tool.modal_app_name.source, tool.modal_app_name.value]
+  )
   useEffect(
     () => setActiveJobLimit(String(tool.active_job_limit.value)),
-    [tool.active_job_limit.value]
+    [tool.active_job_limit.source, tool.active_job_limit.value]
   )
   const saving = save.isPending
   const rowError =
     save.isError && save.variables?.workload === tool.workload ? save.error : null
   const normalizedAppName = appName.trim()
   const displayName = toolName(tool.workload)
+  const changedSettings = changedModalToolSettings(tool, appName, activeJobLimit)
+  const hasChanges = Object.keys(changedSettings).length > 0
 
   return (
     <tr className="border-b last:border-0">
       <td className="px-4 py-4 align-top text-sm font-medium">{displayName}</td>
       <td className="px-4 py-4 align-top">
-        <Input
+        <RuntimeSettingInput
           aria-label={`Modal app name for ${tool.workload}`}
-          disabled={!tool.modal_app_name.editable}
-          onChange={(event) => setAppName(event.target.value)}
+          label={`Modal app name for ${displayName}`}
+          onChange={setAppName}
+          onRestoreOverride={() =>
+            save.mutate({
+              workload: tool.workload,
+              input: { modal_app_name: null },
+            })
+          }
+          pending={saving}
+          setting={tool.modal_app_name}
           value={appName}
-        />
-        <Source
-          editable={tool.modal_app_name.editable}
-          source={tool.modal_app_name.source}
         />
       </td>
       <td className="px-4 py-4 align-top text-sm tabular-nums">{tool.running_jobs}</td>
       <td className="px-4 py-4 align-top">
         <div className="flex min-w-44 items-start gap-2">
           <div className="grow">
-            <Input
+            <RuntimeSettingInput
               aria-label={`Active job limit for ${displayName}`}
-              disabled={!tool.active_job_limit.editable}
+              label={`active job limit for ${displayName}`}
               min={1}
-              onChange={(event) => setActiveJobLimit(event.target.value)}
+              onChange={setActiveJobLimit}
+              onRestoreOverride={() =>
+                save.mutate({
+                  workload: tool.workload,
+                  input: { active_job_limit: null },
+                })
+              }
+              pending={saving}
+              setting={tool.active_job_limit}
               type="number"
               value={activeJobLimit}
-            />
-            <Source
-              editable={tool.active_job_limit.editable}
-              source={tool.active_job_limit.source}
             />
           </div>
           <Button
             aria-label={`Save Modal settings for ${displayName}`}
             disabled={
               saving ||
+              !hasChanges ||
               Number(activeJobLimit) < 1 ||
               (tool.modal_app_name.editable && !normalizedAppName) ||
               (!tool.modal_app_name.editable && !tool.active_job_limit.editable)
@@ -94,14 +168,7 @@ function ToolRow({
             onClick={() =>
               save.mutate({
                 workload: tool.workload,
-                input: {
-                  ...(tool.modal_app_name.editable
-                    ? { modal_app_name: normalizedAppName }
-                    : {}),
-                  ...(tool.active_job_limit.editable
-                    ? { active_job_limit: Number(activeJobLimit) }
-                    : {}),
-                },
+                input: changedSettings,
               })
             }
             size="icon"
@@ -153,24 +220,32 @@ export default function ModalAdminPage() {
   useExpireSession(environmentUpdate.error)
   useExpireSession(toolUpdate.error)
   const environment = modal.data?.environment
+  const modalEnvironmentValue = environment?.modal_environment.value
+  const modalEnvironmentSource = environment?.modal_environment.source
+  const globalActiveJobLimitValue = environment?.global_active_job_limit.value
+  const globalActiveJobLimitSource = environment?.global_active_job_limit.source
+  const changedEnvironmentSettings = environment
+    ? changedModalEnvironmentSettings(
+        environment,
+        environmentName,
+        globalActiveJobLimit
+      )
+    : {}
+  const environmentHasChanges = Object.keys(changedEnvironmentSettings).length > 0
 
   useEffect(() => {
-    if (!environment) return
-    setEnvironmentName(environment.modal_environment.value)
-    setGlobalActiveJobLimit(String(environment.global_active_job_limit.value))
-  }, [environment])
+    if (modalEnvironmentValue === undefined) return
+    setEnvironmentName(modalEnvironmentValue)
+  }, [modalEnvironmentSource, modalEnvironmentValue])
+  useEffect(() => {
+    if (globalActiveJobLimitValue === undefined) return
+    setGlobalActiveJobLimit(String(globalActiveJobLimitValue))
+  }, [globalActiveJobLimitSource, globalActiveJobLimitValue])
 
   function saveEnvironment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!environment) return
-    environmentUpdate.mutate({
-      ...(environment.modal_environment.editable
-        ? { modal_environment: environmentName.trim() }
-        : {}),
-      ...(environment.global_active_job_limit.editable
-        ? { global_active_job_limit: Number(globalActiveJobLimit) }
-        : {}),
-    })
+    environmentUpdate.mutate(changedEnvironmentSettings)
   }
 
   if (modal.isPending) {
@@ -228,42 +303,48 @@ export default function ModalAdminPage() {
                 The token secret is available only to the backend process.
               </span>
             </div>
-            <label className="grid content-start gap-1.5 text-sm font-medium">
-              Modal environment
-              <Input
-                disabled={!modal.data.environment.modal_environment.editable}
-                onChange={(event) => setEnvironmentName(event.target.value)}
+            <div className="grid content-start gap-1.5">
+              <label className="text-sm font-medium" htmlFor="modal-environment">
+                Modal environment
+              </label>
+              <RuntimeSettingInput
+                id="modal-environment"
+                label="Modal environment"
+                onChange={setEnvironmentName}
+                onRestoreOverride={() =>
+                  environmentUpdate.mutate({ modal_environment: null })
+                }
+                pending={environmentUpdate.isPending}
                 required
+                setting={modal.data.environment.modal_environment}
                 value={environmentName}
               />
-              <Source
-                editable={modal.data.environment.modal_environment.editable}
-                source={modal.data.environment.modal_environment.source}
-              />
-            </label>
+            </div>
             <div className="grid content-start gap-1.5">
               <label className="text-sm font-medium" htmlFor="global-active-job-limit">
                 Global active job limit
               </label>
               <div className="flex items-start gap-2">
                 <div className="grow">
-                  <Input
-                    disabled={!modal.data.environment.global_active_job_limit.editable}
+                  <RuntimeSettingInput
                     id="global-active-job-limit"
+                    label="global active job limit"
                     min={1}
-                    onChange={(event) => setGlobalActiveJobLimit(event.target.value)}
+                    onChange={setGlobalActiveJobLimit}
+                    onRestoreOverride={() =>
+                      environmentUpdate.mutate({ global_active_job_limit: null })
+                    }
+                    pending={environmentUpdate.isPending}
                     required
+                    setting={modal.data.environment.global_active_job_limit}
                     type="number"
                     value={globalActiveJobLimit}
-                  />
-                  <Source
-                    editable={modal.data.environment.global_active_job_limit.editable}
-                    source={modal.data.environment.global_active_job_limit.source}
                   />
                 </div>
                 <Button
                   disabled={
                     environmentUpdate.isPending ||
+                    !environmentHasChanges ||
                     Number(globalActiveJobLimit) < 1 ||
                     (modal.data.environment.modal_environment.editable &&
                       !environmentName.trim()) ||

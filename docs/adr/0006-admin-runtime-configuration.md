@@ -46,6 +46,11 @@ are registered code, not dynamic catalog records.
 
 Tool-row saves are likewise serialized and display failures in the initiating
 row. Environment-setting failures remain inside the Environment section.
+Each save sends only fields whose values actually changed. A restore control
+inside every editable setting removes that field's Administrator override and
+reveals its configured-file or built-in default. Restore controls and
+provenance are field-specific: changing or restoring a Tool Active Job Limit
+does not turn its deployed Modal app name into an Administrator setting.
 
 The Tool Active Job Limit counts non-terminal Jobs for one workload across all
 Users. The Global Active Job Limit counts non-terminal Jobs across all Users and
@@ -73,6 +78,12 @@ Runtime Settings, effective precedence is:
 An explicit process environment variable makes the corresponding Admin field
 read-only. Database edits otherwise take effect immediately. The configured
 file is parsed without overwriting process environment values.
+
+For the Admin PATCH contract, omission means unchanged and an explicit JSON
+`null` means remove that one database override. The interface does not render
+the built-in default or Administrator source as a badge. It uses the in-field
+restore control for editable overrides and plain explanatory text only when a
+configuration file or process environment controls the effective value.
 
 `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` are exceptions because they are
 secrets/bootstrap credentials rather than Runtime Settings. They must come

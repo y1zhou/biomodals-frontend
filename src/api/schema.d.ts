@@ -737,9 +737,15 @@ export interface components {
          * @description Editable cross-Tool Modal configuration.
          */
         readonly UpdateAdminModalEnvironmentRequest: {
-            /** Global Active Job Limit */
+            /**
+             * Global Active Job Limit
+             * @description Omit to keep unchanged; null restores the configured default.
+             */
             readonly global_active_job_limit?: number | null;
-            /** Modal Environment */
+            /**
+             * Modal Environment
+             * @description Omit to keep unchanged; null restores the configured default.
+             */
             readonly modal_environment?: string | null;
         };
         /**
@@ -747,9 +753,15 @@ export interface components {
          * @description Editable per-Tool Modal configuration.
          */
         readonly UpdateAdminModalToolRequest: {
-            /** Active Job Limit */
+            /**
+             * Active Job Limit
+             * @description Omit to keep unchanged; null restores the configured default.
+             */
             readonly active_job_limit?: number | null;
-            /** Modal App Name */
+            /**
+             * Modal App Name
+             * @description Omit to keep unchanged; null restores the configured default.
+             */
             readonly modal_app_name?: string | null;
         };
         /**
