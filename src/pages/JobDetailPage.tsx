@@ -38,21 +38,9 @@ import {
   shouldRetryJobQuery,
   useDocumentVisibility,
 } from "@/jobs"
+import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import { gromacsPaths, gromacsTool } from "@/tools"
-
-async function copyText(value: string) {
-  if (navigator.clipboard) return navigator.clipboard.writeText(value)
-
-  const textarea = document.createElement("textarea")
-  textarea.value = value
-  textarea.style.position = "fixed"
-  textarea.style.opacity = "0"
-  document.body.append(textarea)
-  textarea.select()
-  document.execCommand("copy")
-  textarea.remove()
-}
 
 function JobUnavailable() {
   return (

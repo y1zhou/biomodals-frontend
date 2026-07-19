@@ -6,7 +6,14 @@ import {
   RefreshCw,
   X,
 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react"
 import { Link, useBeforeUnload, useBlocker, useNavigate } from "react-router"
 
 import {
@@ -60,6 +67,7 @@ function focusFirstFieldError(errors: Partial<Record<SubmissionField, string>>) 
 export default function GromacsSubmissionPage() {
   const navigate = useNavigate()
   const abortController = useRef<AbortController | null>(null)
+  const fileDragDepth = useRef(0)
   const allowNavigation = useRef(false)
   const leavingSubmission = useRef(false)
   const formAlert = useRef<HTMLDivElement>(null)
@@ -69,6 +77,7 @@ export default function GromacsSubmissionPage() {
   const idempotencyKey = useRef<string | null>(initialIdempotencyKey)
   const restoredIntent = useRef(initialIdempotencyKey !== null)
   const [pdb, setPdb] = useState<File | null>(null)
+  const [fileDragActive, setFileDragActive] = useState(false)
   const [displayName, setDisplayName] = useState("")
   const [simulationTime, setSimulationTime] = useState("5")
   const [runPdbfixer, setRunPdbfixer] = useState(false)
@@ -146,9 +155,42 @@ export default function GromacsSubmissionPage() {
   }
 
   function chooseFile(file: File | null) {
+    fileDragDepth.current = 0
+    setFileDragActive(false)
     resetIntent()
     setPdb(file)
     if (file) setDisplayName(filenameDisplayName(file.name).slice(0, 120))
+  }
+
+  function dragFileEnter(event: DragEvent<HTMLDivElement>) {
+    if (!event.dataTransfer.types.includes("Files")) return
+    event.preventDefault()
+    if (isSubmissionPending) return
+    fileDragDepth.current += 1
+    setFileDragActive(true)
+  }
+
+  function dragFileLeave(event: DragEvent<HTMLDivElement>) {
+    if (fileDragDepth.current === 0) return
+    event.preventDefault()
+    fileDragDepth.current = Math.max(0, fileDragDepth.current - 1)
+    if (fileDragDepth.current === 0) setFileDragActive(false)
+  }
+
+  function dragFileOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.dataTransfer.dropEffect =
+      event.dataTransfer.types.includes("Files") && !isSubmissionPending
+        ? "copy"
+        : "none"
+  }
+
+  function dropFile(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    if (!event.dataTransfer.types.includes("Files")) return
+    fileDragDepth.current = 0
+    setFileDragActive(false)
+    if (!isSubmissionPending) chooseFile(event.dataTransfer.files[0] ?? null)
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -239,19 +281,68 @@ export default function GromacsSubmissionPage() {
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="pdb-file">
+                  <span className="text-sm font-medium" id="pdb-file-label">
                     PDB file
-                  </label>
-                  <Input
-                    accept=".pdb"
-                    aria-describedby={fieldErrors.pdb ? "pdb-error" : "pdb-help"}
-                    aria-invalid={Boolean(fieldErrors.pdb)}
-                    disabled={isSubmissionPending}
-                    id="pdb-file"
-                    onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
-                    required
-                    type="file"
-                  />
+                  </span>
+                  <div
+                    className={cn(
+                      "rounded-lg border border-dashed p-3 transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
+                      fileDragActive
+                        ? "border-primary bg-primary/5 ring-3 ring-primary/10"
+                        : "border-input bg-muted/20"
+                    )}
+                    onDragEnter={dragFileEnter}
+                    onDragLeave={dragFileLeave}
+                    onDragOver={dragFileOver}
+                    onDrop={dropFile}
+                  >
+                    <input
+                      accept=".pdb"
+                      aria-describedby={
+                        fieldErrors.pdb ? "pdb-error" : "pdb-drop-help pdb-help"
+                      }
+                      aria-invalid={Boolean(fieldErrors.pdb)}
+                      aria-labelledby="pdb-file-label"
+                      className="sr-only"
+                      disabled={isSubmissionPending}
+                      id="pdb-file"
+                      onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
+                      required
+                      type="file"
+                    />
+                    {fileDragActive ? (
+                      <div className="flex min-h-8 items-center justify-center gap-2 font-medium text-primary">
+                        <CloudUpload aria-hidden="true" className="size-4" />
+                        Drop the PDB file here
+                      </div>
+                    ) : (
+                      <div className="flex min-h-8 min-w-0 flex-wrap items-center gap-3">
+                        <label
+                          aria-disabled={isSubmissionPending}
+                          className={cn(
+                            buttonVariants({ variant: "secondary" }),
+                            "cursor-pointer",
+                            isSubmissionPending && "pointer-events-none opacity-50"
+                          )}
+                          htmlFor="pdb-file"
+                        >
+                          Choose file
+                        </label>
+                        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                          {pdb?.name ?? "No file chosen"}
+                        </span>
+                      </div>
+                    )}
+                    <p
+                      aria-live="polite"
+                      className="mt-2 text-xs text-muted-foreground"
+                      id="pdb-drop-help"
+                    >
+                      {fileDragActive
+                        ? "Release to select this file."
+                        : "You can also drag and drop a PDB file here."}
+                    </p>
+                  </div>
                   {fieldErrors.pdb ? (
                     <p className="text-sm text-destructive" id="pdb-error">
                       {fieldErrors.pdb}

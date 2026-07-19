@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, KeyRound, LoaderCircle, Plus, Save } from "lucide-react"
+import { AlertTriangle, LoaderCircle, Plus, Save } from "lucide-react"
 import { useEffect, useState, type FormEvent } from "react"
 
 import { adminUsersKey } from "@/admin"
@@ -112,7 +112,7 @@ function UserRow({
               })
             }
             size="sm"
-            variant={user.active ? "destructive" : "outline"}
+            variant="outline"
           >
             {user.active ? "Disable" : "Enable"}
           </Button>
@@ -120,9 +120,8 @@ function UserRow({
             disabled={!user.active || busy}
             onClick={() => reset.mutate(user.user_id)}
             size="sm"
-            variant="ghost"
+            variant="outline"
           >
-            <KeyRound aria-hidden="true" />
             New password link
           </Button>
         </div>
