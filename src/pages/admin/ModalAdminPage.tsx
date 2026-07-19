@@ -135,9 +135,11 @@ function ToolRow({
           value={appName}
         />
       </td>
-      <td className="px-4 py-4 align-top text-sm tabular-nums">{tool.running_jobs}</td>
       <td className="px-4 py-4 align-top">
-        <div className="flex min-w-44 items-start gap-2">
+        <div className="flex min-w-56 items-start gap-2">
+          <span className="flex h-8 items-center text-sm tabular-nums">
+            {tool.running_jobs} /
+          </span>
           <div className="grow">
             <RuntimeSettingInput
               aria-label={`Active job limit for ${displayName}`}
@@ -324,40 +326,38 @@ export default function ModalAdminPage() {
               <label className="text-sm font-medium" htmlFor="global-active-job-limit">
                 Global active job limit
               </label>
-              <div className="flex items-start gap-2">
-                <div className="grow">
-                  <RuntimeSettingInput
-                    id="global-active-job-limit"
-                    label="global active job limit"
-                    min={1}
-                    onChange={setGlobalActiveJobLimit}
-                    onRestoreOverride={() =>
-                      environmentUpdate.mutate({ global_active_job_limit: null })
-                    }
-                    pending={environmentUpdate.isPending}
-                    required
-                    setting={modal.data.environment.global_active_job_limit}
-                    type="number"
-                    value={globalActiveJobLimit}
-                  />
-                </div>
-                <Button
-                  disabled={
-                    environmentUpdate.isPending ||
-                    !environmentHasChanges ||
-                    Number(globalActiveJobLimit) < 1 ||
-                    (modal.data.environment.modal_environment.editable &&
-                      !environmentName.trim()) ||
-                    (!modal.data.environment.modal_environment.editable &&
-                      !modal.data.environment.global_active_job_limit.editable)
-                  }
-                  type="submit"
-                  variant="outline"
-                >
-                  <Save aria-hidden="true" />
-                  Save
-                </Button>
-              </div>
+              <RuntimeSettingInput
+                id="global-active-job-limit"
+                label="global active job limit"
+                min={1}
+                onChange={setGlobalActiveJobLimit}
+                onRestoreOverride={() =>
+                  environmentUpdate.mutate({ global_active_job_limit: null })
+                }
+                pending={environmentUpdate.isPending}
+                required
+                setting={modal.data.environment.global_active_job_limit}
+                type="number"
+                value={globalActiveJobLimit}
+              />
+            </div>
+            <div className="flex justify-end lg:col-span-3">
+              <Button
+                disabled={
+                  environmentUpdate.isPending ||
+                  !environmentHasChanges ||
+                  Number(globalActiveJobLimit) < 1 ||
+                  (modal.data.environment.modal_environment.editable &&
+                    !environmentName.trim()) ||
+                  (!modal.data.environment.modal_environment.editable &&
+                    !modal.data.environment.global_active_job_limit.editable)
+                }
+                type="submit"
+                variant="outline"
+              >
+                <Save aria-hidden="true" />
+                Save
+              </Button>
             </div>
           </form>
           {environmentUpdate.error ? (
@@ -374,13 +374,14 @@ export default function ModalAdminPage() {
           Tools
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[54rem] border-collapse text-left">
+          <table className="w-full min-w-[48rem] border-collapse text-left">
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium" scope="col">Tool</th>
                 <th className="px-4 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="px-4 py-3 font-medium" scope="col">Current running jobs</th>
-                <th className="px-4 py-3 font-medium" scope="col">Active job limit</th>
+                <th className="px-4 py-3 font-medium" scope="col">
+                  Current running jobs / active job limit
+                </th>
               </tr>
             </thead>
             <tbody>

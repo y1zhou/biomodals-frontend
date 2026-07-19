@@ -301,6 +301,8 @@ choices, and created and updated times use local calendar dates. It shows the
 display name, catalog-derived Tool name, state, creation time, and last update;
 the Job name is a real link to its Tool-scoped detail route. Narrow layouts
 preserve every column through horizontal scrolling and retain table semantics.
+Each column header keeps sorting directly available and opens its native filter
+control from a filter icon, avoiding a permanently expanded second header row.
 
 The collection endpoint is loaded initially, after manual Refresh, and once
 when the page regains focus. Between collection loads, only individual active

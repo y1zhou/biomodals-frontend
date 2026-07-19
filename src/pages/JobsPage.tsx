@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Popover } from "@base-ui/react/popover"
 import {
   AlertTriangle,
   ArrowDown,
@@ -7,11 +8,12 @@ import {
   ArrowUpDown,
   BriefcaseBusiness,
   FlaskConical,
+  ListFilter,
   LoaderCircle,
   Plus,
   RefreshCw,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
 import { ApiError, inspectJob, listJobs, type Job } from "@/api/client"
@@ -117,17 +119,25 @@ const emptyFilters: JobTableFilters = {
   created: "",
   updated: "",
 }
+const filterSelectClassName =
+  "h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 
 function SortableHeader({
+  children,
   column,
+  filterActive,
+  filterLabel,
   label,
-  sort,
   onSort,
+  sort,
 }: {
+  children: ReactNode
   column: JobTableColumn
+  filterActive: boolean
+  filterLabel: string
   label: string
-  sort: JobTableSort
   onSort: (column: JobTableColumn) => void
+  sort: JobTableSort
 }) {
   const active = sort.column === column
   const Icon = !active
@@ -142,14 +152,39 @@ function SortableHeader({
       className="px-4 py-3 font-medium"
       scope="col"
     >
-      <button
-        className="inline-flex items-center gap-1.5 hover:text-foreground"
-        onClick={() => onSort(column)}
-        type="button"
-      >
-        {label}
-        <Icon aria-hidden="true" className="size-3.5" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          className="inline-flex items-center gap-1.5 hover:text-foreground"
+          onClick={() => onSort(column)}
+          type="button"
+        >
+          {label}
+          <Icon aria-hidden="true" className="size-3.5" />
+        </button>
+        <Popover.Root>
+          <Popover.Trigger
+            aria-label={`${filterLabel}${filterActive ? " (active)" : ""}`}
+            className={cn(
+              "grid size-6 place-items-center rounded-md outline-none hover:bg-background hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:bg-background data-[popup-open]:text-foreground",
+              filterActive && "bg-primary/10 text-primary"
+            )}
+            title={filterLabel}
+            type="button"
+          >
+            <ListFilter aria-hidden="true" className="size-3.5" />
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Positioner align="start" className="z-50" sideOffset={6}>
+              <Popover.Popup className="w-64 rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg outline-none data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+                <Popover.Title className="mb-2 text-sm font-medium normal-case tracking-normal">
+                  {filterLabel}
+                </Popover.Title>
+                {children}
+              </Popover.Popup>
+            </Popover.Positioner>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
     </th>
   )
 }
@@ -260,14 +295,14 @@ export default function JobsPage() {
             <caption className="sr-only">Your BioModals jobs</caption>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <SortableHeader column="job" label="Job" onSort={updateSort} sort={sort} />
-                <SortableHeader column="tool" label="Tool" onSort={updateSort} sort={sort} />
-                <SortableHeader column="status" label="Status" onSort={updateSort} sort={sort} />
-                <SortableHeader column="created" label="Created" onSort={updateSort} sort={sort} />
-                <SortableHeader column="updated" label="Updated" onSort={updateSort} sort={sort} />
-              </tr>
-              <tr className="border-t bg-card normal-case tracking-normal">
-                <th className="px-4 pb-3" scope="col">
+                <SortableHeader
+                  column="job"
+                  filterActive={Boolean(filters.job)}
+                  filterLabel="Filter jobs by name or ID"
+                  label="Job"
+                  onSort={updateSort}
+                  sort={sort}
+                >
                   <Input
                     aria-label="Filter jobs by name or ID"
                     onChange={(event) => updateFilter("job", event.target.value)}
@@ -275,11 +310,18 @@ export default function JobsPage() {
                     type="search"
                     value={filters.job}
                   />
-                </th>
-                <th className="px-4 pb-3" scope="col">
+                </SortableHeader>
+                <SortableHeader
+                  column="tool"
+                  filterActive={Boolean(filters.tool)}
+                  filterLabel="Filter jobs by tool"
+                  label="Tool"
+                  onSort={updateSort}
+                  sort={sort}
+                >
                   <select
                     aria-label="Filter jobs by tool"
-                    className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground"
+                    className={filterSelectClassName}
                     onChange={(event) => updateFilter("tool", event.target.value)}
                     value={filters.tool}
                   >
@@ -288,11 +330,18 @@ export default function JobsPage() {
                       <option key={tool.slug} value={tool.slug}>{tool.name}</option>
                     ))}
                   </select>
-                </th>
-                <th className="px-4 pb-3" scope="col">
+                </SortableHeader>
+                <SortableHeader
+                  column="status"
+                  filterActive={Boolean(filters.status)}
+                  filterLabel="Filter jobs by status"
+                  label="Status"
+                  onSort={updateSort}
+                  sort={sort}
+                >
                   <select
                     aria-label="Filter jobs by status"
-                    className="h-9 w-full rounded-md border bg-background px-3 text-sm text-foreground"
+                    className={filterSelectClassName}
                     onChange={(event) => updateFilter("status", event.target.value)}
                     value={filters.status}
                   >
@@ -301,23 +350,37 @@ export default function JobsPage() {
                       <option key={state} value={state}>{presentation.label}</option>
                     ))}
                   </select>
-                </th>
-                <th className="px-4 pb-3" scope="col">
+                </SortableHeader>
+                <SortableHeader
+                  column="created"
+                  filterActive={Boolean(filters.created)}
+                  filterLabel="Filter jobs by creation date"
+                  label="Created"
+                  onSort={updateSort}
+                  sort={sort}
+                >
                   <Input
                     aria-label="Filter jobs by creation date"
                     onChange={(event) => updateFilter("created", event.target.value)}
                     type="date"
                     value={filters.created}
                   />
-                </th>
-                <th className="px-4 pb-3" scope="col">
+                </SortableHeader>
+                <SortableHeader
+                  column="updated"
+                  filterActive={Boolean(filters.updated)}
+                  filterLabel="Filter jobs by update date"
+                  label="Updated"
+                  onSort={updateSort}
+                  sort={sort}
+                >
                   <Input
                     aria-label="Filter jobs by update date"
                     onChange={(event) => updateFilter("updated", event.target.value)}
                     type="date"
                     value={filters.updated}
                   />
-                </th>
+                </SortableHeader>
               </tr>
             </thead>
             <tbody>

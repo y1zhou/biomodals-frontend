@@ -99,7 +99,7 @@ function UserRow({
               })
             }
             size="sm"
-            variant="outline"
+            variant={user.is_admin ? "destructive" : "outline"}
           >
             {user.is_admin ? "Remove admin" : "Make admin"}
           </Button>
@@ -112,7 +112,7 @@ function UserRow({
               })
             }
             size="sm"
-            variant="outline"
+            variant={user.active ? "destructive" : "outline"}
           >
             {user.active ? "Disable" : "Enable"}
           </Button>

@@ -37,12 +37,12 @@ The Modal page has Environment and Tools sections. Environment displays the
 Modal service-user token ID, the effective Modal Environment, and the Global
 Active Job Limit. It never returns or stores the Modal token secret.
 
-The Tools section is a four-column table containing the user-facing Tool name,
-editable deployed Modal app name, backend-observed count of Jobs in the
-`running` state, and editable Tool Active Job Limit. The frontend derives the
-display name from its typed Tool Catalog using the fixed API workload key. The
-workload key remains code-owned because workload routes and compute adapters
-are registered code, not dynamic catalog records.
+The Tools section is a three-column table containing the user-facing Tool name,
+editable deployed Modal app name, and a combined running Jobs / Tool Active Job
+Limit field. The frontend derives the display name from its typed Tool Catalog
+using the fixed API workload key. The workload key remains code-owned because
+workload routes and compute adapters are registered code, not dynamic catalog
+records.
 
 Tool-row saves are likewise serialized and display failures in the initiating
 row. Environment-setting failures remain inside the Environment section.
