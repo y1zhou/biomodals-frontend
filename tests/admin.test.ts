@@ -135,6 +135,7 @@ describe("Admin settings", () => {
 
     expect(upsertAdminUser([user], updatedUser)).toEqual([updatedUser])
     expect(upsertAdminUser([], user)).toEqual([user])
+    expect(upsertAdminUser(undefined, user)).toBeUndefined()
     expect(mergeAdminModalEnvironment(modal, updatedEnvironment)).toEqual({
       ...modal,
       environment: updatedEnvironment,

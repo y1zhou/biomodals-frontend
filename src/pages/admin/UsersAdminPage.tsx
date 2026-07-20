@@ -154,7 +154,7 @@ function useUserUpdate() {
     scope: { id: "admin-user-mutations" },
     onSuccess(user) {
       queryClient.setQueryData<AdminUser[]>(adminUsersKey, (users) =>
-        upsertAdminUser(users ?? [], user)
+        upsertAdminUser(users, user)
       )
       const current = authenticatedPrincipal(
         queryClient.getQueryData<CurrentUserState>(currentUserKey)
@@ -444,7 +444,7 @@ export default function UsersAdminPage() {
     scope: { id: "admin-user-mutations" },
     onSuccess(result) {
       queryClient.setQueryData<AdminUser[]>(adminUsersKey, (users) =>
-        upsertAdminUser(users ?? [], result.user)
+        upsertAdminUser(users, result.user)
       )
       setPasswordLink({
         displayName: result.user.display_name,

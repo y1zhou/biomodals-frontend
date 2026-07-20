@@ -11,7 +11,11 @@ export const adminUsersKey = ["admin", "users"] as const
 export const adminModalKey = ["admin", "modal"] as const
 export const adminStorageKey = ["admin", "storage"] as const
 
-export function upsertAdminUser(users: AdminUser[], updated: AdminUser) {
+export function upsertAdminUser(
+  users: AdminUser[] | undefined,
+  updated: AdminUser
+) {
+  if (!users) return users
   const existing = users.findIndex((user) => user.user_id === updated.user_id)
   if (existing === -1) return [...users, updated]
   return users.map((user, index) => (index === existing ? updated : user))
