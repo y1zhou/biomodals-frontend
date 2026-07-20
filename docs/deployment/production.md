@@ -1,7 +1,7 @@
 # Production frontend example
 
-The production frontend is a static build served at `https://aidd.y1zhou.com`
-from `/srv/aidd.y1zhou.com`. `beta.aidd.y1zhou.com` remains a development-only
+The production frontend is a static build served at `https://biomodals.example.com`
+from `/srv/biomodals.example.com`. `beta.biomodals.example.com` remains a development-only
 Vite site and is not a production release target.
 
 This repository does not own the live Caddyfile and these instructions do not
@@ -13,7 +13,7 @@ perform a deployment. An Administrator should:
 4. run `bun run test:e2e` with the Playwright Chromium dependency installed;
 5. stage `dist/` as a new static release and review its contents; and
 6. only after the API is ready, atomically publish that reviewed directory at
-   `/srv/aidd.y1zhou.com`.
+   `/srv/biomodals.example.com`.
 
 The manually triggered `Cross-repository checks` GitHub Actions workflow makes
 steps 3 and 4 repeatable for an intended revision pair. Run it from the

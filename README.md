@@ -36,14 +36,14 @@ bun run api:check
 bun run build
 ```
 
-Publish the contents of `dist/` at `/srv/aidd.y1zhou.com`. We recommend
+Publish the contents of `dist/` at `/srv/biomodals.example.com`. We recommend
 [Caddy](https://caddyserver.com/) for the static server, automatic HTTPS, and
 the same-origin API proxy. A minimal Caddyfile shape is:
 
 ```caddyfile
-aidd.y1zhou.com {
+biomodals.example.com {
 	encode zstd gzip
-	root * /srv/aidd.y1zhou.com
+	root * /srv/biomodals.example.com
 
 	route {
 		reverse_proxy /api/* 127.0.0.1:4100

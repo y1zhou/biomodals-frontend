@@ -469,7 +469,7 @@ The backend and frontend contract changes ship together to the isolated
 pre-release environment rather than carrying temporary compatibility behavior
 for the currently broken Password Link flow. That environment explicitly
 selects its own configuration file, freshly initialized SQLite database,
-Result cache, and `https://beta.aidd.y1zhou.com` public origin; production
+Result cache, and `https://beta.biomodals.example.com` public origin; production
 configuration and host-local data are untouched. The backend deploys first and
 the matching frontend follows immediately. Administrators then provision fresh
 test Users. The live OpenAPI check and a complete Password Link smoke test must

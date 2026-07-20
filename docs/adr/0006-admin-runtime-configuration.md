@@ -278,8 +278,8 @@ first new User must be provisioned as an Administrator.
 
 Pre-release and production use distinct backend service configurations whose
 state and cache settings point to different host-local locations.
-Pre-release uses `https://beta.aidd.y1zhou.com` as its public URL; production
-uses `https://aidd.y1zhou.com`. Reset and Clear Result Cache guidance is scoped
+Pre-release uses `https://beta.biomodals.example.com` as its public URL; production
+uses `https://biomodals.example.com`. Reset and Clear Result Cache guidance is scoped
 only to the pre-release configuration and must not touch production. The Modal
 Environment remains an independent explicit setting and may still be
 `production` when deliberately authorized. This reset allowance ends at the
