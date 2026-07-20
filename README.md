@@ -14,10 +14,12 @@ cp .env.example .env
 bun dev
 ```
 
-The Vite development server listens on `0.0.0.0` so the MVP can be opened from
-another machine on the development network. `BIOMODALS_PUBLIC_URL` sets the
+The Vite development server keeps its default port `5173` and listens on
+`0.0.0.0` so the MVP can be opened from another machine on the development
+network. `BIOMODALS_PUBLIC_URL` sets the
 allowed reverse-proxy hostname and the Origin forwarded to FastAPI;
-`BIOMODALS_API_PROXY_TARGET` sets the server-only API upstream. Vite proxies
+`BIOMODALS_API_PROXY_TARGET` sets the server-only API upstream, which defaults
+to `http://127.0.0.1:4144`. Vite proxies
 `/api/*`, `/docs`, `/redoc`, and `/openapi.json`; do not expose this development
 server to an untrusted network. Use the same `BIOMODALS_PUBLIC_URL` in the
 backend's configured `.env` file.
@@ -44,7 +46,7 @@ aidd.y1zhou.com {
 	root * /srv/aidd.y1zhou.com
 
 	route {
-		reverse_proxy /api/* 127.0.0.1:8000
+		reverse_proxy /api/* 127.0.0.1:4100
 		try_files {path} /index.html
 		file_server
 	}

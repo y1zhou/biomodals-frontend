@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "api:generate": "openapi-typescript ${BIOMODALS_OPENAPI_URL:-http://127.0.0.1:8000/openapi.json} -o src/api/schema.d.ts --immutable --alphabetize",
+    "api:generate": "openapi-typescript ${BIOMODALS_OPENAPI_URL:-http://127.0.0.1:4144/openapi.json} -o src/api/schema.d.ts --immutable --alphabetize",
     "api:check": "bun run api:generate --check",
     "dev": "vite",
     "build": "tsc -b && vite build",

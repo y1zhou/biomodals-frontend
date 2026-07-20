@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
     env.BIOMODALS_PUBLIC_URL ?? 'http://localhost:5173',
   )
   const proxyTarget =
-    env.BIOMODALS_API_PROXY_TARGET ?? 'http://127.0.0.1:8000'
+    env.BIOMODALS_API_PROXY_TARGET ?? 'http://127.0.0.1:4144'
   const proxy = backendProxy(proxyTarget, publicUrl.origin)
 
   return {
