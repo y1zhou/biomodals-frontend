@@ -15,6 +15,12 @@ perform a deployment. An Administrator should:
 6. only after the API is ready, atomically publish that reviewed directory at
    `/srv/aidd.y1zhou.com`.
 
+The manually triggered `Cross-repository checks` GitHub Actions workflow makes
+steps 3 and 4 repeatable for an intended revision pair. Run it from the
+candidate frontend ref and supply the exact backend branch, tag, or commit as
+`backend_ref`. Its deterministic backend never resolves a deployed Function or
+contacts Modal.
+
 The reverse proxy must route same-origin `/api/*` to the one FastAPI process,
 fall back to `index.html` for browser routes, cache hashed `/assets/*`
 immutably, and prevent persistent caching of `index.html`. It must add the

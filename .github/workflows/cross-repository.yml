@@ -1,0 +1,69 @@
+name: Cross-repository checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_ref:
+        description: Backend branch, tag, or commit to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.backend_ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v6
+        with:
+          path: biomodals-frontend
+      - name: Check out intended backend
+        uses: actions/checkout@v6
+        with:
+          repository: y1zhou/biomodals
+          ref: ${{ inputs.backend_ref }}
+          path: biomodals
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.13'
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: '3.12'
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+        working-directory: biomodals-frontend
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+        working-directory: biomodals-frontend
+      - name: Verify the live OpenAPI contract
+        env:
+          BIOMODALS_BROWSER_ORIGIN: http://127.0.0.1:18001
+          BIOMODALS_BROWSER_ROOT: ${{ runner.temp }}/biomodals-openapi
+        run: |
+          uv run --frozen uvicorn --app-dir tests browser_server:app \
+            --host 127.0.0.1 --port 18000 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:18000/api/v1/ready >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:18000/api/v1/ready
+          cd ../biomodals-frontend
+          BIOMODALS_OPENAPI_URL=http://127.0.0.1:18000/openapi.json \
+            bun run api:check
+        working-directory: biomodals
+      - name: Run the browser workflow
+        run: bun run test:e2e
+        working-directory: biomodals-frontend
