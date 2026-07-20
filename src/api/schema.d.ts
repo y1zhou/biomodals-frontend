@@ -840,7 +840,7 @@ export interface components {
         };
         /**
          * PayloadTooLargeResponse
-         * @description Submission exceeded the configured request boundary.
+         * @description Request body exceeded the service-wide parsing limit.
          */
         readonly PayloadTooLargeResponse: {
             /**
@@ -1098,6 +1098,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Internal Server Error */
             readonly 500: {
                 headers: {
@@ -1180,6 +1191,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1290,6 +1312,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -1354,6 +1387,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -1423,6 +1467,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1500,6 +1555,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -1584,6 +1650,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminUserAlreadyExistsResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1683,6 +1760,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["LastActiveAdminResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -1776,6 +1864,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["InactiveUserResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -1846,6 +1945,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["OriginErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1928,6 +2038,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -1981,6 +2102,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -2042,6 +2174,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["OriginErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2219,6 +2362,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["HealthView"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Internal Server Error */
             readonly 500: {
                 headers: {
@@ -2261,6 +2415,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -2318,6 +2483,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2411,6 +2587,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["JobNotCancellableResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2509,6 +2696,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ResultDownloadConflictResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description The requested byte range is invalid. */
             readonly 416: {
                 headers: {
@@ -2553,6 +2751,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ResultInvalidResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ResultStorageUnavailableResponse"];
                 };
             };
         };
@@ -2624,6 +2833,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ResultPrepareConflictResponse"];
                 };
             };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
@@ -2677,6 +2897,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HealthView"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
             /** @description Internal Server Error */
