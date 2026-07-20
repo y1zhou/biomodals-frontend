@@ -2,6 +2,7 @@ import {
   ApiError,
   SERVICE_CONFIGURATION_ERROR_MESSAGE,
   apiErrorCode,
+  apiRequestId,
   isServiceConfigurationError,
 } from "@/api/client"
 
@@ -149,11 +150,16 @@ export function submissionErrorMessage(error: unknown, hasFieldErrors: boolean) 
   if (code === "active_job_limit_reached") {
     return "The maximum number of active jobs has been reached. Try this same submission after one finishes."
   }
+  if (code === "account_disabled") {
+    return "This account can no longer submit jobs. Contact an administrator."
+  }
   if (code === "idempotency_conflict") {
     return "This key was already used for a different submission. Review it and submit again."
   }
   if (error.status === 0) {
     return "We could not confirm whether the job was created. Retry this submission or check My Jobs."
   }
-  return "The submission could not be completed. Check the fields and try again."
+  return `The submission could not be completed. Check the fields and try again.${
+    apiRequestId(error) ? ` Support ID: ${apiRequestId(error)}.` : ""
+  }`
 }

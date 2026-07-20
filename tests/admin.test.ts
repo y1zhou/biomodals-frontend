@@ -26,7 +26,7 @@ describe("Admin settings", () => {
         source: "default" as const,
         editable: true,
       },
-      running_jobs: 0,
+      active_jobs: 0,
       active_job_limit: {
         value: 2,
         source: "default" as const,
@@ -57,8 +57,15 @@ describe("Admin settings", () => {
       changedModalEnvironmentSettings(environment, "department-a", "10")
     ).toEqual({ modal_environment: "department-a" })
     expect(changedModalToolSettings(tool, "Gromacs", "2")).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "")).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "0")).toEqual({
+      active_job_limit: 0,
+    })
     expect(
       changedModalEnvironmentSettings(environment, "production", "10")
+    ).toEqual({})
+    expect(
+      changedModalEnvironmentSettings(environment, "production", "")
     ).toEqual({})
   })
 })

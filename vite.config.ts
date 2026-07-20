@@ -43,5 +43,15 @@ export default defineConfig(({ mode }) => {
         '/redoc': proxy,
       },
     },
+    preview: {
+      host: '127.0.0.1',
+      allowedHosts: [publicUrl.hostname],
+      proxy: {
+        '/api': proxy,
+        '/docs': proxy,
+        '/openapi.json': proxy,
+        '/redoc': proxy,
+      },
+    },
   }
 })

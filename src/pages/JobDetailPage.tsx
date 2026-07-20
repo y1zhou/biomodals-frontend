@@ -14,12 +14,18 @@ import { useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
 import {
+  ApiError,
   SERVICE_CONFIGURATION_ERROR_MESSAGE,
+  apiErrorCode,
+  apiRequestId,
   cancelJob,
   inspectJob,
   isServiceConfigurationError,
+  jobDownloadUrl,
+  prepareJobDownload,
   type Job,
 } from "@/api/client"
+import { adminStorageKey } from "@/admin"
 import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -28,6 +34,7 @@ import {
   formatTimestamp,
   gromacsStageTimeline,
   isActiveJob,
+  isPollableJob,
   isJobNotCancellableError,
   isJobUnavailableError,
   jobFailureMessage,
@@ -78,7 +85,7 @@ export default function JobDetailPage() {
     },
     refetchIntervalInBackground: true,
     refetchOnWindowFocus(query) {
-      return Boolean(query.state.data && isActiveJob(query.state.data.state))
+      return Boolean(query.state.data && isPollableJob(query.state.data.state))
     },
   })
   const cancelMutation = useMutation({
@@ -98,8 +105,28 @@ export default function JobDetailPage() {
       }
     },
   })
+  const downloadMutation = useMutation({
+    mutationFn: () => prepareJobDownload(jobId),
+    retry: false,
+    onSuccess() {
+      void queryClient.invalidateQueries({ queryKey: adminStorageKey })
+      const download = document.createElement("a")
+      download.href = jobDownloadUrl(jobId)
+      download.download = ""
+      download.hidden = true
+      document.body.append(download)
+      download.click()
+      download.remove()
+    },
+    onError(error) {
+      if (apiErrorCode(error) === "result_invalid") {
+        void jobQuery.refetch()
+      }
+    },
+  })
   useExpireSession(jobQuery.error)
   useExpireSession(cancelMutation.error)
+  useExpireSession(downloadMutation.error)
 
   if (jobQuery.isPending) {
     return (
@@ -124,6 +151,7 @@ export default function JobDetailPage() {
         <h1 className="mt-5 font-heading text-3xl font-semibold">Job could not be loaded</h1>
         <p className="mt-3 leading-7 text-muted-foreground">
           Check the connection and try again.
+          {apiRequestId(queryError) ? ` Support ID: ${apiRequestId(queryError)}.` : ""}
         </p>
         <Button className="mt-7" onClick={() => void jobQuery.refetch()}>
           <RefreshCw aria-hidden="true" />
@@ -144,6 +172,19 @@ export default function JobDetailPage() {
   const currentStage = stages.find((stage) => stage.state === "current")
   const runningFunction = job.state === "running"
     ? currentStage?.functionName
+    : null
+  const downloadError = downloadMutation.error
+    ? apiErrorCode(downloadMutation.error) === "result_invalid"
+      ? "The result could not be verified. BioModals will keep the simulation output for an administrator to recover."
+      : apiErrorCode(downloadMutation.error) === "result_storage_unavailable"
+        ? "Result storage is temporarily unavailable. Try again shortly."
+        : downloadMutation.error instanceof ApiError && downloadMutation.error.status === 409
+          ? "This result is not currently available to download. Refresh the job status."
+          : `The download could not be prepared.${
+              apiRequestId(downloadMutation.error)
+                ? ` Support ID: ${apiRequestId(downloadMutation.error)}.`
+                : " Try again."
+            }`
     : null
 
   return (
@@ -185,7 +226,8 @@ export default function JobDetailPage() {
           {jobQuery.isError ? (
             <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
               <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              Status could not be refreshed. Last successful refresh: {formatTimestamp(jobQuery.dataUpdatedAt)}.
+              Unable to refresh job status. Showing the last known state from {formatTimestamp(jobQuery.dataUpdatedAt)}.
+              {apiRequestId(jobQuery.error) ? ` Support ID: ${apiRequestId(jobQuery.error)}.` : ""}
             </div>
           ) : null}
 
@@ -226,13 +268,22 @@ export default function JobDetailPage() {
                   </Button>
                 ) : null}
                 {canDownload ? (
-                  <a
-                    className={buttonVariants()}
-                    href={`/api/v1/jobs/${encodeURIComponent(job.job_id)}/download`}
+                  <Button
+                    disabled={downloadMutation.isPending}
+                    onClick={() => {
+                      downloadMutation.reset()
+                      downloadMutation.mutate()
+                    }}
                   >
-                    <Download aria-hidden="true" data-icon="inline-start" />
-                    Download result
-                  </a>
+                    {downloadMutation.isPending ? (
+                      <LoaderCircle aria-hidden="true" className="animate-spin" />
+                    ) : (
+                      <Download aria-hidden="true" />
+                    )}
+                    {downloadMutation.isPending
+                      ? "Preparing download…"
+                      : "Download result"}
+                  </Button>
                 ) : null}
                 {canStartAgain ? (
                   <Link className={buttonVariants()} to={gromacsPaths.submission}>
@@ -241,6 +292,23 @@ export default function JobDetailPage() {
                   </Link>
                 ) : null}
               </div>
+              {downloadError ? (
+                <p className="mt-4 text-sm text-destructive" role="alert">
+                  {downloadError}
+                </p>
+              ) : null}
+              {job.state === "blocked" ? (
+                <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground">Attention needed since</dt>
+                    <dd className="font-medium">{formatTimestamp(job.blocked_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Next automatic retry</dt>
+                    <dd className="font-medium">{formatTimestamp(job.next_retry_at)}</dd>
+                  </div>
+                </dl>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -270,7 +338,7 @@ export default function JobDetailPage() {
                         Started
                       </th>
                       <th className="px-6 py-3 font-medium" scope="col">
-                        Completed
+                        Finished
                       </th>
                     </tr>
                   </thead>
@@ -280,6 +348,10 @@ export default function JobDetailPage() {
                       const statusLabel =
                         stage.state === "completed"
                           ? "Completed"
+                          : stage.state === "failed"
+                            ? "Failed"
+                            : stage.state === "cancelled"
+                              ? "Cancelled"
                           : stage.state === "upcoming"
                             ? "Not started"
                             : presentation.label
@@ -301,6 +373,10 @@ export default function JobDetailPage() {
                               "px-6 py-4",
                               stage.state === "completed"
                                 ? "text-emerald-700"
+                                : stage.state === "failed"
+                                  ? "text-destructive"
+                                  : stage.state === "cancelled"
+                                    ? "text-muted-foreground"
                                 : stage.state === "upcoming"
                                   ? "text-muted-foreground"
                                   : "font-medium"
@@ -309,12 +385,11 @@ export default function JobDetailPage() {
                             {statusLabel}
                           </td>
                           <td className="px-6 py-4">
-                            {current && job.state === "running" && stage.functionName ? (
+                            {stage.functionName ? (
                               <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                                 {stage.functionName}
                               </code>
-                            ) : current &&
-                              stage.code === "result_packaging" ? (
+                            ) : stage.code === "prepare_result" && stage.startedAt ? (
                               <span className="text-muted-foreground">
                                 Not applicable (API service)
                               </span>
@@ -326,7 +401,7 @@ export default function JobDetailPage() {
                             {formatTimestamp(stage.startedAt)}
                           </td>
                           <td className="px-6 py-4 text-muted-foreground">
-                            {formatTimestamp(stage.completedAt)}
+                            {formatTimestamp(stage.endedAt)}
                           </td>
                         </tr>
                       )
@@ -336,7 +411,11 @@ export default function JobDetailPage() {
               </div>
               {!currentStage && isActiveJob(job.state) ? (
                 <p className="px-6 pt-4 text-sm text-muted-foreground">
-                  BioModals is moving to the next stage. No running function is currently recorded.
+                  {job.state === "queued"
+                    ? "BioModals accepted this job and is waiting to start the first stage."
+                    : job.state === "cancel_requested"
+                      ? "No remote function is currently recorded while cancellation is being resolved."
+                      : "BioModals is moving to the next stage. No running function is currently recorded."}
                 </p>
               ) : null}
             </CardContent>
@@ -411,8 +490,12 @@ export default function JobDetailPage() {
           {cancelMutation.isError && !isJobNotCancellableError(cancelMutation.error) ? (
             <p aria-live="polite" className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {isServiceConfigurationError(cancelMutation.error)
-                ? SERVICE_CONFIGURATION_ERROR_MESSAGE
-                : "Cancellation could not be requested. Try again."}
+                              ? SERVICE_CONFIGURATION_ERROR_MESSAGE
+                              : `Cancellation could not be requested. Try again.${
+                                  apiRequestId(cancelMutation.error)
+                                    ? ` Support ID: ${apiRequestId(cancelMutation.error)}.`
+                                    : ""
+                                }`}
             </p>
           ) : null}
           <div className="mt-6 flex justify-end gap-3">

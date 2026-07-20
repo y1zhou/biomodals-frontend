@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client"
 import { createBrowserRouter, RouterProvider } from "react-router"
 
 import App from "./App.tsx"
+import AppErrorBoundary from "./components/AppErrorBoundary.tsx"
 import "./index.css"
 
 const queryClient = new QueryClient({
@@ -13,7 +14,16 @@ const queryClient = new QueryClient({
     },
   },
 })
-const router = createBrowserRouter([{ path: "*", element: <App /> }])
+const router = createBrowserRouter([
+  {
+    path: "*",
+    element: (
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
+    ),
+  },
+])
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

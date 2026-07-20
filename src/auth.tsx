@@ -13,6 +13,7 @@ import {
   ApiError,
   SERVICE_CONFIGURATION_ERROR_MESSAGE,
   apiErrorCode,
+  apiRequestId,
   isServiceConfigurationError,
   login,
   setPassword,
@@ -52,6 +53,7 @@ export function ProtectedRoute() {
         <h1 className="font-heading text-2xl font-semibold">BioModals is unavailable</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           We couldn&apos;t check your session. Check the connection and try again.
+          {apiRequestId(user.error) ? ` Support ID: ${apiRequestId(user.error)}.` : ""}
         </p>
         <Button className="mt-6" onClick={() => void user.refetch()}>
           Try again
@@ -107,9 +109,15 @@ export function LoginForm({ onSuccess, submitLabel = "Sign in" }: LoginFormProps
   const error = mutation.error
     ? isServiceConfigurationError(mutation.error)
       ? SERVICE_CONFIGURATION_ERROR_MESSAGE
+      : apiErrorCode(mutation.error) === "authentication_busy"
+      ? "Sign in is temporarily busy. Wait a moment and try again."
       : mutation.error instanceof ApiError && mutation.error.status === 401
       ? "Email or password is incorrect."
-      : "Sign in failed. Check the connection and try again."
+      : `Sign in failed. Check the connection and try again.${
+          apiRequestId(mutation.error)
+            ? ` Support ID: ${apiRequestId(mutation.error)}.`
+            : ""
+        }`
     : null
 
   return (
@@ -303,9 +311,15 @@ export function SetPasswordPage() {
       ? SERVICE_CONFIGURATION_ERROR_MESSAGE
       : errorCode === "password_link_invalid"
       ? "This password link is invalid or expired. Ask your administrator for a new link."
+      : errorCode === "authentication_busy"
+      ? "Password setup is temporarily busy. Wait a moment and try again."
       : passwordError
         ? null
-        : "Your password could not be set. Check the connection and try again."
+        : `Your password could not be set. Check the connection and try again.${
+            apiRequestId(mutation.error)
+              ? ` Support ID: ${apiRequestId(mutation.error)}.`
+              : ""
+          }`
     : null
   const passwordType = showPassword ? "text" : "password"
 

@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test"
 
-import { ApiError, apiErrorCode, csrfToken, MissingCsrfError, readCookie } from "../src/api/client"
+import {
+  ApiError,
+  apiErrorCode,
+  apiRequestId,
+  csrfToken,
+  MissingCsrfError,
+  readCookie,
+} from "../src/api/client"
 import {
   REAUTHENTICATION_REQUIRED,
   isReauthenticationRequired,
@@ -55,6 +62,11 @@ describe("coded API errors", () => {
       "password_link_invalid"
     )
     expect(apiErrorCode(new ApiError(400, { code: 3, detail: "Broken" }))).toBeNull()
+  })
+
+  test("retains the request ID supplied by the API", () => {
+    expect(apiRequestId(new ApiError(500, undefined, "request-123"))).toBe("request-123")
+    expect(apiRequestId(new Error("not an API error"))).toBeNull()
   })
 
   test("reauthenticates for missing sessions and rejected CSRF", () => {

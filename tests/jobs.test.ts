@@ -6,8 +6,11 @@ import {
   filterAndSortJobs,
   gromacsStageTimeline,
   isActiveJob,
+  isPollableJob,
   isJobNotCancellableError,
   isJobUnavailableError,
+  jobTableSearchParams,
+  jobTableViewFromSearchParams,
   jobFailureMessage,
   jobPollingInterval,
   jobPresentation,
@@ -38,14 +41,17 @@ describe("Job lifecycle presentation", () => {
     expect(isActiveJob("cancel_requested")).toBeTrue()
     expect(isActiveJob("partial")).toBeFalse()
     expect(isActiveJob("cancelled")).toBeFalse()
+    expect(isPollableJob("blocked")).toBeTrue()
   })
 
   test("uses the agreed active polling cadence", () => {
     const running = job("one", "running", "2026-07-17T00:00:00Z")
     const complete = job("two", "succeeded", "2026-07-17T00:00:00Z")
+    const blocked = job("three", "blocked", "2026-07-17T00:00:00Z")
 
     expect(jobPollingInterval(running, "visible")).toBe(10_000)
     expect(jobPollingInterval(running, "hidden")).toBe(60_000)
+    expect(jobPollingInterval(blocked, "visible")).toBe(10_000)
     expect(jobPollingInterval(complete, "visible")).toBeFalse()
   })
 
@@ -117,31 +123,34 @@ describe("Job lifecycle presentation", () => {
     expect(jobPresentation.finalizing.label).toBe("Preparing result")
     expect(jobPresentation.partial.label).toBe("Completed with warnings")
     expect(jobPresentation.succeeded.label).toBe("Completed")
+    expect(jobPresentation.blocked.label).toBe("Result temporarily unavailable")
   })
 
   test("shows completed, current, and upcoming GROMACS stages", () => {
     const running = {
       ...job("one", "running", "2026-07-17T00:00:00Z"),
       stage: {
-        code: "npt_analysis" as const,
+        code: "analyze_npt" as const,
         function_name: "collect_traj_stats" as const,
         started_at: "2026-07-17T00:04:00Z",
       },
       stage_history: [
         {
-          code: "preparation" as const,
+          code: "prepare_simulation" as const,
           function_name: "prepare_tpr_gpu" as const,
           started_at: "2026-07-17T00:00:00Z",
-          completed_at: "2026-07-17T00:02:00Z",
+          ended_at: "2026-07-17T00:02:00Z",
+          outcome: "completed" as const,
         },
         {
-          code: "nvt_analysis" as const,
+          code: "analyze_nvt" as const,
           function_name: "collect_traj_stats" as const,
           started_at: "2026-07-17T00:02:00Z",
-          completed_at: "2026-07-17T00:04:00Z",
+          ended_at: "2026-07-17T00:04:00Z",
+          outcome: "completed" as const,
         },
         {
-          code: "npt_analysis" as const,
+          code: "analyze_npt" as const,
           function_name: "collect_traj_stats" as const,
           started_at: "2026-07-17T00:04:00Z",
         },
@@ -157,27 +166,36 @@ describe("Job lifecycle presentation", () => {
       "upcoming",
     ])
     expect(gromacsStageTimeline(running)[0]?.label).toBe(
-      "Prepare and equilibrate simulation"
+      "Prepare simulation"
     )
     expect(gromacsStageTimeline(running)[2]?.functionName).toBe(
       "collect_traj_stats"
     )
     expect(gromacsStageTimeline(running)[0]).toMatchObject({
       startedAt: "2026-07-17T00:00:00Z",
-      completedAt: "2026-07-17T00:02:00Z",
+      endedAt: "2026-07-17T00:02:00Z",
     })
     expect(gromacsStageTimeline(running)[2]).toMatchObject({
       startedAt: "2026-07-17T00:04:00Z",
-      completedAt: null,
+      endedAt: null,
     })
 
-    expect(
-      gromacsStageTimeline({
-        ...running,
-        state: "succeeded",
-        stage: { code: "result_packaging" },
-      }).every((stage) => stage.state === "completed")
-    ).toBeTrue()
+    const incompleteHistory = gromacsStageTimeline({
+      ...running,
+      state: "succeeded",
+      stage: {
+        code: "prepare_result",
+        started_at: "2026-07-17T00:05:00Z",
+      },
+    })
+    expect(incompleteHistory.map((stage) => stage.state)).toEqual([
+      "completed",
+      "completed",
+      "upcoming",
+      "upcoming",
+      "upcoming",
+      "current",
+    ])
   })
 
   test("filters and sorts every Job History column without mutating jobs", () => {
@@ -219,5 +237,44 @@ describe("Job lifecycle presentation", () => {
       ).map((candidate) => candidate.job_id)
     ).toEqual(["older", "newer"])
     expect(input.map((candidate) => candidate.job_id)).toEqual(["older", "newer"])
+  })
+
+  test("round-trips non-default table state and normalizes malformed parameters", () => {
+    const view = jobTableViewFromSearchParams(
+      new URLSearchParams(
+        "job=kinase&tool=gromacs&status=blocked&created=2026-07-17&sort=updated&direction=ascending&unknown=x"
+      ),
+      ["gromacs"]
+    )
+
+    expect(view.filters).toEqual({
+      job: "kinase",
+      tool: "gromacs",
+      status: "blocked",
+      created: "2026-07-17",
+      updated: "",
+    })
+    expect(view.sort).toEqual({ column: "updated", direction: "ascending" })
+    expect(view.normalized.toString()).toBe(
+      "job=kinase&tool=gromacs&status=blocked&created=2026-07-17&sort=updated&direction=ascending"
+    )
+
+    const malformed = jobTableViewFromSearchParams(
+      new URLSearchParams(
+        "tool=unknown&status=imaginary&created=2026-02-31&sort=nope&direction=sideways"
+      ),
+      ["gromacs"]
+    )
+    expect(malformed.filters).toEqual({
+      job: "",
+      tool: "",
+      status: "",
+      created: "",
+      updated: "",
+    })
+    expect(malformed.normalized.toString()).toBe("")
+    expect(
+      jobTableSearchParams(malformed.filters, malformed.sort).toString()
+    ).toBe("")
   })
 })

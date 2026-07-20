@@ -22,6 +22,7 @@ const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
 const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
+const StorageAdminPage = lazy(() => import("@/pages/admin/StorageAdminPage"))
 const UsersAdminPage = lazy(() => import("@/pages/admin/UsersAdminPage"))
 
 function LandingPage() {
@@ -151,6 +152,7 @@ export default function App() {
                 <Route element={<Navigate replace to="users" />} index />
                 <Route element={<UsersAdminPage />} path="users" />
                 <Route element={<ModalAdminPage />} path="modal" />
+                <Route element={<StorageAdminPage />} path="storage" />
               </Route>
             </Route>
           </Route>

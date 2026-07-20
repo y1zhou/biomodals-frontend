@@ -8,12 +8,13 @@ import {
   UserRound,
   Wrench,
 } from "lucide-react"
-import { Link, Outlet, useNavigate } from "react-router"
+import { Link, Outlet, ScrollRestoration, useNavigate } from "react-router"
 
 import {
   ApiError,
   SERVICE_CONFIGURATION_ERROR_MESSAGE,
   apiErrorCode,
+  apiRequestId,
   isServiceConfigurationError,
   logout,
   MissingCsrfError,
@@ -36,7 +37,7 @@ export function Brand() {
       <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
         <FlaskConical aria-hidden="true" className="size-4" />
       </span>
-      BioModals
+      <span className="hidden sm:inline">BioModals</span>
     </Link>
   )
 }
@@ -77,19 +78,30 @@ export default function AppShell() {
 
   return (
     <div className="min-h-svh">
+      <ScrollRestoration />
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:sticky supports-[backdrop-filter]:top-0 supports-[backdrop-filter]:z-40">
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-4 px-6 lg:px-8">
           <Brand />
           <nav aria-label="Primary" className="flex items-center gap-1">
-            <Link className={buttonVariants({ variant: "ghost" })} to="/">
+            <Link
+              aria-label="Tools"
+              className={buttonVariants({ variant: "ghost" })}
+              title="Tools"
+              to="/"
+            >
               <Wrench aria-hidden="true" data-icon="inline-start" />
-              Tools
+              <span className="hidden sm:inline">Tools</span>
             </Link>
             {currentUser ? (
               <>
-                <Link className={buttonVariants({ variant: "ghost" })} to="/jobs">
+                <Link
+                  aria-label="My Jobs"
+                  className={buttonVariants({ variant: "ghost" })}
+                  title="My Jobs"
+                  to="/jobs"
+                >
                   <BriefcaseBusiness aria-hidden="true" data-icon="inline-start" />
-                  My Jobs
+                  <span className="hidden sm:inline">My Jobs</span>
                 </Link>
                 <Menu.Root>
                   <Menu.Trigger className="ml-1 flex size-9 cursor-pointer items-center justify-center rounded-full border bg-muted text-sm font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
@@ -127,7 +139,11 @@ export default function AppShell() {
                           <p aria-live="polite" className="px-2 py-1 text-xs text-destructive">
                             {isServiceConfigurationError(logoutMutation.error)
                               ? SERVICE_CONFIGURATION_ERROR_MESSAGE
-                              : "Sign out failed. Try again."}
+                              : `Sign out failed. Try again.${
+                                  apiRequestId(logoutMutation.error)
+                                    ? ` Support ID: ${apiRequestId(logoutMutation.error)}.`
+                                    : ""
+                                }`}
                           </p>
                         ) : null}
                       </Menu.Popup>

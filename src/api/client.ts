@@ -18,6 +18,8 @@ export type UpdateAdminModalEnvironmentInput =
   components["schemas"]["UpdateAdminModalEnvironmentRequest"]
 export type UpdateAdminModalToolInput =
   components["schemas"]["UpdateAdminModalToolRequest"]
+export type AdminStorage = components["schemas"]["AdminStorageView"]
+export type AdminCacheCleanup = components["schemas"]["AdminCacheCleanupView"]
 
 export const SERVICE_CONFIGURATION_ERROR_MESSAGE =
   "BioModals is not configured to accept requests from this site. Contact an administrator."
@@ -33,12 +35,14 @@ export interface GromacsSubmission {
 
 export class ApiError extends Error {
   readonly body: unknown
+  readonly requestId: string | null
   readonly status: number
 
-  constructor(status: number, body?: unknown) {
+  constructor(status: number, body?: unknown, requestId: string | null = null) {
     super(apiErrorMessage(body) ?? `Request failed with status ${status}`)
     this.name = "ApiError"
     this.body = body
+    this.requestId = requestId
     this.status = status
   }
 }
@@ -58,6 +62,10 @@ export function apiErrorCode(error: unknown) {
 
 export function isServiceConfigurationError(error: unknown) {
   return apiErrorCode(error) === "origin_not_allowed"
+}
+
+export function apiRequestId(error: unknown) {
+  return error instanceof ApiError ? error.requestId : null
 }
 
 function apiErrorMessage(body: unknown) {
@@ -83,7 +91,13 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   })
   const body = await responseBody(response)
 
-  if (!response.ok) throw new ApiError(response.status, body)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      body,
+      response.headers.get("X-Request-ID")
+    )
+  }
   return body as T
 }
 
@@ -217,6 +231,31 @@ export function updateAdminModalTool(
   )
 }
 
+export function inspectAdminStorage(signal?: AbortSignal) {
+  return requestJson<AdminStorage>("/api/v1/admin/storage", { signal })
+}
+
+export function clearAdminResultCache() {
+  return requestJson<AdminCacheCleanup>("/api/v1/admin/storage/cache/clear", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken() },
+  })
+}
+
+export function prepareJobDownload(jobId: string) {
+  return requestJson<undefined>(
+    `/api/v1/jobs/${encodeURIComponent(jobId)}/prepare-download`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken() },
+    }
+  )
+}
+
+export function jobDownloadUrl(jobId: string) {
+  return `/api/v1/jobs/${encodeURIComponent(jobId)}/download`
+}
+
 function xhrBody(xhr: XMLHttpRequest) {
   return xhr.response ?? undefined
 }
@@ -257,11 +296,19 @@ export function submitGromacsJob(
       signal.removeEventListener("abort", abort)
       const body = xhrBody(xhr)
       if (xhr.status >= 200 && xhr.status < 300) resolve(body as Job)
-      else reject(new ApiError(xhr.status, body))
+      else {
+        reject(
+          new ApiError(
+            xhr.status,
+            body,
+            xhr.getResponseHeader("X-Request-ID")
+          )
+        )
+      }
     })
     xhr.addEventListener("error", () => {
       signal.removeEventListener("abort", abort)
-      reject(new ApiError(0))
+      reject(new ApiError(0, undefined, xhr.getResponseHeader("X-Request-ID")))
     })
     xhr.addEventListener("abort", () => {
       signal.removeEventListener("abort", abort)

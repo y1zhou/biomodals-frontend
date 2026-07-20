@@ -55,6 +55,40 @@ export interface paths {
         readonly patch: operations["update_modal_tool_api_v1_admin_modal_tools__workload__patch"];
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/storage": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Storage Configuration */
+        readonly get: operations["storage_configuration_api_v1_admin_storage_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/admin/storage/cache/clear": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Clear Result Cache */
+        readonly post: operations["clear_result_cache_api_v1_admin_storage_cache_clear_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/users": {
         readonly parameters: {
             readonly query?: never;
@@ -192,6 +226,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/health": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Health */
+        readonly get: operations["health_api_v1_health_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/jobs": {
         readonly parameters: {
             readonly query?: never;
@@ -260,10 +311,72 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/jobs/{job_id}/prepare-download": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Prepare Download */
+        readonly post: operations["prepare_download_api_v1_jobs__job_id__prepare_download_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/ready": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Ready */
+        readonly get: operations["ready_api_v1_ready_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AdminBlockedJobsView
+         * @description Safe aggregate of recoverable finalization failures.
+         */
+        readonly AdminBlockedJobsView: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            readonly category: "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity";
+            /** Count */
+            readonly count: number;
+            /**
+             * Oldest Blocked At
+             * Format: date-time
+             */
+            readonly oldest_blocked_at: string;
+        };
+        /**
+         * AdminCacheCleanupView
+         * @description Actual cache files and bytes removed by one explicit cleanup.
+         */
+        readonly AdminCacheCleanupView: {
+            /** Removed Bytes */
+            readonly removed_bytes: number;
+            /** Removed Entries */
+            readonly removed_entries: number;
+        };
         /**
          * AdminForbiddenResponse
          * @description Authenticated User lacks administrator access.
@@ -293,9 +406,9 @@ export interface components {
          */
         readonly AdminModalToolView: {
             readonly active_job_limit: components["schemas"]["IntegerSettingView"];
+            /** Active Jobs */
+            readonly active_jobs: number;
             readonly modal_app_name: components["schemas"]["TextSettingView"];
-            /** Running Jobs */
-            readonly running_jobs: number;
             /** Workload */
             readonly workload: string;
         };
@@ -304,6 +417,8 @@ export interface components {
          * @description Complete Modal Admin page document.
          */
         readonly AdminModalView: {
+            /** Blocked Jobs */
+            readonly blocked_jobs: readonly components["schemas"]["AdminBlockedJobsView"][];
             readonly environment: components["schemas"]["AdminModalEnvironmentView"];
             /** Tools */
             readonly tools: readonly components["schemas"]["AdminModalToolView"][];
@@ -341,11 +456,39 @@ export interface components {
         readonly AdminSettingInvalidResponse: {
             /**
              * Code
-             * @constant
+             * @enum {string}
              */
-            readonly code: "setting_invalid";
+            readonly code: "modal_preflight_failed" | "setting_invalid";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * AdminStorageView
+         * @description Durable Result and rebuildable local cache accounting.
+         */
+        readonly AdminStorageView: {
+            /** Free Bytes */
+            readonly free_bytes: number;
+            /** Local Cache Bytes */
+            readonly local_cache_bytes: number;
+            /** Local Cache Entries */
+            readonly local_cache_entries: number;
+            /** Over Warning Threshold */
+            readonly over_warning_threshold: boolean;
+            /** Published Result Bytes */
+            readonly published_result_bytes: number;
+            /** Published Result Entries */
+            readonly published_result_entries: number;
+            /** Reclaimable Bytes */
+            readonly reclaimable_bytes: number;
+            /** Reclaimable Entries */
+            readonly reclaimable_entries: number;
+            /** Staging Bytes */
+            readonly staging_bytes: number;
+            /** Staging Entries */
+            readonly staging_entries: number;
+            /** Warning Threshold Bytes */
+            readonly warning_threshold_bytes: number;
         };
         /**
          * AdminUserAlreadyExistsResponse
@@ -378,8 +521,6 @@ export interface components {
          * @description Administrator-visible identity and admission policy.
          */
         readonly AdminUserView: {
-            /** Active */
-            readonly active: boolean;
             /** Active Job Limit */
             readonly active_job_limit: number;
             /**
@@ -393,6 +534,7 @@ export interface components {
             readonly email: string;
             /** Is Admin */
             readonly is_admin: boolean;
+            readonly status: components["schemas"]["UserStatus"];
             /**
              * Updated At
              * Format: date-time
@@ -403,6 +545,19 @@ export interface components {
              * Format: uuid
              */
             readonly user_id: string;
+        };
+        /**
+         * AuthenticationBusyResponse
+         * @description Bounded Argon2 capacity is temporarily exhausted.
+         */
+        readonly AuthenticationBusyResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "authentication_busy";
+            /** Detail */
+            readonly detail: string;
         };
         /** Body_submit_job_api_v1_gromacs_jobs_post */
         readonly Body_submit_job_api_v1_gromacs_jobs_post: {
@@ -464,6 +619,11 @@ export interface components {
          * @description New User plus the one-time Password Link shown exactly once.
          */
         readonly CreatedAdminUserView: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            readonly expires_at: string;
             /** Password Link */
             readonly password_link: string;
             readonly user: components["schemas"]["AdminUserView"];
@@ -475,6 +635,17 @@ export interface components {
         readonly ErrorResponse: {
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * HealthView
+         * @description Minimal local service probe.
+         */
+        readonly HealthView: {
+            /**
+             * Status
+             * @constant
+             */
+            readonly status: "ok";
         };
         /** HTTPValidationError */
         readonly HTTPValidationError: {
@@ -531,25 +702,34 @@ export interface components {
              * Code
              * @enum {string}
              */
-            readonly code: "preparation" | "nvt_analysis" | "npt_analysis" | "production" | "production_analysis" | "result_packaging";
-            /** Completed At */
-            readonly completed_at?: string | null;
+            readonly code: "prepare_simulation" | "analyze_nvt" | "analyze_npt" | "run_production" | "analyze_production" | "prepare_result";
+            /** Ended At */
+            readonly ended_at?: string | null;
             /** Function Name */
             readonly function_name?: ("prepare_tpr_cpu" | "prepare_tpr_gpu" | "collect_traj_stats" | "production_run_cpu" | "production_run_gpu") | null;
-            /** Started At */
-            readonly started_at?: string | null;
+            /** Outcome */
+            readonly outcome?: ("completed" | "failed" | "cancelled") | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            readonly started_at: string;
         };
         /**
          * JobState
          * @description Durable provider-neutral job states.
          * @enum {string}
          */
-        readonly JobState: "queued" | "running" | "finalizing" | "cancel_requested" | "succeeded" | "partial" | "failed" | "cancelled";
+        readonly JobState: "queued" | "running" | "finalizing" | "cancel_requested" | "blocked" | "succeeded" | "partial" | "failed" | "cancelled";
         /**
          * JobView
          * @description Provider-neutral job details returned to a submitter.
          */
         readonly JobView: {
+            /** Blocked At */
+            readonly blocked_at?: string | null;
+            /** Cancel Requested At */
+            readonly cancel_requested_at?: string | null;
             /** Completed At */
             readonly completed_at?: string | null;
             /**
@@ -562,11 +742,13 @@ export interface components {
             /** Download Url */
             readonly download_url?: string | null;
             /** Error Code */
-            readonly error_code?: ("compute_failed" | "result_invalid" | "result_unavailable") | null;
+            readonly error_code?: ("compute_failed" | "result_invalid") | null;
             /** Error Message */
             readonly error_message?: string | null;
             /** Job Id */
             readonly job_id: string;
+            /** Next Retry At */
+            readonly next_retry_at?: string | null;
             readonly stage?: components["schemas"]["JobStageView"] | null;
             /** Stage History */
             readonly stage_history?: readonly components["schemas"]["JobStageView"][];
@@ -648,6 +830,11 @@ export interface components {
          * @description One newly issued one-time Password Link.
          */
         readonly PasswordLinkView: {
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            readonly expires_at: string;
             /** Password Link */
             readonly password_link: string;
         };
@@ -695,6 +882,58 @@ export interface components {
             readonly user_id: string;
         };
         /**
+         * ResultDownloadConflictResponse
+         * @description A prepared Result is not currently downloadable.
+         */
+        readonly ResultDownloadConflictResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "result_not_prepared" | "result_not_ready";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * ResultInvalidResponse
+         * @description A Result failed its immutable identity check.
+         */
+        readonly ResultInvalidResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "result_invalid";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * ResultPrepareConflictResponse
+         * @description A Result cannot currently be prepared.
+         */
+        readonly ResultPrepareConflictResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "result_invalid" | "result_not_ready";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * ResultStorageUnavailableResponse
+         * @description Local or authoritative Result storage is temporarily unavailable.
+         */
+        readonly ResultStorageUnavailableResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "result_storage_unavailable";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
          * SetPasswordRequest
          * @description One-time password setup or reset submission.
          */
@@ -714,6 +953,19 @@ export interface components {
              * @enum {string}
              */
             readonly code: "idempotency_conflict" | "active_job_limit_reached";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * SubmissionForbiddenResponse
+         * @description Account state changed after browser Session authentication.
+         */
+        readonly SubmissionForbiddenResponse: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            readonly code: "account_disabled" | "csrf_invalid" | "origin_not_allowed";
             /** Detail */
             readonly detail: string;
         };
@@ -769,13 +1021,19 @@ export interface components {
          * @description Editable User status and admission policy fields.
          */
         readonly UpdateAdminUserRequest: {
-            /** Active */
-            readonly active?: boolean | null;
             /** Active Job Limit */
             readonly active_job_limit?: number | null;
             /** Is Admin */
             readonly is_admin?: boolean | null;
+            /** Status */
+            readonly status?: ("enabled" | "disabled") | null;
         };
+        /**
+         * UserStatus
+         * @description Explicit account lifecycle independent of Administrator role.
+         * @enum {string}
+         */
+        readonly UserStatus: "pending_setup" | "enabled" | "disabled";
         /** ValidationError */
         readonly ValidationError: {
             /** Context */
@@ -810,6 +1068,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -819,6 +1079,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -828,10 +1090,23 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -855,6 +1130,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -864,6 +1141,8 @@ export interface operations {
             /** @description Bad Request */
             readonly 400: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -873,6 +1152,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -882,6 +1163,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -891,6 +1174,8 @@ export interface operations {
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -900,10 +1185,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -929,6 +1227,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -938,6 +1238,8 @@ export interface operations {
             /** @description Bad Request */
             readonly 400: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -947,6 +1249,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -956,6 +1260,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -965,6 +1271,8 @@ export interface operations {
             /** @description Not Found */
             readonly 404: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -974,6 +1282,8 @@ export interface operations {
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -983,10 +1293,169 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly storage_configuration_api_v1_admin_storage_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminStorageView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly clear_result_cache_api_v1_admin_storage_cache_clear_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminCacheCleanupView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1003,6 +1472,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1012,6 +1483,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1021,10 +1494,23 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1048,6 +1534,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 201: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1057,6 +1545,8 @@ export interface operations {
             /** @description Bad Request */
             readonly 400: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1066,6 +1556,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1075,6 +1567,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1084,6 +1578,8 @@ export interface operations {
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1093,10 +1589,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1122,6 +1631,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1131,6 +1642,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1140,6 +1653,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1149,6 +1664,8 @@ export interface operations {
             /** @description Not Found */
             readonly 404: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1158,6 +1675,8 @@ export interface operations {
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1167,10 +1686,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1192,6 +1724,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1201,6 +1735,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1210,6 +1746,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1219,6 +1757,8 @@ export interface operations {
             /** @description Not Found */
             readonly 404: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1228,6 +1768,8 @@ export interface operations {
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1237,10 +1779,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1263,6 +1818,8 @@ export interface operations {
                 headers: {
                     /** @description Sets the HttpOnly session cookie and the readable `biomodals-csrf` cookie used as `X-CSRF-Token`. */
                     readonly "Set-Cookie"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1272,6 +1829,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1281,6 +1840,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1290,10 +1851,36 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Seconds before retrying authentication. */
+                    readonly "Retry-After"?: number;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AuthenticationBusyResponse"];
                 };
             };
         };
@@ -1313,6 +1900,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 204: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content?: never;
@@ -1320,6 +1909,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1329,6 +1920,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1338,10 +1931,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1358,6 +1964,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1367,6 +1975,19 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1393,6 +2014,8 @@ export interface operations {
                 headers: {
                     /** @description Sets the HttpOnly session cookie and the readable `biomodals-csrf` cookie used as `X-CSRF-Token`. */
                     readonly "Set-Cookie"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1402,6 +2025,8 @@ export interface operations {
             /** @description Bad Request */
             readonly 400: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1411,6 +2036,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1420,10 +2047,36 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Seconds before retrying authentication. */
+                    readonly "Retry-After"?: number;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AuthenticationBusyResponse"];
                 };
             };
         };
@@ -1448,6 +2101,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 202: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1457,6 +2112,8 @@ export interface operations {
             /** @description Bad Request */
             readonly 400: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1466,6 +2123,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1475,15 +2134,19 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
+                    readonly "application/json": components["schemas"]["SubmissionForbiddenResponse"];
                 };
             };
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1493,6 +2156,8 @@ export interface operations {
             /** @description Content Too Large */
             readonly 413: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1502,19 +2167,67 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Service Unavailable */
             readonly 503: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ComputeUnavailableResponse"];
+                };
+            };
+        };
+    };
+    readonly health_api_v1_health_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HealthView"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1531,6 +2244,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1540,6 +2255,19 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1562,6 +2290,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 200: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1571,6 +2301,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1580,6 +2312,8 @@ export interface operations {
             /** @description Not Found */
             readonly 404: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1589,10 +2323,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1614,6 +2361,8 @@ export interface operations {
             /** @description Successful Response */
             readonly 202: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1623,6 +2372,8 @@ export interface operations {
             /** @description Unauthorized */
             readonly 401: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1632,6 +2383,8 @@ export interface operations {
             /** @description Forbidden */
             readonly 403: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1641,6 +2394,8 @@ export interface operations {
             /** @description Not Found */
             readonly 404: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1650,6 +2405,8 @@ export interface operations {
             /** @description Conflict */
             readonly 409: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1659,10 +2416,23 @@ export interface operations {
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -1683,6 +2453,8 @@ export interface operations {
                 headers: {
                     /** @description Browser attachment using the server-provided result filename. */
                     readonly "Content-Disposition"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
@@ -1696,19 +2468,237 @@ export interface operations {
                     readonly "Content-Disposition"?: string;
                     /** @description Byte range returned from the complete archive. */
                     readonly "Content-Range"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/zip": string;
                 };
             };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ResultDownloadConflictResponse"];
+                };
+            };
+            /** @description The requested byte range is invalid. */
+            readonly 416: {
+                headers: {
+                    /** @description Unsatisfied range and complete archive size. */
+                    readonly "Content-Range"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             readonly 422: {
                 headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Bad Gateway */
+            readonly 502: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ResultInvalidResponse"];
+                };
+            };
+        };
+    };
+    readonly prepare_download_api_v1_jobs__job_id__prepare_download_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 204: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ResultPrepareConflictResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ResultStorageUnavailableResponse"];
+                };
+            };
+        };
+    };
+    readonly ready_api_v1_ready_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HealthView"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

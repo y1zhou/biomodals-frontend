@@ -45,8 +45,12 @@ export function isActiveJob(state: JobState) {
   return activeJobStates.has(state)
 }
 
+export function isPollableJob(state: JobState) {
+  return isActiveJob(state) || state === "blocked"
+}
+
 export function jobPollingInterval(job: Job | undefined, visibility: DocumentVisibilityState) {
-  if (!job || !isActiveJob(job.state)) return false
+  if (!job || !isPollableJob(job.state)) return false
   return visibility === "hidden" ? 60_000 : 10_000
 }
 
@@ -75,7 +79,7 @@ export function isJobNotCancellableError(error: unknown) {
   return apiErrorCode(error) === "job_not_cancellable"
 }
 
-const jobErrorCodes = new Set(["compute_failed", "result_invalid", "result_unavailable"])
+const jobErrorCodes = new Set(["compute_failed", "result_invalid"])
 
 export function jobFailureMessage(job: Job) {
   if (
@@ -94,19 +98,18 @@ const gromacsStageDefinitions: readonly {
   code: JobStage["code"]
   label: string
 }[] = [
-  { code: "preparation", label: "Prepare and equilibrate simulation" },
-  { code: "nvt_analysis", label: "Analyze NVT equilibration" },
-  { code: "npt_analysis", label: "Analyze NPT equilibration" },
-  { code: "production", label: "Run production simulation" },
-  { code: "production_analysis", label: "Analyze production trajectory" },
-  { code: "result_packaging", label: "Prepare result archive" },
+  { code: "prepare_simulation", label: "Prepare simulation" },
+  { code: "analyze_nvt", label: "Analyze NVT" },
+  { code: "analyze_npt", label: "Analyze NPT" },
+  { code: "run_production", label: "Run production" },
+  { code: "analyze_production", label: "Analyze production" },
+  { code: "prepare_result", label: "Prepare result" },
 ]
 
 export function gromacsStageTimeline(job: Job) {
   const currentIndex = gromacsStageDefinitions.findIndex(
     ({ code }) => code === job.stage?.code
   )
-  const completed = job.state === "succeeded" || job.state === "partial"
   const stageHistory = new Map(
     (job.stage_history ?? []).map((stage) => [stage.code, stage])
   )
@@ -116,14 +119,18 @@ export function gromacsStageTimeline(job: Job) {
     return {
       ...stage,
       functionName:
-        index === currentIndex ? (job.stage?.function_name ?? null) : null,
+        timing?.function_name ??
+        (index === currentIndex ? (job.stage?.function_name ?? null) : null),
       startedAt: timing?.started_at ?? null,
-      completedAt: timing?.completed_at ?? null,
+      endedAt: timing?.ended_at ?? null,
+      outcome: timing?.outcome ?? null,
       state:
-        completed ||
-        Boolean(timing?.completed_at) ||
-        (currentIndex >= 0 && index < currentIndex)
+        timing?.outcome === "completed"
           ? ("completed" as const)
+          : timing?.outcome === "failed"
+            ? ("failed" as const)
+            : timing?.outcome === "cancelled"
+              ? ("cancelled" as const)
           : index === currentIndex
             ? ("current" as const)
             : ("upcoming" as const),
@@ -137,7 +144,7 @@ export const jobPresentation: Record<
 > = {
   queued: {
     label: "Queued",
-    description: "This simulation is waiting for remote capacity.",
+    description: "This job was accepted and is waiting to start.",
     className: "border-slate-300 bg-slate-100 text-slate-800",
   },
   running: {
@@ -153,6 +160,11 @@ export const jobPresentation: Record<
   cancel_requested: {
     label: "Cancellation requested",
     description: "BioModals asked the remote work to stop. The simulation may still complete first.",
+    className: "border-amber-300 bg-amber-50 text-amber-900",
+  },
+  blocked: {
+    label: "Result temporarily unavailable",
+    description: "The simulation output is preserved while BioModals retries result preparation. An administrator may need to repair the service.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
   succeeded: {
@@ -182,6 +194,95 @@ export type JobTableFilters = Record<JobTableColumn, string>
 export interface JobTableSort {
   column: JobTableColumn
   direction: "ascending" | "descending"
+}
+
+export const defaultJobTableSort: JobTableSort = {
+  column: "created",
+  direction: "descending",
+}
+
+export const emptyJobTableFilters: JobTableFilters = {
+  job: "",
+  tool: "",
+  status: "",
+  created: "",
+  updated: "",
+}
+
+const jobTableColumns = new Set<JobTableColumn>([
+  "job",
+  "tool",
+  "status",
+  "created",
+  "updated",
+])
+const jobStates = new Set<JobState>([
+  "queued",
+  "running",
+  "finalizing",
+  "cancel_requested",
+  "blocked",
+  "succeeded",
+  "partial",
+  "failed",
+  "cancelled",
+])
+
+function validDateFilter(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return ""
+  const date = new Date(`${value}T00:00:00Z`)
+  return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== value
+    ? ""
+    : value
+}
+
+export function jobTableViewFromSearchParams(
+  searchParams: URLSearchParams,
+  workloads: readonly string[]
+) {
+  const workloadSet = new Set(workloads)
+  const rawColumn = searchParams.get("sort")
+  const rawDirection = searchParams.get("direction")
+  const column = jobTableColumns.has(rawColumn as JobTableColumn)
+    ? (rawColumn as JobTableColumn)
+    : defaultJobTableSort.column
+  const direction = rawDirection === "ascending" || rawDirection === "descending"
+    ? rawDirection
+    : defaultJobTableSort.direction
+  const tool = searchParams.get("tool") ?? ""
+  const status = searchParams.get("status") ?? ""
+  const filters: JobTableFilters = {
+    job: (searchParams.get("job") ?? "").trim(),
+    tool: workloadSet.has(tool) ? tool : "",
+    status: jobStates.has(status as JobState) ? status : "",
+    created: validDateFilter(searchParams.get("created")),
+    updated: validDateFilter(searchParams.get("updated")),
+  }
+  const sort = { column, direction } satisfies JobTableSort
+  return {
+    filters,
+    sort,
+    normalized: jobTableSearchParams(filters, sort),
+  }
+}
+
+export function jobTableSearchParams(
+  filters: JobTableFilters,
+  sort: JobTableSort
+) {
+  const params = new URLSearchParams()
+  for (const column of ["job", "tool", "status", "created", "updated"] as const) {
+    const value = filters[column].trim()
+    if (value) params.set(column, value)
+  }
+  if (
+    sort.column !== defaultJobTableSort.column ||
+    sort.direction !== defaultJobTableSort.direction
+  ) {
+    params.set("sort", sort.column)
+    params.set("direction", sort.direction)
+  }
+  return params
 }
 
 function jobSortValue(

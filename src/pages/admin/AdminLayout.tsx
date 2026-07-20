@@ -1,4 +1,4 @@
-import { CloudCog, ShieldCheck, UsersRound } from "lucide-react"
+import { CloudCog, HardDrive, ShieldCheck, UsersRound } from "lucide-react"
 import { NavLink, Outlet } from "react-router"
 
 import { cn } from "@/lib/utils"
@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 const links = [
   { to: "/admin/users", label: "Users", icon: UsersRound },
   { to: "/admin/modal", label: "Modal", icon: CloudCog },
+  { to: "/admin/storage", label: "Storage", icon: HardDrive },
 ] as const
 
 export default function AdminLayout() {
@@ -23,7 +24,7 @@ export default function AdminLayout() {
         </div>
       </div>
 
-      <nav aria-label="Admin" className="mt-8 flex gap-1 border-b">
+      <nav aria-label="Admin" className="mt-8 flex gap-1 overflow-x-auto border-b">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             className={({ isActive }) =>

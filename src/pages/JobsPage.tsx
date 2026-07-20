@@ -13,16 +13,17 @@ import {
   Plus,
   RefreshCw,
 } from "lucide-react"
-import { useEffect, useState, type ReactNode } from "react"
-import { Link } from "react-router"
+import { useEffect, type ReactNode } from "react"
+import { Link, useSearchParams } from "react-router"
 
-import { ApiError, inspectJob, listJobs, type Job } from "@/api/client"
+import { ApiError, apiRequestId, inspectJob, listJobs, type Job } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   filterAndSortJobs,
+  emptyJobTableFilters,
   formatTimestamp,
   isActiveJob,
   jobKey,
@@ -30,10 +31,11 @@ import {
   jobPollingInterval,
   latestJob,
   jobPresentation,
+  jobTableSearchParams,
+  jobTableViewFromSearchParams,
   shouldRetryJobQuery,
   useDocumentVisibility,
   type JobTableColumn,
-  type JobTableFilters,
   type JobTableSort,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
@@ -99,7 +101,9 @@ function JobRow({
       <td className="px-4 py-4 align-top">
         <JobStatusBadge state={job.state} />
         {jobQuery.isError ? (
-          <p className="mt-1 text-xs text-amber-700">Refresh failed</p>
+          <p className="mt-1 text-xs text-amber-700">
+            Refresh failed{apiRequestId(jobQuery.error) ? ` · Support ID ${apiRequestId(jobQuery.error)}` : ""}
+          </p>
         ) : null}
       </td>
       <td className="px-4 py-4 align-top text-sm text-muted-foreground">
@@ -112,13 +116,6 @@ function JobRow({
   )
 }
 
-const emptyFilters: JobTableFilters = {
-  job: "",
-  tool: "",
-  status: "",
-  created: "",
-  updated: "",
-}
 const filterSelectClassName =
   "h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
 
@@ -191,11 +188,11 @@ function SortableHeader({
 
 export default function JobsPage() {
   const visibility = useDocumentVisibility()
-  const [filters, setFilters] = useState<JobTableFilters>(emptyFilters)
-  const [sort, setSort] = useState<JobTableSort>({
-    column: "created",
-    direction: "descending",
-  })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { filters, normalized, sort } = jobTableViewFromSearchParams(
+    searchParams,
+    tools.map((tool) => tool.slug)
+  )
   const jobsQuery = useQuery({
     queryKey: jobListKey,
     queryFn: ({ signal }) => listJobs(signal),
@@ -207,6 +204,11 @@ export default function JobsPage() {
     },
   })
   useExpireSession(jobsQuery.error)
+
+  useEffect(() => {
+    if (searchParams.toString() === normalized.toString()) return
+    setSearchParams(normalized, { replace: true, preventScrollReset: true })
+  }, [normalized, searchParams, setSearchParams])
 
   if (jobsQuery.isPending) {
     return (
@@ -226,6 +228,7 @@ export default function JobsPage() {
         <h1 className="mt-5 font-heading text-3xl font-semibold">My Jobs could not be loaded</h1>
         <p className="mt-3 leading-7 text-muted-foreground">
           Check the connection and try again.
+          {apiRequestId(jobsQuery.error) ? ` Support ID: ${apiRequestId(jobsQuery.error)}.` : ""}
         </p>
         <Button className="mt-7" onClick={() => void jobsQuery.refetch()}>
           <RefreshCw aria-hidden="true" />
@@ -239,17 +242,24 @@ export default function JobsPage() {
   const filtersActive = Object.values(filters).some(Boolean)
 
   function updateFilter(column: JobTableColumn, value: string) {
-    setFilters((current) => ({ ...current, [column]: value }))
+    setSearchParams(
+      jobTableSearchParams({ ...filters, [column]: value }, sort),
+      { replace: true, preventScrollReset: true }
+    )
   }
 
   function updateSort(column: JobTableColumn) {
-    setSort((current) => ({
+    const nextSort: JobTableSort = {
       column,
       direction:
-        current.column === column && current.direction === "ascending"
+        sort.column === column && sort.direction === "ascending"
           ? "descending"
           : "ascending",
-    }))
+    }
+    setSearchParams(jobTableSearchParams(filters, nextSort), {
+      replace: true,
+      preventScrollReset: true,
+    })
   }
 
   return (
@@ -286,6 +296,7 @@ export default function JobsPage() {
         <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
           <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           My Jobs could not be refreshed. Showing the last loaded collection.
+          {apiRequestId(jobsQuery.error) ? ` Support ID: ${apiRequestId(jobsQuery.error)}.` : ""}
         </div>
       ) : null}
 
@@ -400,7 +411,12 @@ export default function JobsPage() {
                     {filtersActive ? (
                       <Button
                         className="ml-3"
-                        onClick={() => setFilters(emptyFilters)}
+                        onClick={() =>
+                          setSearchParams(
+                            jobTableSearchParams(emptyJobTableFilters, sort),
+                            { replace: true, preventScrollReset: true }
+                          )
+                        }
                         size="sm"
                         variant="outline"
                       >

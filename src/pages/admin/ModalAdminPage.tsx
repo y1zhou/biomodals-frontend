@@ -1,30 +1,58 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, Check, Copy, LoaderCircle, RotateCcw, Save } from "lucide-react"
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  LoaderCircle,
+  RefreshCw,
+  RotateCcw,
+  Save,
+} from "lucide-react"
 import { useEffect, useState, type ComponentProps, type FormEvent } from "react"
 
 import {
   adminModalKey,
   changedModalEnvironmentSettings,
   changedModalToolSettings,
+  nonnegativeInteger,
   settingSourceNote,
   type SettingSource,
 } from "@/admin"
 import {
   ApiError,
+  apiErrorCode,
+  apiRequestId,
   inspectAdminModal,
   updateAdminModalEnvironment,
   updateAdminModalTool,
+  type AdminModalEnvironment,
   type AdminModalTool,
+  type UpdateAdminModalEnvironmentInput,
+  type UpdateAdminModalToolInput,
 } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { formatTimestamp, useDocumentVisibility } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
+import { cn } from "@/lib/utils"
 import { toolName } from "@/tools"
 
 function errorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : "The Modal configuration request failed."
+  if (error instanceof ApiError) {
+    const expected = new Set([
+      "modal_preflight_failed",
+      "origin_not_allowed",
+      "setting_invalid",
+    ])
+    const support =
+      !expected.has(apiErrorCode(error) ?? "") && error.requestId
+        ? ` Support ID: ${error.requestId}.`
+        : ""
+    return `${error.message}${support}`
+  }
+  return "The Modal configuration request failed."
 }
 
 function SourceNote({ source }: { source: SettingSource }) {
@@ -51,8 +79,7 @@ function RuntimeSettingInput({
   setting: { editable: boolean; source: SettingSource; value: string | number }
   value: string
 }) {
-  const canRestore =
-    setting.source === "database" || value !== String(setting.value)
+  const canRestore = setting.source === "database" || value !== String(setting.value)
   const restoreDescription = `Restore ${label} to its configured default`
 
   return (
@@ -61,7 +88,7 @@ function RuntimeSettingInput({
         <Input
           {...inputProps}
           className={setting.editable ? "rounded-r-none" : undefined}
-          disabled={!setting.editable}
+          disabled={!setting.editable || pending}
           onChange={(event) => onChange(event.target.value)}
           value={value}
         />
@@ -73,16 +100,20 @@ function RuntimeSettingInput({
             onClick={() => {
               if (setting.source === "database") {
                 onRestoreOverride()
-                return
+              } else {
+                onChange(String(setting.value))
               }
-              onChange(String(setting.value))
             }}
             size="icon"
             title={restoreDescription}
             type="button"
             variant="outline"
           >
-            <RotateCcw aria-hidden="true" />
+            {pending ? (
+              <LoaderCircle aria-hidden="true" className="animate-spin" />
+            ) : (
+              <RotateCcw aria-hidden="true" />
+            )}
           </Button>
         ) : null}
       </div>
@@ -91,98 +122,145 @@ function RuntimeSettingInput({
   )
 }
 
-function ToolRow({
-  tool,
-  save,
-}: {
-  tool: AdminModalTool
-  save: ReturnType<typeof useToolUpdate>
-}) {
+function ToolRow({ tool }: { tool: AdminModalTool }) {
+  const queryClient = useQueryClient()
   const [appName, setAppName] = useState(tool.modal_app_name.value)
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
-  useEffect(
-    () => setAppName(tool.modal_app_name.value),
-    [tool.modal_app_name.source, tool.modal_app_name.value]
-  )
-  useEffect(
-    () => setActiveJobLimit(String(tool.active_job_limit.value)),
-    [tool.active_job_limit.source, tool.active_job_limit.value]
-  )
-  const saving = save.isPending
-  const rowError =
-    save.isError && save.variables?.workload === tool.workload ? save.error : null
-  const normalizedAppName = appName.trim()
-  const displayName = toolName(tool.workload)
+  const [appDirty, setAppDirty] = useState(false)
+  const [limitDirty, setLimitDirty] = useState(false)
+
+  function mutationOptions() {
+    return {
+      mutationFn: (input: UpdateAdminModalToolInput) =>
+        updateAdminModalTool(tool.workload, input),
+      scope: { id: `admin-modal-tool-${tool.workload}` },
+      onSuccess(result: AdminModalTool, input: UpdateAdminModalToolInput) {
+        if (Object.hasOwn(input, "modal_app_name")) {
+          setAppName(result.modal_app_name.value)
+          setAppDirty(false)
+        }
+        if (Object.hasOwn(input, "active_job_limit")) {
+          setActiveJobLimit(String(result.active_job_limit.value))
+          setLimitDirty(false)
+        }
+        void queryClient.invalidateQueries({ queryKey: adminModalKey })
+      },
+    }
+  }
+
+  const appUpdate = useMutation(mutationOptions())
+  const limitUpdate = useMutation(mutationOptions())
+  useExpireSession(appUpdate.error)
+  useExpireSession(limitUpdate.error)
+
+  const mutationIncludes = (
+    mutation: typeof appUpdate,
+    field: keyof UpdateAdminModalToolInput
+  ) =>
+    mutation.isPending &&
+    Boolean(mutation.variables && Object.hasOwn(mutation.variables, field))
+  const appPending =
+    mutationIncludes(appUpdate, "modal_app_name") ||
+    mutationIncludes(limitUpdate, "modal_app_name")
+  const limitPending =
+    mutationIncludes(appUpdate, "active_job_limit") ||
+    mutationIncludes(limitUpdate, "active_job_limit")
+  const mutationPending = appUpdate.isPending || limitUpdate.isPending
+  const mutationError = appUpdate.error ?? limitUpdate.error
+
+  useEffect(() => {
+    if (!appDirty) setAppName(tool.modal_app_name.value)
+  }, [appDirty, tool.modal_app_name.source, tool.modal_app_name.value])
+  useEffect(() => {
+    if (!limitDirty) setActiveJobLimit(String(tool.active_job_limit.value))
+  }, [limitDirty, tool.active_job_limit.source, tool.active_job_limit.value])
+
   const changedSettings = changedModalToolSettings(tool, appName, activeJobLimit)
+  const normalizedAppName = appName.trim()
+  const normalizedLimit = nonnegativeInteger(activeJobLimit)
+  const displayName = toolName(tool.workload)
   const hasChanges = Object.keys(changedSettings).length > 0
+  const overLimit = tool.active_jobs > tool.active_job_limit.value
 
   return (
     <tr className="border-b last:border-0">
       <td className="px-4 py-4 align-top text-sm font-medium">{displayName}</td>
       <td className="px-4 py-4 align-top">
         <RuntimeSettingInput
-          aria-label={`Modal app name for ${tool.workload}`}
+          aria-label={`Modal app name for ${displayName}`}
           label={`Modal app name for ${displayName}`}
-          onChange={setAppName}
-          onRestoreOverride={() =>
-            save.mutate({
-              workload: tool.workload,
-              input: { modal_app_name: null },
-            })
-          }
-          pending={saving}
+          onChange={(value) => {
+            setAppName(value)
+            setAppDirty(value.trim() !== tool.modal_app_name.value)
+          }}
+          onRestoreOverride={() => appUpdate.mutate({ modal_app_name: null })}
+          pending={appPending}
           setting={tool.modal_app_name}
           value={appName}
         />
       </td>
       <td className="px-4 py-4 align-top">
-        <div className="flex min-w-56 items-start gap-2">
-          <span className="flex h-8 items-center text-sm tabular-nums">
-            {tool.running_jobs} /
+        <div className="flex min-w-64 items-start gap-2">
+          <span
+            className={cn(
+              "flex h-8 items-center text-sm tabular-nums",
+              overLimit && "font-semibold text-amber-700"
+            )}
+          >
+            {tool.active_jobs} /
           </span>
           <div className="grow">
             <RuntimeSettingInput
               aria-label={`Active job limit for ${displayName}`}
               label={`active job limit for ${displayName}`}
-              min={1}
-              onChange={setActiveJobLimit}
-              onRestoreOverride={() =>
-                save.mutate({
-                  workload: tool.workload,
-                  input: { active_job_limit: null },
-                })
-              }
-              pending={saving}
+              min={0}
+              onChange={(value) => {
+                setActiveJobLimit(value)
+                setLimitDirty(
+                  nonnegativeInteger(value) !== tool.active_job_limit.value
+                )
+              }}
+              onRestoreOverride={() => limitUpdate.mutate({ active_job_limit: null })}
+              pending={limitPending}
               setting={tool.active_job_limit}
               type="number"
               value={activeJobLimit}
             />
+            {overLimit ? (
+              <p className="mt-1 text-xs font-medium text-amber-700">
+                Over limit; new jobs are blocked.
+              </p>
+            ) : null}
           </div>
           <Button
             aria-label={`Save Modal settings for ${displayName}`}
             disabled={
-              saving ||
+              mutationPending ||
               !hasChanges ||
-              Number(activeJobLimit) < 1 ||
-              (tool.modal_app_name.editable && !normalizedAppName) ||
-              (!tool.modal_app_name.editable && !tool.active_job_limit.editable)
+              normalizedLimit === null ||
+              (tool.modal_app_name.editable && !normalizedAppName)
             }
-            onClick={() =>
-              save.mutate({
-                workload: tool.workload,
-                input: changedSettings,
-              })
-            }
+            onClick={() => {
+              if (Object.hasOwn(changedSettings, "modal_app_name")) {
+                appUpdate.mutate(changedSettings)
+              } else {
+                limitUpdate.mutate(changedSettings)
+              }
+            }}
             size="icon"
             variant="outline"
           >
-            <Save aria-hidden="true" />
+            {mutationPending ? (
+              <LoaderCircle aria-hidden="true" className="animate-spin" />
+            ) : (
+              <Save aria-hidden="true" />
+            )}
           </Button>
         </div>
-        {rowError ? (
+        {mutationError ? (
           <p className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert">
             <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-            {errorMessage(rowError)}
+            {errorMessage(mutationError)}
           </p>
         ) : null}
       </td>
@@ -190,42 +268,59 @@ function ToolRow({
   )
 }
 
-function useToolUpdate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      workload,
-      input,
-    }: {
-      workload: string
-      input: Parameters<typeof updateAdminModalTool>[1]
-    }) => updateAdminModalTool(workload, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminModalKey }),
-  })
-}
-
 export default function ModalAdminPage() {
   const queryClient = useQueryClient()
+  const visibility = useDocumentVisibility()
   const modal = useQuery({
     queryKey: adminModalKey,
     queryFn: ({ signal }) => inspectAdminModal(signal),
+    refetchInterval: visibility === "visible" ? 10_000 : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   })
   const [environmentName, setEnvironmentName] = useState("")
   const [globalActiveJobLimit, setGlobalActiveJobLimit] = useState("")
+  const [environmentDirty, setEnvironmentDirty] = useState(false)
+  const [globalLimitDirty, setGlobalLimitDirty] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
-  const environmentUpdate = useMutation({
-    mutationFn: updateAdminModalEnvironment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminModalKey }),
-  })
-  const toolUpdate = useToolUpdate()
+  function environmentMutationOptions() {
+    return {
+      mutationFn: updateAdminModalEnvironment,
+      scope: { id: "admin-modal-environment" },
+      onSuccess(
+        result: AdminModalEnvironment,
+        input: UpdateAdminModalEnvironmentInput
+      ) {
+        if (Object.hasOwn(input, "modal_environment")) {
+          setEnvironmentName(result.modal_environment.value)
+          setEnvironmentDirty(false)
+        }
+        if (Object.hasOwn(input, "global_active_job_limit")) {
+          setGlobalActiveJobLimit(String(result.global_active_job_limit.value))
+          setGlobalLimitDirty(false)
+        }
+        void queryClient.invalidateQueries({ queryKey: adminModalKey })
+      },
+    }
+  }
+  const environmentUpdate = useMutation(environmentMutationOptions())
+  const globalLimitUpdate = useMutation(environmentMutationOptions())
   useExpireSession(modal.error)
   useExpireSession(environmentUpdate.error)
-  useExpireSession(toolUpdate.error)
+  useExpireSession(globalLimitUpdate.error)
+
   const environment = modal.data?.environment
-  const modalEnvironmentValue = environment?.modal_environment.value
-  const modalEnvironmentSource = environment?.modal_environment.source
-  const globalActiveJobLimitValue = environment?.global_active_job_limit.value
-  const globalActiveJobLimitSource = environment?.global_active_job_limit.source
+  useEffect(() => {
+    if (environment && !environmentDirty) {
+      setEnvironmentName(environment.modal_environment.value)
+    }
+  }, [environment, environmentDirty])
+  useEffect(() => {
+    if (environment && !globalLimitDirty) {
+      setGlobalActiveJobLimit(String(environment.global_active_job_limit.value))
+    }
+  }, [environment, globalLimitDirty])
+
   const changedEnvironmentSettings = environment
     ? changedModalEnvironmentSettings(
         environment,
@@ -234,20 +329,31 @@ export default function ModalAdminPage() {
       )
     : {}
   const environmentHasChanges = Object.keys(changedEnvironmentSettings).length > 0
-
-  useEffect(() => {
-    if (modalEnvironmentValue === undefined) return
-    setEnvironmentName(modalEnvironmentValue)
-  }, [modalEnvironmentSource, modalEnvironmentValue])
-  useEffect(() => {
-    if (globalActiveJobLimitValue === undefined) return
-    setGlobalActiveJobLimit(String(globalActiveJobLimitValue))
-  }, [globalActiveJobLimitSource, globalActiveJobLimitValue])
+  const environmentMutationIncludes = (
+    mutation: typeof environmentUpdate,
+    field: keyof UpdateAdminModalEnvironmentInput
+  ) =>
+    mutation.isPending &&
+    Boolean(mutation.variables && Object.hasOwn(mutation.variables, field))
+  const environmentPending =
+    environmentMutationIncludes(environmentUpdate, "modal_environment") ||
+    environmentMutationIncludes(globalLimitUpdate, "modal_environment")
+  const globalLimitPending =
+    environmentMutationIncludes(environmentUpdate, "global_active_job_limit") ||
+    environmentMutationIncludes(globalLimitUpdate, "global_active_job_limit")
+  const anyEnvironmentPending =
+    environmentUpdate.isPending || globalLimitUpdate.isPending
+  const environmentError = environmentUpdate.error ?? globalLimitUpdate.error
+  const normalizedGlobalLimit = nonnegativeInteger(globalActiveJobLimit)
 
   function saveEnvironment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!environment) return
-    environmentUpdate.mutate(changedEnvironmentSettings)
+    if (Object.hasOwn(changedEnvironmentSettings, "modal_environment")) {
+      environmentUpdate.mutate(changedEnvironmentSettings)
+    } else {
+      globalLimitUpdate.mutate(changedEnvironmentSettings)
+    }
   }
 
   if (modal.isPending) {
@@ -265,6 +371,44 @@ export default function ModalAdminPage() {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Last updated {formatTimestamp(modal.dataUpdatedAt)}
+        </p>
+        <Button
+          disabled={modal.isFetching}
+          onClick={() => void modal.refetch()}
+          variant="outline"
+        >
+          <RefreshCw aria-hidden="true" className={cn(modal.isFetching && "animate-spin")} />
+          Refresh
+        </Button>
+      </div>
+
+      {modal.isError ? (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
+          Modal status could not be refreshed. Showing the last loaded values.
+          {apiRequestId(modal.error) ? ` Support ID: ${apiRequestId(modal.error)}.` : ""}
+        </p>
+      ) : null}
+
+      {modal.data.blocked_jobs.length ? (
+        <Card className="border-amber-300 bg-amber-50 text-amber-950">
+          <CardHeader>
+            <CardTitle>Jobs needing administrator attention</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {modal.data.blocked_jobs.map((summary) => (
+                <li key={summary.category}>
+                  <span className="font-medium">{summary.count}</span> {summary.category.replaceAll("_", " ")} — oldest since {formatTimestamp(summary.oldest_blocked_at)}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Environment</CardTitle>
@@ -312,11 +456,16 @@ export default function ModalAdminPage() {
               <RuntimeSettingInput
                 id="modal-environment"
                 label="Modal environment"
-                onChange={setEnvironmentName}
+                onChange={(value) => {
+                  setEnvironmentName(value)
+                  setEnvironmentDirty(
+                    value.trim() !== modal.data.environment.modal_environment.value
+                  )
+                }}
                 onRestoreOverride={() =>
                   environmentUpdate.mutate({ modal_environment: null })
                 }
-                pending={environmentUpdate.isPending}
+                pending={environmentPending}
                 required
                 setting={modal.data.environment.modal_environment}
                 value={environmentName}
@@ -329,12 +478,18 @@ export default function ModalAdminPage() {
               <RuntimeSettingInput
                 id="global-active-job-limit"
                 label="global active job limit"
-                min={1}
-                onChange={setGlobalActiveJobLimit}
+                min={0}
+                onChange={(value) => {
+                  setGlobalActiveJobLimit(value)
+                  setGlobalLimitDirty(
+                    nonnegativeInteger(value) !==
+                      modal.data.environment.global_active_job_limit.value
+                  )
+                }}
                 onRestoreOverride={() =>
-                  environmentUpdate.mutate({ global_active_job_limit: null })
+                  globalLimitUpdate.mutate({ global_active_job_limit: null })
                 }
-                pending={environmentUpdate.isPending}
+                pending={globalLimitPending}
                 required
                 setting={modal.data.environment.global_active_job_limit}
                 type="number"
@@ -344,26 +499,28 @@ export default function ModalAdminPage() {
             <div className="flex justify-end lg:col-span-3">
               <Button
                 disabled={
-                  environmentUpdate.isPending ||
+                  anyEnvironmentPending ||
                   !environmentHasChanges ||
-                  Number(globalActiveJobLimit) < 1 ||
+                  normalizedGlobalLimit === null ||
                   (modal.data.environment.modal_environment.editable &&
-                    !environmentName.trim()) ||
-                  (!modal.data.environment.modal_environment.editable &&
-                    !modal.data.environment.global_active_job_limit.editable)
+                    !environmentName.trim())
                 }
                 type="submit"
                 variant="outline"
               >
-                <Save aria-hidden="true" />
+                {anyEnvironmentPending ? (
+                  <LoaderCircle aria-hidden="true" className="animate-spin" />
+                ) : (
+                  <Save aria-hidden="true" />
+                )}
                 Save
               </Button>
             </div>
           </form>
-          {environmentUpdate.error ? (
+          {environmentError ? (
             <p className="mt-4 flex items-center gap-2 text-sm text-destructive" role="alert">
               <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-              {errorMessage(environmentUpdate.error)}
+              {errorMessage(environmentError)}
             </p>
           ) : null}
         </CardContent>
@@ -380,19 +537,18 @@ export default function ModalAdminPage() {
                 <th className="px-4 py-3 font-medium" scope="col">Tool</th>
                 <th className="px-4 py-3 font-medium" scope="col">Deployed Modal app name</th>
                 <th className="px-4 py-3 font-medium" scope="col">
-                  Current running jobs / active job limit
+                  Active jobs / active job limit
                 </th>
               </tr>
             </thead>
             <tbody>
               {modal.data.tools.map((tool) => (
-                <ToolRow key={tool.workload} save={toolUpdate} tool={tool} />
+                <ToolRow key={tool.workload} tool={tool} />
               ))}
             </tbody>
           </table>
         </div>
       </section>
-
     </div>
   )
 }
