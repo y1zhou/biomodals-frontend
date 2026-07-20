@@ -28,7 +28,7 @@ route them to FastAPI.
 ```sh
 bun dev          # start Vite
 bun run lint     # run Oxlint
-bun test         # run Bun tests
+bun run test     # run Bun unit tests
 bun run build    # typecheck and build dist/
 bun run api:generate # regenerate types from the live local OpenAPI document
 bun run api:check    # fail when generated API types are stale

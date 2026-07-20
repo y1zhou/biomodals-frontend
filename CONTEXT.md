@@ -22,14 +22,22 @@ _Avoid_: Local Job, client-side Job
 A person with a BioModals account who owns and can return to Jobs.
 _Avoid_: Client, account
 
+**User Status**:
+The account-access state of a User: pending setup, enabled, or disabled.
+Disabling access is prospective: it preserves the User's existing Jobs and
+ownership while preventing authentication, Password Link use, and new
+Submissions.
+_Avoid_: Active flag, inactive User
+
 **Administrator**:
-An active User trusted to provision and manage Users and change non-secret
+An enabled User trusted to provision and manage Users and change non-secret
 Runtime Settings through the Admin interface.
 _Avoid_: service user, operator token
 
 **Password Link**:
 A one-time credential that authorizes a User to choose a password during initial
-Password Setup or an administrator-assisted Password Reset.
+Password Setup or an administrator-assisted Password Reset. It expires one hour
+after issuance and cannot be retrieved again after its handoff is closed.
 _Avoid_: Login link, invitation link
 
 **Password Setup**:
@@ -52,10 +60,28 @@ _Avoid_: Task, Modal call
 
 **Job Status**:
 The authoritative lifecycle state of a Job. The live states are queued,
-running, finalizing, cancel_requested, succeeded, partial, failed, and
-cancelled. Expired is planned for a retained Job whose Result has passed its
-retention period.
+running, finalizing, blocked, cancel_requested, succeeded, partial, failed,
+and cancelled. Expired is planned for a retained Job whose Result has passed
+its retention period.
 _Avoid_: Upload state, progress state
+
+**Active Job**:
+A queued, running, finalizing, or cancel_requested Job that counts against
+admission limits. A blocked Job is recoverable but is not an Active Job.
+_Avoid_: Non-terminal Job, Modal call
+
+**Blocked Job**:
+A recoverable Job whose scientific compute is preserved but whose Result needs
+an Administrator-fixable service problem resolved before finalization or exact
+published-Result recovery can continue. A previously succeeded Job may become
+blocked if its immutable Result can no longer be restored exactly.
+_Avoid_: Failed Job, stalled Job, queued Job
+
+**Blocking Category**:
+An Administrator-visible classification of the service problem preventing
+blocked Jobs from finalizing or restoring their exact published Result,
+reported only as aggregate operational data.
+_Avoid_: Job Error, Modal exception, User Job detail
 
 **Progress**:
 The latest known observation about active Job work, expressed as determinate
@@ -68,10 +94,16 @@ function associated with that step.
 _Avoid_: Job Status, Modal call
 
 **Stage History**:
-The ordered start and completion times that the backend retained while a Job
-moved through its workload-specific stages. It is a timing record, not a Modal
-call graph, provider log, or source of raw provider identifiers.
+The ordered started and finished times plus terminal outcomes that the backend
+retained while a Job moved through its workload-specific stages. Active and
+blocked stages have no finish time or outcome. It is not a Modal call graph,
+provider log, or source of raw provider identifiers.
 _Avoid_: Job Status, audit log, Modal call graph
+
+**Stage Outcome**:
+How a started Job Stage ended: completed, failed, or cancelled. It remains
+absent while that Stage is active or blocked.
+_Avoid_: Job Status, Progress
 
 **Job History**:
 The retained record through which a User finds current and past Jobs across all
@@ -86,13 +118,20 @@ _Avoid_: Payload
 The retrievable output of a succeeded or partial Job.
 _Avoid_: Response, artifact
 
+**Result Cache**:
+A rebuildable local copy of finalized Result data whose authoritative source
+remains on a remote Modal Volume.
+_Avoid_: Result retention, authoritative Result, Job deletion
+
 **Retry**:
 A new Submission that creates a linked Job using retained Input from an earlier
 failed Job.
 _Avoid_: Restart, rerun in place
 
 **Cancellation**:
-A best-effort request to stop an active Job without deleting its record.
+A durable best-effort request to stop an Active Job without deleting its
+record. It continues consuming Active Job Limits until the remote outcome is
+known and never becomes cancelled solely because time elapsed.
 _Avoid_: Deletion, request abort
 
 **Deletion**:
@@ -105,18 +144,19 @@ wait when execution capacity is full.
 _Avoid_: Active Job Limit, rate limit
 
 **User Active Job Limit**:
-A per-User bound on how many non-terminal Jobs the User may own across all
-Tools. A Submission beyond the limit is rejected before a Job is created.
+A per-User bound on how many Active Jobs the User may own across all Tools. A
+Submission beyond the limit is rejected before a Job is created.
 _Avoid_: Tool Active Job Limit, Capacity Limit, rate limit
 
 **Tool Active Job Limit**:
-A per-Tool bound on how many non-terminal Jobs may exist across all Users. A
+A per-Tool bound on how many Active Jobs may exist across all Users. A
 Submission beyond the limit is rejected before a Job is created.
 _Avoid_: User Active Job Limit, Modal container limit
 
 **Global Active Job Limit**:
-A service-wide bound on how many non-terminal Jobs may exist across all Users
-and Tools. A Submission beyond the limit is rejected before a Job is created.
+A deployment-local bound on how many Active Jobs may exist across all Users and
+Tools in one backend database. A Submission beyond the limit is rejected before
+a Job is created. It does not coordinate beta, production, or the Modal account.
 _Avoid_: Capacity Limit, concurrency limit
 
 **Runtime Setting**:
