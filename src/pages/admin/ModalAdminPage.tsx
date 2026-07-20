@@ -205,7 +205,10 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
             setAppName(value)
             setAppDirty(value.trim() !== tool.modal_app_name.value)
           }}
-          onRestoreOverride={() => appUpdate.mutate({ modal_app_name: null })}
+          onRestoreOverride={() => {
+            resetMutationErrors()
+            appUpdate.mutate({ modal_app_name: null })
+          }}
           pending={appPending}
           setting={tool.modal_app_name}
           value={appName}
@@ -233,7 +236,10 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
                   nonnegativeInteger(value) !== tool.active_job_limit.value
                 )
               }}
-              onRestoreOverride={() => limitUpdate.mutate({ active_job_limit: null })}
+              onRestoreOverride={() => {
+                resetMutationErrors()
+                limitUpdate.mutate({ active_job_limit: null })
+              }}
               pending={limitPending}
               setting={tool.active_job_limit}
               type="number"
@@ -484,9 +490,10 @@ export default function ModalAdminPage() {
                     value.trim() !== modal.data.environment.modal_environment.value
                   )
                 }}
-                onRestoreOverride={() =>
+                onRestoreOverride={() => {
+                  resetEnvironmentMutationErrors()
                   environmentUpdate.mutate({ modal_environment: null })
-                }
+                }}
                 pending={environmentPending}
                 required
                 setting={modal.data.environment.modal_environment}
@@ -509,9 +516,10 @@ export default function ModalAdminPage() {
                       modal.data.environment.global_active_job_limit.value
                   )
                 }}
-                onRestoreOverride={() =>
+                onRestoreOverride={() => {
+                  resetEnvironmentMutationErrors()
                   globalLimitUpdate.mutate({ global_active_job_limit: null })
-                }
+                }}
                 pending={globalLimitPending}
                 required
                 setting={modal.data.environment.global_active_job_limit}
