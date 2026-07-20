@@ -1,6 +1,7 @@
 # BioModals frontend
 
-Static React frontend for the BioModals web tools catalog. This repository owns
+Static React frontend for the BioModals web tools catalog. It works with the
+[BioModals backend](https://github.com/y1zhou/biomodals). This repository owns
 the browser application only; FastAPI and Caddy are deployed separately.
 
 ## Development
@@ -20,8 +21,42 @@ allowed reverse-proxy hostname and the Origin forwarded to FastAPI;
 `/api/*`, `/docs`, `/redoc`, and `/openapi.json`; do not expose this development
 server to an untrusted network. Use the same `BIOMODALS_PUBLIC_URL` in the
 backend's configured `.env` file.
-Production builds use same-origin `/api` URLs and expect the deployment proxy to
-route them to FastAPI.
+
+## Production deployment
+
+Build the static site reproducibly from the committed lockfile:
+
+```sh
+bun ci
+bun run lint
+bun test
+bun run api:check
+bun run build
+```
+
+Publish the contents of `dist/` at `/srv/aidd.y1zhou.com`. We recommend
+[Caddy](https://caddyserver.com/) for the static server, automatic HTTPS, and
+the same-origin API proxy. A minimal Caddyfile shape is:
+
+```caddyfile
+aidd.y1zhou.com {
+	encode zstd gzip
+	root * /srv/aidd.y1zhou.com
+
+	route {
+		reverse_proxy /api/* 127.0.0.1:8000
+		try_files {path} /index.html
+		file_server
+	}
+}
+```
+
+The `route` keeps API proxying ahead of the SPA fallback. Browser requests use
+relative `/api` URLs, so the build contains no production API hostname.
+Caddy configuration remains host-owned; this example does not modify the live
+Caddyfile. See the [production checklist](docs/deployment/production.md) and
+the backend's [deployment examples](https://github.com/y1zhou/biomodals/tree/main/deploy)
+before publishing a release.
 
 ## Commands
 
@@ -58,12 +93,7 @@ native browser controls for simple interactions such as file selection.
 - `docs/agents/` configures the issue tracker, triage vocabulary, and domain-doc
   layout used by engineering skills.
 
-The production build is a browser-routed SPA. Its static server must fall back
-to `index.html` for paths that do not match real files. Vite's preview server is
-for local verification, not production hosting. Whether `/docs` is exposed in
-production is a deployment-proxy decision outside this repository.
-
-The browser intentionally has no configurable API base URL and always uses
-relative `/api` URLs. `BIOMODALS_API_PROXY_TARGET` only configures Vite's local
-development proxy; the deployment reverse proxy serves the frontend and API
-under one origin.
+Vite's preview server is for local verification, not production hosting.
+Whether `/docs` is exposed in production is a deployment-proxy decision
+outside this repository.
+`BIOMODALS_API_PROXY_TARGET` only configures Vite's local development proxy.

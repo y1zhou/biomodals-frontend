@@ -276,8 +276,8 @@ deletes or rewrites state. An Administrator may stop the service and explicitly
 remove or relocate that exact pre-release database before starting fresh. The
 first new User must be provisioned as an Administrator.
 
-Pre-release and production use different absolute `BIOMODALS_API_CONF_ENV`
-files whose state and cache settings point to different host-local locations.
+Pre-release and production use distinct backend service configurations whose
+state and cache settings point to different host-local locations.
 Pre-release uses `https://beta.aidd.y1zhou.com` as its public URL; production
 uses `https://aidd.y1zhou.com`. Reset and Clear Result Cache guidance is scoped
 only to the pre-release configuration and must not touch production. The Modal
