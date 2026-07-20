@@ -156,6 +156,11 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
 
   const appUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
+  const resetMutationErrors = () => {
+    if (appUpdate.isPending || limitUpdate.isPending) return
+    appUpdate.reset()
+    limitUpdate.reset()
+  }
   useExpireSession(appUpdate.error)
   useExpireSession(limitUpdate.error)
 
@@ -196,6 +201,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           aria-label={`Modal app name for ${displayName}`}
           label={`Modal app name for ${displayName}`}
           onChange={(value) => {
+            resetMutationErrors()
             setAppName(value)
             setAppDirty(value.trim() !== tool.modal_app_name.value)
           }}
@@ -221,6 +227,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               label={`active job limit for ${displayName}`}
               min={0}
               onChange={(value) => {
+                resetMutationErrors()
                 setActiveJobLimit(value)
                 setLimitDirty(
                   nonnegativeInteger(value) !== tool.active_job_limit.value
@@ -314,6 +321,11 @@ export default function ModalAdminPage() {
   }
   const environmentUpdate = useMutation(environmentMutationOptions())
   const globalLimitUpdate = useMutation(environmentMutationOptions())
+  const resetEnvironmentMutationErrors = () => {
+    if (environmentUpdate.isPending || globalLimitUpdate.isPending) return
+    environmentUpdate.reset()
+    globalLimitUpdate.reset()
+  }
   useExpireSession(modal.error)
   useExpireSession(environmentUpdate.error)
   useExpireSession(globalLimitUpdate.error)
@@ -466,6 +478,7 @@ export default function ModalAdminPage() {
                 id="modal-environment"
                 label="Modal environment"
                 onChange={(value) => {
+                  resetEnvironmentMutationErrors()
                   setEnvironmentName(value)
                   setEnvironmentDirty(
                     value.trim() !== modal.data.environment.modal_environment.value
@@ -489,6 +502,7 @@ export default function ModalAdminPage() {
                 label="global active job limit"
                 min={0}
                 onChange={(value) => {
+                  resetEnvironmentMutationErrors()
                   setGlobalActiveJobLimit(value)
                   setGlobalLimitDirty(
                     nonnegativeInteger(value) !==
