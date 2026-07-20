@@ -14,6 +14,8 @@ import {
   adminModalKey,
   changedModalEnvironmentSettings,
   changedModalToolSettings,
+  mergeAdminModalEnvironment,
+  mergeAdminModalTool,
   nonnegativeInteger,
   settingSourceNote,
   type SettingSource,
@@ -25,6 +27,7 @@ import {
   inspectAdminModal,
   updateAdminModalEnvironment,
   updateAdminModalTool,
+  type AdminModal,
   type AdminModalEnvironment,
   type AdminModalTool,
   type UpdateAdminModalEnvironmentInput,
@@ -135,6 +138,9 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
         updateAdminModalTool(tool.workload, input),
       scope: { id: `admin-modal-tool-${tool.workload}` },
       onSuccess(result: AdminModalTool, input: UpdateAdminModalToolInput) {
+        queryClient.setQueryData<AdminModal>(adminModalKey, (modal) =>
+          modal ? mergeAdminModalTool(modal, result) : modal
+        )
         if (Object.hasOwn(input, "modal_app_name")) {
           setAppName(result.modal_app_name.value)
           setAppDirty(false)
@@ -291,6 +297,9 @@ export default function ModalAdminPage() {
         result: AdminModalEnvironment,
         input: UpdateAdminModalEnvironmentInput
       ) {
+        queryClient.setQueryData<AdminModal>(adminModalKey, (modal) =>
+          modal ? mergeAdminModalEnvironment(modal, result) : modal
+        )
         if (Object.hasOwn(input, "modal_environment")) {
           setEnvironmentName(result.modal_environment.value)
           setEnvironmentDirty(false)

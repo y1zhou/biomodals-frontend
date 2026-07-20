@@ -2,6 +2,7 @@ import type {
   AdminModal,
   AdminModalEnvironment,
   AdminModalTool,
+  AdminUser,
   UpdateAdminModalEnvironmentInput,
   UpdateAdminModalToolInput,
 } from "@/api/client"
@@ -9,6 +10,31 @@ import type {
 export const adminUsersKey = ["admin", "users"] as const
 export const adminModalKey = ["admin", "modal"] as const
 export const adminStorageKey = ["admin", "storage"] as const
+
+export function upsertAdminUser(users: AdminUser[], updated: AdminUser) {
+  const existing = users.findIndex((user) => user.user_id === updated.user_id)
+  if (existing === -1) return [...users, updated]
+  return users.map((user, index) => (index === existing ? updated : user))
+}
+
+export function mergeAdminModalEnvironment(
+  modal: AdminModal,
+  environment: AdminModalEnvironment
+): AdminModal {
+  return { ...modal, environment }
+}
+
+export function mergeAdminModalTool(
+  modal: AdminModal,
+  updated: AdminModalTool
+): AdminModal {
+  return {
+    ...modal,
+    tools: modal.tools.map((tool) =>
+      tool.workload === updated.workload ? updated : tool
+    ),
+  }
+}
 
 export type SettingSource =
   AdminModal["environment"]["modal_environment"]["source"]

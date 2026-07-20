@@ -7,14 +7,16 @@ import {
   Copy,
   LoaderCircle,
   Plus,
+  RefreshCw,
   Save,
 } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 
-import { adminUsersKey, nonnegativeInteger } from "@/admin"
+import { adminUsersKey, nonnegativeInteger, upsertAdminUser } from "@/admin"
 import {
   ApiError,
   apiErrorCode,
+  apiRequestId,
   createAdminPasswordLink,
   createAdminUser,
   listAdminUsers,
@@ -151,6 +153,9 @@ function useUserUpdate() {
     }) => updateAdminUser(userId, input),
     scope: { id: "admin-user-mutations" },
     onSuccess(user) {
+      queryClient.setQueryData<AdminUser[]>(adminUsersKey, (users) =>
+        upsertAdminUser(users ?? [], user)
+      )
       const current = authenticatedPrincipal(
         queryClient.getQueryData<CurrentUserState>(currentUserKey)
       )
@@ -270,6 +275,7 @@ function UserRow({
             <Input
               aria-label={`Active job limit for ${user.display_name}`}
               className="w-20"
+              disabled={busy}
               min={0}
               onChange={(event) => setActiveJobLimit(event.target.value)}
               type="number"
@@ -437,6 +443,9 @@ export default function UsersAdminPage() {
     gcTime: 0,
     scope: { id: "admin-user-mutations" },
     onSuccess(result) {
+      queryClient.setQueryData<AdminUser[]>(adminUsersKey, (users) =>
+        upsertAdminUser(users ?? [], result.user)
+      )
       setPasswordLink({
         displayName: result.user.display_name,
         email: result.user.email,
@@ -546,14 +555,40 @@ export default function UsersAdminPage() {
       </Card>
 
       <section aria-labelledby="users-heading">
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex items-center justify-between gap-4">
           <h2 className="font-heading text-xl font-semibold" id="users-heading">
             Users
           </h2>
-          {users.data ? (
-            <p className="text-sm text-muted-foreground">{users.data.length} total</p>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {users.data ? (
+              <p className="text-sm text-muted-foreground">{users.data.length} total</p>
+            ) : null}
+            <Button
+              disabled={users.isFetching}
+              onClick={() => void users.refetch()}
+              size="sm"
+              variant="outline"
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={users.isFetching ? "animate-spin" : undefined}
+              />
+              Refresh
+            </Button>
+          </div>
         </div>
+
+        {users.isError && users.data ? (
+          <p
+            className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+            role="alert"
+          >
+            Users could not be refreshed. Showing the last loaded values.
+            {apiRequestId(users.error)
+              ? ` Support ID: ${apiRequestId(users.error)}.`
+              : ""}
+          </p>
+        ) : null}
 
         {users.isPending ? (
           <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
