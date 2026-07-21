@@ -61,6 +61,11 @@ export function nonnegativeInteger(value: string) {
   return Number.isSafeInteger(parsed) ? parsed : null
 }
 
+export function positiveInteger(value: string) {
+  const parsed = nonnegativeInteger(value)
+  return parsed !== null && parsed >= 1 ? parsed : null
+}
+
 export function changedModalEnvironmentSettings(
   environment: AdminModalEnvironment,
   modalEnvironment: string,
@@ -84,13 +89,20 @@ export function changedModalEnvironmentSettings(
 export function changedModalToolSettings(
   tool: AdminModalTool,
   modalAppName: string,
+  modalAppVersion: string,
   activeJobLimit: string
 ): UpdateAdminModalToolInput {
   const normalizedAppName = modalAppName.trim()
+  const normalizedVersion = positiveInteger(modalAppVersion)
   const normalizedLimit = nonnegativeInteger(activeJobLimit)
   return {
     ...(tool.modal_app_name.editable && normalizedAppName !== tool.modal_app_name.value
       ? { modal_app_name: normalizedAppName }
+      : {}),
+    ...(normalizedVersion !== null &&
+    tool.modal_app_version.editable &&
+    normalizedVersion !== tool.modal_app_version.value
+      ? { modal_app_version: normalizedVersion }
       : {}),
     ...(normalizedLimit !== null &&
     tool.active_job_limit.editable &&

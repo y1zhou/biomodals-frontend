@@ -17,6 +17,7 @@ import {
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
   nonnegativeInteger,
+  positiveInteger,
   settingSourceNote,
   type SettingSource,
 } from "@/admin"
@@ -40,7 +41,6 @@ import { Input } from "@/components/ui/input"
 import { formatTimestamp, useDocumentVisibility } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
-import { toolName } from "@/tools"
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -128,8 +128,10 @@ function RuntimeSettingInput({
 function ToolRow({ tool }: { tool: AdminModalTool }) {
   const queryClient = useQueryClient()
   const [appName, setAppName] = useState(tool.modal_app_name.value)
+  const [appVersion, setAppVersion] = useState(String(tool.modal_app_version.value))
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
   const [appDirty, setAppDirty] = useState(false)
+  const [versionDirty, setVersionDirty] = useState(false)
   const [limitDirty, setLimitDirty] = useState(false)
 
   function mutationOptions() {
@@ -145,6 +147,10 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           setAppName(result.modal_app_name.value)
           setAppDirty(false)
         }
+        if (Object.hasOwn(input, "modal_app_version")) {
+          setAppVersion(String(result.modal_app_version.value))
+          setVersionDirty(false)
+        }
         if (Object.hasOwn(input, "active_job_limit")) {
           setActiveJobLimit(String(result.active_job_limit.value))
           setLimitDirty(false)
@@ -155,13 +161,16 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   }
 
   const appUpdate = useMutation(mutationOptions())
+  const versionUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
   const resetMutationErrors = () => {
-    if (appUpdate.isPending || limitUpdate.isPending) return
+    if (appUpdate.isPending || versionUpdate.isPending || limitUpdate.isPending) return
     appUpdate.reset()
+    versionUpdate.reset()
     limitUpdate.reset()
   }
   useExpireSession(appUpdate.error)
+  useExpireSession(versionUpdate.error)
   useExpireSession(limitUpdate.error)
 
   const mutationIncludes = (
@@ -172,24 +181,40 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
     Boolean(mutation.variables && Object.hasOwn(mutation.variables, field))
   const appPending =
     mutationIncludes(appUpdate, "modal_app_name") ||
+    mutationIncludes(versionUpdate, "modal_app_name") ||
     mutationIncludes(limitUpdate, "modal_app_name")
+  const versionPending =
+    mutationIncludes(appUpdate, "modal_app_version") ||
+    mutationIncludes(versionUpdate, "modal_app_version") ||
+    mutationIncludes(limitUpdate, "modal_app_version")
   const limitPending =
     mutationIncludes(appUpdate, "active_job_limit") ||
+    mutationIncludes(versionUpdate, "active_job_limit") ||
     mutationIncludes(limitUpdate, "active_job_limit")
-  const mutationPending = appUpdate.isPending || limitUpdate.isPending
-  const mutationError = appUpdate.error ?? limitUpdate.error
+  const mutationPending =
+    appUpdate.isPending || versionUpdate.isPending || limitUpdate.isPending
+  const mutationError = appUpdate.error ?? versionUpdate.error ?? limitUpdate.error
 
   useEffect(() => {
     if (!appDirty) setAppName(tool.modal_app_name.value)
   }, [appDirty, tool.modal_app_name.source, tool.modal_app_name.value])
   useEffect(() => {
+    if (!versionDirty) setAppVersion(String(tool.modal_app_version.value))
+  }, [tool.modal_app_version.source, tool.modal_app_version.value, versionDirty])
+  useEffect(() => {
     if (!limitDirty) setActiveJobLimit(String(tool.active_job_limit.value))
   }, [limitDirty, tool.active_job_limit.source, tool.active_job_limit.value])
 
-  const changedSettings = changedModalToolSettings(tool, appName, activeJobLimit)
+  const changedSettings = changedModalToolSettings(
+    tool,
+    appName,
+    appVersion,
+    activeJobLimit
+  )
   const normalizedAppName = appName.trim()
+  const normalizedVersion = positiveInteger(appVersion)
   const normalizedLimit = nonnegativeInteger(activeJobLimit)
-  const displayName = toolName(tool.workload)
+  const displayName = tool.display_name
   const hasChanges = Object.keys(changedSettings).length > 0
   const overLimit = tool.active_jobs > tool.active_job_limit.value
 
@@ -212,6 +237,26 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           pending={appPending}
           setting={tool.modal_app_name}
           value={appName}
+        />
+      </td>
+      <td className="px-4 py-4 align-top">
+        <RuntimeSettingInput
+          aria-label={`Modal deployment version for ${displayName}`}
+          label={`Modal deployment version for ${displayName}`}
+          min={1}
+          onChange={(value) => {
+            resetMutationErrors()
+            setAppVersion(value)
+            setVersionDirty(positiveInteger(value) !== tool.modal_app_version.value)
+          }}
+          onRestoreOverride={() => {
+            resetMutationErrors()
+            versionUpdate.mutate({ modal_app_version: null })
+          }}
+          pending={versionPending}
+          setting={tool.modal_app_version}
+          type="number"
+          value={appVersion}
         />
       </td>
       <td className="px-4 py-4 align-top">
@@ -257,14 +302,11 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               mutationPending ||
               !hasChanges ||
               normalizedLimit === null ||
+              (tool.modal_app_version.editable && normalizedVersion === null) ||
               (tool.modal_app_name.editable && !normalizedAppName)
             }
             onClick={() => {
-              if (Object.hasOwn(changedSettings, "modal_app_name")) {
-                appUpdate.mutate(changedSettings)
-              } else {
-                limitUpdate.mutate(changedSettings)
-              }
+              appUpdate.mutate(changedSettings)
             }}
             size="icon"
             variant="outline"
@@ -562,11 +604,12 @@ export default function ModalAdminPage() {
           Tools
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[48rem] border-collapse text-left">
+          <table className="w-full min-w-[64rem] border-collapse text-left">
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium" scope="col">Tool</th>
                 <th className="px-4 py-3 font-medium" scope="col">Deployed Modal app name</th>
+                <th className="px-4 py-3 font-medium" scope="col">Modal deployment version</th>
                 <th className="px-4 py-3 font-medium" scope="col">
                   Active jobs / active job limit
                 </th>

@@ -1,4 +1,4 @@
-import { Atom, type LucideIcon } from "lucide-react"
+import { Atom, Dna, type LucideIcon } from "lucide-react"
 
 export interface Tool {
   slug: string
@@ -6,6 +6,7 @@ export interface Tool {
   description: string
   tags: string[]
   icon: LucideIcon
+  status: "available" | "wip"
 }
 
 export const gromacsTool = {
@@ -14,6 +15,16 @@ export const gromacsTool = {
   description: "Prepare a PDB structure and run a configurable molecular dynamics simulation remotely.",
   tags: ["PDB", "Molecular dynamics", "Remote compute", "Protein structure"],
   icon: Atom,
+  status: "available",
+} satisfies Tool
+
+export const alphafold3Tool = {
+  slug: "alphafold3",
+  name: "AlphaFold 3 structure prediction",
+  description: "Predict biomolecular structures and interactions from molecular inputs.",
+  tags: ["Protein structure", "Structure prediction", "Remote compute"],
+  icon: Dna,
+  status: "wip",
 } satisfies Tool
 
 export function toolOverviewPath(tool: Pick<Tool, "slug">) {
@@ -29,7 +40,7 @@ export const gromacsPaths = {
   job: (jobId: string) => `${gromacsOverviewPath}/jobs/${encodeURIComponent(jobId)}`,
 }
 
-export const tools: Tool[] = [gromacsTool]
+export const tools: Tool[] = [gromacsTool, alphafold3Tool]
 
 export function toolName(workload: string) {
   return tools.find((tool) => tool.slug === workload)?.name ?? workload

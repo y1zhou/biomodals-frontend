@@ -24,8 +24,14 @@ describe("Admin settings", () => {
   test("only submits Modal fields whose values changed", () => {
     const tool = {
       workload: "gromacs",
+      display_name: "GROMACS MD simulation",
       modal_app_name: {
         value: "Gromacs",
+        source: "default" as const,
+        editable: true,
+      },
+      modal_app_version: {
+        value: 2,
         source: "default" as const,
         editable: true,
       },
@@ -50,18 +56,23 @@ describe("Admin settings", () => {
       },
     }
 
-    expect(changedModalToolSettings(tool, "Gromacs", "3")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "3")).toEqual({
       active_job_limit: 3,
     })
-    expect(changedModalToolSettings(tool, "Gromacs Test", "2")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs Test", "2", "2")).toEqual({
       modal_app_name: "Gromacs Test",
+    })
+    expect(changedModalToolSettings(tool, "Gromacs", "3", "2")).toEqual({
+      modal_app_version: 3,
     })
     expect(
       changedModalEnvironmentSettings(environment, "department-a", "10")
     ).toEqual({ modal_environment: "department-a" })
-    expect(changedModalToolSettings(tool, "Gromacs", "2")).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "")).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "0")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "2")).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "", "2")).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "0", "2")).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "")).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "0")).toEqual({
       active_job_limit: 0,
     })
     expect(
@@ -107,8 +118,14 @@ describe("Admin settings", () => {
     }
     const tool = {
       workload: "gromacs",
+      display_name: "GROMACS MD simulation",
       modal_app_name: {
         value: "Gromacs",
+        source: "default" as const,
+        editable: true,
+      },
+      modal_app_version: {
+        value: 2,
         source: "default" as const,
         editable: true,
       },

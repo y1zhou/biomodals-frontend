@@ -70,16 +70,36 @@ function LandingPage() {
                 const Icon = tool.icon
 
                 return (
-                  <Link className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50" key={tool.slug} to={toolOverviewPath(tool)}>
-                    <Card className="h-full transition-[transform,box-shadow] duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
+                  <div
+                    aria-disabled={tool.status === "wip" || undefined}
+                    className={cn(
+                      "group relative rounded-xl outline-none",
+                      tool.status === "wip" && "cursor-not-allowed opacity-55 grayscale"
+                    )}
+                    key={tool.slug}
+                  >
+                    <Card className="h-full transition-[transform,box-shadow] duration-200 group-has-[a:hover]:-translate-y-0.5 group-has-[a:hover]:shadow-lg">
                       <CardHeader>
                         <div className="mb-5 flex items-start justify-between">
                           <span className="grid size-10 place-items-center rounded-lg bg-muted text-foreground">
                             <Icon aria-hidden="true" className="size-5" />
                           </span>
-                          <ArrowUpRight aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          {tool.status === "wip" ? (
+                            <Badge variant="secondary">WIP</Badge>
+                          ) : (
+                            <ArrowUpRight aria-hidden="true" className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          )}
                         </div>
-                        <CardTitle>{tool.name}</CardTitle>
+                        <CardTitle>
+                          {tool.status === "available" ? (
+                            <Link
+                              className="outline-none after:absolute after:inset-0 focus-visible:underline"
+                              to={toolOverviewPath(tool)}
+                            >
+                              {tool.name}
+                            </Link>
+                          ) : tool.name}
+                        </CardTitle>
                         <CardDescription className="mt-1 leading-6">
                           {tool.description}
                         </CardDescription>
@@ -92,7 +112,7 @@ function LandingPage() {
                         </div>
                       </CardHeader>
                     </Card>
-                  </Link>
+                  </div>
                 )
               })}
             </div>
