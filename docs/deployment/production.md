@@ -16,10 +16,11 @@ perform a deployment. An Administrator should:
    `/srv/biomodals.example.com`.
 
 The manually triggered `Cross-repository checks` GitHub Actions workflow makes
-steps 3 and 4 repeatable for an intended revision pair. Run it from the
-candidate frontend ref and supply the exact backend branch, tag, or commit as
-`backend_ref`. Its deterministic backend never resolves a deployed Function or
-contacts Modal.
+steps 3 and 4 repeatable for an immutable revision pair. Supply the full
+40-character candidate frontend and backend commit hashes as `frontend_sha`
+and `backend_sha`. Branches, tags, and abbreviated hashes are rejected. Record
+the successful workflow URL with that exact pair in the release notes. Its
+deterministic backend never resolves a deployed Function or contacts Modal.
 
 The reverse proxy must route same-origin `/api/*` to the one FastAPI process,
 fall back to `index.html` for browser routes, cache hashed `/assets/*`

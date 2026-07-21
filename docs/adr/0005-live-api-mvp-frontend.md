@@ -440,9 +440,11 @@ testing remains deferred.
 The automated merge boundary stays small. The backend uses its committed lock
 file, existing `prek` checks, and full pytest suite. The frontend uses its
 committed lock file, lint, unit tests, and production build. Cross-repository
-verification adds the live `api:check` and focused Playwright suite. The MVP
-does not add a version matrix, coverage threshold, new mandatory backend type
-checker, or any Modal access from CI.
+verification is manually dispatched with full 40-character candidate frontend
+and backend commit hashes; branches, tags, and abbreviated hashes are rejected.
+It adds the live `api:check` and focused Playwright suite and records the exact
+pair in the workflow summary. The MVP does not add a version matrix, coverage
+threshold, new mandatory backend type checker, or any Modal access from CI.
 
 ## Deployment coordination
 

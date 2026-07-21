@@ -3,8 +3,12 @@ name: Cross-repository checks
 on:
   workflow_dispatch:
     inputs:
-      backend_ref:
-        description: Backend branch, tag, or commit to verify
+      frontend_sha:
+        description: Full 40-character frontend commit SHA to verify
+        required: true
+        type: string
+      backend_sha:
+        description: Full 40-character backend commit SHA to verify
         required: true
         type: string
 
@@ -12,23 +16,55 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.backend_ref }}
+  group: ${{ github.workflow }}-${{ inputs.frontend_sha }}-${{ inputs.backend_sha }}
   cancel-in-progress: true
 
 jobs:
   integration:
     runs-on: ubuntu-latest
     steps:
+      - name: Require exact commit SHAs
+        env:
+          BACKEND_SHA: ${{ inputs.backend_sha }}
+          FRONTEND_SHA: ${{ inputs.frontend_sha }}
+        run: |
+          sha_pattern='^[0-9a-fA-F]{40}$'
+          [[ "$FRONTEND_SHA" =~ $sha_pattern ]] || {
+            echo "frontend_sha must be a full 40-character commit SHA" >&2
+            exit 1
+          }
+          [[ "$BACKEND_SHA" =~ $sha_pattern ]] || {
+            echo "backend_sha must be a full 40-character commit SHA" >&2
+            exit 1
+          }
       - name: Check out frontend
         uses: actions/checkout@v6
         with:
+          ref: ${{ inputs.frontend_sha }}
           path: biomodals-frontend
+          persist-credentials: false
       - name: Check out intended backend
         uses: actions/checkout@v6
         with:
           repository: y1zhou/biomodals
-          ref: ${{ inputs.backend_ref }}
+          ref: ${{ inputs.backend_sha }}
           path: biomodals
+          persist-credentials: false
+      - name: Record verified revision pair
+        env:
+          BACKEND_SHA: ${{ inputs.backend_sha }}
+          FRONTEND_SHA: ${{ inputs.frontend_sha }}
+        run: |
+          actual_frontend=$(git -C biomodals-frontend rev-parse HEAD)
+          actual_backend=$(git -C biomodals rev-parse HEAD)
+          test "${actual_frontend,,}" = "${FRONTEND_SHA,,}"
+          test "${actual_backend,,}" = "${BACKEND_SHA,,}"
+          {
+            echo "### Verified revision pair"
+            echo
+            echo "- Frontend: \`$actual_frontend\`"
+            echo "- Backend: \`$actual_backend\`"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
         with:

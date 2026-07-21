@@ -36,6 +36,11 @@ bun run api:check
 bun run build
 ```
 
+Before publishing, run the manually dispatched `Cross-repository checks`
+workflow with the full 40-character frontend and backend candidate commit
+hashes. It verifies the generated OpenAPI types and browser workflow against
+that immutable pair without contacting Modal.
+
 Publish the contents of `dist/` at `/srv/biomodals.example.com`. We recommend
 [Caddy](https://caddyserver.com/) for the static server, automatic HTTPS, and
 the same-origin API proxy. A minimal Caddyfile shape is:
