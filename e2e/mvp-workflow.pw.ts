@@ -104,6 +104,21 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
       { timeout: 5_000 }
     )
   }
+  await expect
+    .poll(async () => (await browserStats()).provider_calls)
+    .toBeGreaterThanOrEqual(5)
+  await page.getByRole("button", { name: "Refresh" }).click()
+  await expect(page.getByRole("row", { name: /Analyze production/ })).toContainText(
+    "Running"
+  )
+  for (const stage of ["Analyze NVT", "Analyze NPT"]) {
+    await expect(page.getByRole("row", { name: new RegExp(stage) })).toContainText(
+      "Running"
+    )
+  }
+  await expect(
+    page.getByRole("button", { name: "Download result" })
+  ).toHaveCount(0)
   await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible({
     timeout: 15_000,
   })

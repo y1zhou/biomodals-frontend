@@ -366,7 +366,8 @@ export default function JobDetailPage() {
             <CardHeader>
               <CardTitle>Execution stages</CardTitle>
               <p className="text-sm text-muted-foreground">
-                The highlighted step is the latest state reported by BioModals. Timestamps show when BioModals recorded each transition.
+                Highlighted rows are the active stages last reported by BioModals.
+                Timestamps show when BioModals recorded each transition.
               </p>
             </CardHeader>
             <CardContent className="px-0">
