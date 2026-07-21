@@ -166,6 +166,7 @@ function useUserUpdate() {
         } else {
           queryClient.setQueryData(currentUserKey, {
             ...current,
+            display_name: user.display_name,
             is_admin: user.is_admin,
           })
         }
@@ -192,8 +193,10 @@ function UserRow({
 }) {
   const update = useUserUpdate()
   const reset = usePasswordReset()
+  const [displayName, setDisplayName] = useState(user.display_name)
   const [activeJobLimit, setActiveJobLimit] = useState(String(user.active_job_limit))
   const [confirmedAction, setConfirmedAction] = useState<ConfirmedAction | null>(null)
+  useEffect(() => setDisplayName(user.display_name), [user.display_name])
   useEffect(() => setActiveJobLimit(String(user.active_job_limit)), [user.active_job_limit])
   const triggerId = confirmedAction
     ? `${confirmedAction}-${user.user_id}`
@@ -202,6 +205,7 @@ function UserRow({
   const resetBusy = reset.isPending
   const busy = updateBusy || resetBusy
   const rowError = update.error ?? reset.error
+  const normalizedDisplayName = displayName.trim()
   const parsedActiveJobLimit = nonnegativeInteger(activeJobLimit)
   useExpireSession(update.error)
   useExpireSession(reset.error)
@@ -252,12 +256,53 @@ function UserRow({
   return (
     <>
       <tr className="border-b last:border-0">
-        <td className="px-4 py-4 align-top">
-          <p className="font-medium">{user.display_name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{user.email}</p>
+        <td className="px-3 py-4 align-middle text-center">
+          <div className="mx-auto flex w-52 items-center justify-center gap-2">
+            <Input
+              aria-label={`Display name for ${user.email}`}
+              disabled={busy}
+              maxLength={120}
+              onChange={(event) => setDisplayName(event.target.value)}
+              value={displayName}
+            />
+            <Button
+              aria-label={`Save display name for ${user.email}`}
+              disabled={
+                busy ||
+                !normalizedDisplayName ||
+                normalizedDisplayName === user.display_name
+              }
+              onClick={() =>
+                update.mutate({
+                  userId: user.user_id,
+                  input: { display_name: normalizedDisplayName },
+                })
+              }
+              size="icon-sm"
+              variant="outline"
+            >
+              {updateBusy ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : (
+                <Save aria-hidden="true" />
+              )}
+            </Button>
+          </div>
         </td>
-        <td className="px-4 py-4 align-top">
-          <Badge variant={user.status === "enabled" ? "secondary" : "outline"}>
+        <td className="px-3 py-4 align-middle text-center">
+          <span className="text-xs text-muted-foreground">{user.email}</span>
+        </td>
+        <td className="px-3 py-4 align-middle text-center">
+          <Badge
+            className={
+              user.status === "enabled"
+                ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                : user.status === "disabled"
+                  ? "border-gray-200 bg-gray-200 text-gray-950"
+                  : "border-amber-200 bg-amber-100 text-amber-900"
+            }
+            variant="outline"
+          >
             {user.status === "pending_setup"
               ? "Pending setup"
               : user.status === "enabled"
@@ -265,13 +310,13 @@ function UserRow({
                 : "Disabled"}
           </Badge>
         </td>
-        <td className="px-4 py-4 align-top">
+        <td className="px-3 py-4 align-middle text-center">
           <Badge variant={user.is_admin ? "default" : "outline"}>
             {user.is_admin ? "Admin" : "User"}
           </Badge>
         </td>
-        <td className="px-4 py-4 align-top">
-          <div className="flex min-w-36 items-center gap-2">
+        <td className="px-3 py-4 align-middle text-center">
+          <div className="mx-auto flex min-w-36 items-center justify-center gap-2">
             <Input
               aria-label={`Active job limit for ${user.display_name}`}
               className="w-20"
@@ -306,8 +351,8 @@ function UserRow({
             </Button>
           </div>
         </td>
-        <td className="px-4 py-4 align-top">
-          <div className="flex min-w-56 flex-wrap gap-2">
+        <td className="px-3 py-4 align-middle text-center">
+          <div className="flex min-w-56 flex-wrap justify-center gap-2">
             <Button
               disabled={busy}
               id={`remove-admin-${user.user_id}`}
@@ -597,14 +642,23 @@ export default function UsersAdminPage() {
           </div>
         ) : users.data ? (
           <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-            <table className="w-full min-w-[64rem] border-collapse text-left">
+            <table className="w-full min-w-[78rem] table-fixed border-collapse text-center">
+              <colgroup>
+                <col className="w-[19%]" />
+                <col className="w-[15%]" />
+                <col className="w-[9%]" />
+                <col className="w-[8%]" />
+                <col className="w-[14%]" />
+                <col className="w-[35%]" />
+              </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 font-medium" scope="col">User</th>
-                  <th className="px-4 py-3 font-medium" scope="col">Status</th>
-                  <th className="px-4 py-3 font-medium" scope="col">Role</th>
-                  <th className="px-4 py-3 font-medium" scope="col">Active job limit</th>
-                  <th className="px-4 py-3 font-medium" scope="col">Actions</th>
+                  <th className="px-3 py-3 font-medium" scope="col">User</th>
+                  <th className="px-3 py-3 font-medium" scope="col">Email</th>
+                  <th className="px-3 py-3 font-medium" scope="col">Status</th>
+                  <th className="px-3 py-3 font-medium" scope="col">Role</th>
+                  <th className="px-3 py-3 font-medium" scope="col">Active job limit</th>
+                  <th className="px-3 py-3 font-medium" scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>

@@ -26,9 +26,12 @@ credential and resource validation remains an `api serve` startup requirement.
 
 The Users page lists every User and supports provisioning, enabling, disabling,
 issuing a fresh Password Link, granting or removing Administrator access, and
-changing the User Active Job Limit. Disabling a User continues to revoke their
-Sessions and Password Links. Password Links are shown once for delivery through
-a trusted channel; no email service is introduced.
+changing the display name and User Active Job Limit. The display name is an
+editable presentation field; normalized email remains the immutable, muted
+login identity. The table separates those values into centered User and Email
+columns. Disabling a User continues to revoke their Sessions and Password Links.
+Password Links are shown once for delivery through a trusted channel; no email
+service is introduced.
 
 Successful User creation or replacement-link issuance opens a focused dialog
 that identifies the affected User by display name and email. It contains a

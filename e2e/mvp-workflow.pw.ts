@@ -122,7 +122,18 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
 
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(2)
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7, 7])
+
+  await page.goto("/admin/users")
+  const displayName = page.getByRole("textbox", {
+    name: "Display name for browser-admin@example.com",
+  })
+  await displayName.fill("Browser Admin Renamed")
+  await page.getByRole("button", {
+    name: "Save display name for browser-admin@example.com",
+  }).click()
+  await expect(displayName).toHaveValue("Browser Admin Renamed")
   await page.getByRole("button", { name: "Open user menu" }).click()
+  await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()
   await page.getByRole("menuitem", { name: "Sign out" }).click()
   await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible()
 })

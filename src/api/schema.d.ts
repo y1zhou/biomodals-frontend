@@ -1109,11 +1109,13 @@ export interface components {
         };
         /**
          * UpdateAdminUserRequest
-         * @description Editable User status and admission policy fields.
+         * @description Editable User presentation, status, role, and admission fields.
          */
         readonly UpdateAdminUserRequest: {
             /** Active Job Limit */
             readonly active_job_limit?: number | null;
+            /** Display Name */
+            readonly display_name?: string | null;
             /** Is Admin */
             readonly is_admin?: boolean | null;
             /** Status */
@@ -1934,6 +1936,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminUserView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminUserInvalidResponse"];
                 };
             };
             /** @description Unauthorized */
