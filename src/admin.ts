@@ -21,6 +21,17 @@ export function upsertAdminUser(
   return users.map((user, index) => (index === existing ? updated : user))
 }
 
+export function sortAdminUsersByCreatedAt(
+  users: readonly AdminUser[],
+  direction: "ascending" | "descending"
+) {
+  return [...users].sort((left, right) => {
+    const createdOrder = Date.parse(left.created_at) - Date.parse(right.created_at)
+    return (direction === "ascending" ? createdOrder : -createdOrder) ||
+      left.user_id.localeCompare(right.user_id)
+  })
+}
+
 export function mergeAdminModalEnvironment(
   modal: AdminModal,
   environment: AdminModalEnvironment

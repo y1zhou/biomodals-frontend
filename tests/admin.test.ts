@@ -6,6 +6,7 @@ import {
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
   settingSourceNote,
+  sortAdminUsersByCreatedAt,
   upsertAdminUser,
 } from "../src/admin"
 
@@ -79,6 +80,32 @@ describe("Admin settings", () => {
     expect(
       changedModalEnvironmentSettings(environment, "production", "")
     ).toEqual({})
+  })
+
+  test("sorts administrator users by creation time without mutating them", () => {
+    const older = {
+      user_id: "older",
+      email: "older@example.com",
+      display_name: "Older",
+      is_admin: false,
+      status: "enabled" as const,
+      active_job_limit: 2,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    }
+    const newer = {
+      ...older,
+      user_id: "newer",
+      email: "newer@example.com",
+      display_name: "Newer",
+      created_at: "2026-02-01T00:00:00Z",
+      updated_at: "2026-02-01T00:00:00Z",
+    }
+    const users = [older, newer]
+
+    expect(sortAdminUsersByCreatedAt(users, "descending")).toEqual([newer, older])
+    expect(sortAdminUsersByCreatedAt(users, "ascending")).toEqual([older, newer])
+    expect(users).toEqual([older, newer])
   })
 
   test("merges successful administrator mutations into cached views", () => {

@@ -4,6 +4,8 @@ import { Menu } from "@base-ui/react/menu"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Check,
   Copy,
   EllipsisVertical,
@@ -18,7 +20,12 @@ import {
 } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 
-import { adminUsersKey, nonnegativeInteger, upsertAdminUser } from "@/admin"
+import {
+  adminUsersKey,
+  nonnegativeInteger,
+  sortAdminUsersByCreatedAt,
+  upsertAdminUser,
+} from "@/admin"
 import {
   ApiError,
   apiErrorCode,
@@ -56,7 +63,7 @@ const expectedAdminErrorCodes = new Set([
 const menuItemClass =
   "flex h-8 cursor-default items-center gap-2 rounded-lg px-2.5 text-sm outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted"
 const destructiveMenuItemClass =
-  `${menuItemClass} bg-destructive/10 text-destructive data-[highlighted]:bg-destructive/20`
+  `${menuItemClass} text-destructive data-[highlighted]:bg-destructive/10`
 
 function errorMessage(error: unknown) {
   if (!(error instanceof ApiError)) return "The administrator request failed. Try again."
@@ -353,6 +360,9 @@ function UserRow({
             {user.is_admin ? "Admin" : "User"}
           </Badge>
         </td>
+        <td className="px-2 py-4 align-middle text-center text-xs text-muted-foreground">
+          <time dateTime={user.created_at}>{formatTimestamp(user.created_at)}</time>
+        </td>
         <td className="px-2 py-4 align-middle text-center">
           <div className="mx-auto flex w-full max-w-28 items-center justify-center gap-1">
             <Input
@@ -453,7 +463,7 @@ function UserRow({
       </tr>
       {rowError ? (
         <tr className="border-b last:border-0">
-          <td className="px-4 pb-4" colSpan={6}>
+          <td className="px-4 pb-4" colSpan={7}>
             <p className="flex items-center justify-end gap-2 text-sm text-destructive" role="alert">
               <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
               {errorMessage(rowError)}
@@ -525,6 +535,9 @@ export default function UsersAdminPage() {
   const [displayName, setDisplayName] = useState("")
   const [isAdmin, setIsAdmin] = useState(false)
   const [activeJobLimit, setActiveJobLimit] = useState("")
+  const [createdAtSort, setCreatedAtSort] = useState<"ascending" | "descending">(
+    "descending"
+  )
   const [passwordLink, setPasswordLink] = useState<PasswordLinkDialogState | null>(null)
   const [passwordLinkLocked, setPasswordLinkLocked] = useState(false)
   const passwordLinkLock = useRef(false)
@@ -698,11 +711,12 @@ export default function UsersAdminPage() {
           <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
             <table className="w-full table-fixed border-collapse text-center">
               <colgroup>
-                <col className="w-[24%]" />
-                <col className="w-[22%]" />
-                <col className="w-[12%]" />
+                <col className="w-[20%]" />
+                <col className="w-[18%]" />
                 <col className="w-[10%]" />
-                <col className="w-[24%]" />
+                <col className="w-[8%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
                 <col className="w-[8%]" />
               </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
@@ -711,6 +725,33 @@ export default function UsersAdminPage() {
                   <th className="px-2 py-3 font-medium" scope="col">Email</th>
                   <th className="px-2 py-3 font-medium" scope="col">Status</th>
                   <th className="px-2 py-3 font-medium" scope="col">Role</th>
+                  <th
+                    aria-sort={createdAtSort}
+                    className="px-2 py-3 font-medium"
+                    scope="col"
+                  >
+                    <button
+                      aria-label={`Created at, sorted ${
+                        createdAtSort === "descending"
+                          ? "newest first. Sort oldest first"
+                          : "oldest first. Sort newest first"
+                      }`}
+                      className="mx-auto inline-flex items-center gap-1 rounded-md px-1 py-0.5 transition-all hover:bg-background hover:text-foreground active:scale-[0.97] active:brightness-90 motion-reduce:active:scale-100"
+                      onClick={() =>
+                        setCreatedAtSort((direction) =>
+                          direction === "descending" ? "ascending" : "descending"
+                        )
+                      }
+                      type="button"
+                    >
+                      Created at
+                      {createdAtSort === "descending" ? (
+                        <ArrowDown aria-hidden="true" className="size-3.5" />
+                      ) : (
+                        <ArrowUp aria-hidden="true" className="size-3.5" />
+                      )}
+                    </button>
+                  </th>
                   <th className="px-2 py-3 font-medium" scope="col">Active job limit</th>
                   <th className="px-2 py-3 font-medium" scope="col">
                     <span className="sr-only">Actions</span>
@@ -718,7 +759,7 @@ export default function UsersAdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.data.map((user) => (
+                {sortAdminUsersByCreatedAt(users.data, createdAtSort).map((user) => (
                   <UserRow
                     beginPasswordLinkRequest={beginPasswordLinkRequest}
                     endPasswordLinkRequest={endPasswordLinkRequest}
