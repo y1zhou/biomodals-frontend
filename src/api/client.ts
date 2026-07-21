@@ -1,12 +1,14 @@
 import type { components } from "@/api/schema"
 
 export type Job = components["schemas"]["JobView"]
+export type JobPage = components["schemas"]["JobPageView"]
 export type JobStage = components["schemas"]["JobStageView"]
 export type JobState = components["schemas"]["JobState"]
 export type LoginInput = components["schemas"]["LoginRequest"]
 export type Principal = components["schemas"]["PrincipalView"]
 export type SetPasswordInput = components["schemas"]["SetPasswordRequest"]
 export type AdminUser = components["schemas"]["AdminUserView"]
+export type AdminUserPage = components["schemas"]["AdminUserPageView"]
 export type CreateAdminUserInput = components["schemas"]["CreateAdminUserRequest"]
 export type CreatedAdminUser = components["schemas"]["CreatedAdminUserView"]
 export type UpdateAdminUserInput = components["schemas"]["UpdateAdminUserRequest"]
@@ -141,8 +143,41 @@ export function setPassword(input: SetPasswordInput) {
   })
 }
 
+async function collectCursorPages<Item>(
+  load: (cursor: string | null) => Promise<{
+    items: readonly Item[]
+    nextCursor: string | null
+  }>
+) {
+  const items: Item[] = []
+  const seen = new Set<string>()
+  let cursor: string | null = null
+  do {
+    const page = await load(cursor)
+    items.push(...page.items)
+    cursor = page.nextCursor
+    if (cursor && seen.has(cursor)) {
+      throw new Error("The API returned a repeated pagination cursor")
+    }
+    if (cursor) seen.add(cursor)
+  } while (cursor)
+  return items
+}
+
+function cursorPagePath(path: string, cursor: string | null) {
+  const parameters = new URLSearchParams({ limit: "100" })
+  if (cursor) parameters.set("cursor", cursor)
+  return `${path}?${parameters}`
+}
+
 export function listJobs(signal?: AbortSignal) {
-  return requestJson<Job[]>("/api/v1/jobs", { signal })
+  return collectCursorPages<Job>(async (cursor) => {
+    const page = await requestJson<JobPage>(
+      cursorPagePath("/api/v1/jobs", cursor),
+      { signal }
+    )
+    return { items: page.jobs, nextCursor: page.next_cursor ?? null }
+  })
 }
 
 export function inspectJob(jobId: string, signal?: AbortSignal) {
@@ -164,7 +199,13 @@ export async function logout() {
 }
 
 export function listAdminUsers(signal?: AbortSignal) {
-  return requestJson<AdminUser[]>("/api/v1/admin/users", { signal })
+  return collectCursorPages<AdminUser>(async (cursor) => {
+    const page = await requestJson<AdminUserPage>(
+      cursorPagePath("/api/v1/admin/users", cursor),
+      { signal }
+    )
+    return { items: page.users, nextCursor: page.next_cursor ?? null }
+  })
 }
 
 export function createAdminUser(input: CreateAdminUserInput) {

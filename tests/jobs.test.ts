@@ -276,5 +276,12 @@ describe("Job lifecycle presentation", () => {
     expect(
       jobTableSearchParams(malformed.filters, malformed.sort).toString()
     ).toBe("")
+
+    const mismatched = jobTableViewFromSearchParams(
+      new URLSearchParams("sort=nope&direction=ascending"),
+      ["gromacs"]
+    )
+    expect(mismatched.sort).toEqual({ column: "created", direction: "descending" })
+    expect(mismatched.normalized.toString()).toBe("")
   })
 })

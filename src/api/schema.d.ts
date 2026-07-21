@@ -358,7 +358,7 @@ export interface components {
              * Category
              * @enum {string}
              */
-            readonly category: "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity";
+            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity";
             /** Count */
             readonly count: number;
             /**
@@ -408,7 +408,10 @@ export interface components {
             readonly active_job_limit: components["schemas"]["IntegerSettingView"];
             /** Active Jobs */
             readonly active_jobs: number;
+            /** Display Name */
+            readonly display_name: string;
             readonly modal_app_name: components["schemas"]["TextSettingView"];
+            readonly modal_app_version: components["schemas"]["IntegerSettingView"];
             /** Workload */
             readonly workload: string;
         };
@@ -515,6 +518,16 @@ export interface components {
             readonly code: "user_invalid";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * AdminUserPageView
+         * @description One bounded page of Administrator-visible Users.
+         */
+        readonly AdminUserPageView: {
+            /** Next Cursor */
+            readonly next_cursor?: string | null;
+            /** Users */
+            readonly users: readonly components["schemas"]["AdminUserView"][];
         };
         /**
          * AdminUserView
@@ -692,6 +705,16 @@ export interface components {
             readonly code: "job_not_cancellable";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * JobPageView
+         * @description One bounded page of private Job history.
+         */
+        readonly JobPageView: {
+            /** Jobs */
+            readonly jobs: readonly components["schemas"]["JobView"][];
+            /** Next Cursor */
+            readonly next_cursor?: string | null;
         };
         /**
          * JobStageView
@@ -1015,6 +1038,11 @@ export interface components {
              * @description Omit to keep unchanged; null restores the configured default.
              */
             readonly modal_app_name?: string | null;
+            /**
+             * Modal App Version
+             * @description Exact Modal deployment version used for new Jobs. Omit to keep unchanged; null restores the configured default.
+             */
+            readonly modal_app_version?: number | null;
         };
         /**
          * UpdateAdminUserRequest
@@ -1517,7 +1545,10 @@ export interface operations {
     };
     readonly list_users_api_v1_admin_users_get: {
         readonly parameters: {
-            readonly query?: never;
+            readonly query?: {
+                readonly cursor?: string | null;
+                readonly limit?: number;
+            };
             readonly header?: never;
             readonly path?: never;
             readonly cookie?: never;
@@ -1532,7 +1563,18 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": readonly components["schemas"]["AdminUserView"][];
+                    readonly "application/json": components["schemas"]["AdminUserPageView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -1566,6 +1608,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
             /** @description Internal Server Error */
@@ -2388,7 +2441,10 @@ export interface operations {
     };
     readonly list_jobs_api_v1_jobs_get: {
         readonly parameters: {
-            readonly query?: never;
+            readonly query?: {
+                readonly cursor?: string | null;
+                readonly limit?: number;
+            };
             readonly header?: never;
             readonly path?: never;
             readonly cookie?: never;
@@ -2403,7 +2459,18 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": readonly components["schemas"]["JobView"][];
+                    readonly "application/json": components["schemas"]["JobPageView"];
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -2426,6 +2493,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
             /** @description Internal Server Error */

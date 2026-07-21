@@ -243,10 +243,12 @@ export function jobTableViewFromSearchParams(
   const workloadSet = new Set(workloads)
   const rawColumn = searchParams.get("sort")
   const rawDirection = searchParams.get("direction")
-  const column = jobTableColumns.has(rawColumn as JobTableColumn)
+  const hasValidColumn = jobTableColumns.has(rawColumn as JobTableColumn)
+  const column = hasValidColumn
     ? (rawColumn as JobTableColumn)
     : defaultJobTableSort.column
-  const direction = rawDirection === "ascending" || rawDirection === "descending"
+  const direction = hasValidColumn &&
+    (rawDirection === "ascending" || rawDirection === "descending")
     ? rawDirection
     : defaultJobTableSort.direction
   const tool = searchParams.get("tool") ?? ""
