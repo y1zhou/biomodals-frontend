@@ -124,6 +124,26 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7, 7])
 
   await page.goto("/admin/users")
+  await page.setViewportSize({ width: 1024, height: 768 })
+  const usersTable = page.getByRole("table")
+  expect(
+    await usersTable.evaluate(
+      (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
+    )
+  ).toBe(true)
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+    )
+  ).toBe(true)
+  await expect(
+    page.getByRole("button", { name: "Copy email browser-admin@example.com" })
+  ).toBeVisible()
+  const adminRefresh = page.getByRole("button", { name: "Refresh" })
+  await adminRefresh.click()
+  await expect(adminRefresh).toHaveAccessibleName("Refreshing…")
+  await expect(adminRefresh).toHaveAccessibleName("Refreshed")
+
   const displayName = page.getByRole("textbox", {
     name: "Display name for browser-admin@example.com",
   })
@@ -132,6 +152,16 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
     name: "Save display name for browser-admin@example.com",
   }).click()
   await expect(displayName).toHaveValue("Browser Admin Renamed")
+
+  await page.goto("/admin/modal")
+  await expect(page.getByText("Default from the configuration file.")).toHaveCount(0)
+  const toolsTable = page.getByRole("table")
+  expect(
+    await toolsTable.evaluate(
+      (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
+    )
+  ).toBe(true)
+
   await page.getByRole("button", { name: "Open user menu" }).click()
   await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()
   await page.getByRole("menuitem", { name: "Sign out" }).click()

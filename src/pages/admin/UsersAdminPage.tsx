@@ -195,6 +195,7 @@ function UserRow({
   const reset = usePasswordReset()
   const [displayName, setDisplayName] = useState(user.display_name)
   const [activeJobLimit, setActiveJobLimit] = useState(String(user.active_job_limit))
+  const [emailCopied, setEmailCopied] = useState(false)
   const [confirmedAction, setConfirmedAction] = useState<ConfirmedAction | null>(null)
   useEffect(() => setDisplayName(user.display_name), [user.display_name])
   useEffect(() => setActiveJobLimit(String(user.active_job_limit)), [user.active_job_limit])
@@ -256,10 +257,11 @@ function UserRow({
   return (
     <>
       <tr className="border-b last:border-0">
-        <td className="px-3 py-4 align-middle text-center">
-          <div className="mx-auto flex w-52 items-center justify-center gap-2">
+        <td className="px-2 py-3 align-middle text-center">
+          <div className="mx-auto flex w-full max-w-44 items-center justify-center gap-1">
             <Input
               aria-label={`Display name for ${user.email}`}
+              className="h-7 px-2 text-xs"
               disabled={busy}
               maxLength={120}
               onChange={(event) => setDisplayName(event.target.value)}
@@ -289,10 +291,36 @@ function UserRow({
             </Button>
           </div>
         </td>
-        <td className="px-3 py-4 align-middle text-center">
-          <span className="text-xs text-muted-foreground">{user.email}</span>
+        <td className="px-2 py-3 align-middle text-center">
+          <div className="mx-auto flex w-full max-w-40 items-center">
+            <span
+              className="h-7 min-w-0 flex-1 truncate rounded-l-md border border-r-0 bg-muted/60 px-2 py-1.5 text-left text-xs text-muted-foreground"
+              title={user.email}
+            >
+              {user.email}
+            </span>
+            <Button
+              aria-label={emailCopied ? `Copied ${user.email}` : `Copy email ${user.email}`}
+              aria-live="polite"
+              className={emailCopied ? "rounded-l-none border-l-0 text-emerald-700" : "rounded-l-none border-l-0"}
+              onClick={() => {
+                void copyText(user.email)
+                  .then(() => {
+                    setEmailCopied(true)
+                    window.setTimeout(() => setEmailCopied(false), 2_000)
+                  })
+                  .catch(() => setEmailCopied(false))
+              }}
+              size="icon-sm"
+              title={`Copy ${user.email}`}
+              type="button"
+              variant="outline"
+            >
+              {emailCopied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+            </Button>
+          </div>
         </td>
-        <td className="px-3 py-4 align-middle text-center">
+        <td className="px-2 py-3 align-middle text-center">
           <Badge
             className={
               user.status === "enabled"
@@ -310,16 +338,16 @@ function UserRow({
                 : "Disabled"}
           </Badge>
         </td>
-        <td className="px-3 py-4 align-middle text-center">
+        <td className="px-2 py-3 align-middle text-center">
           <Badge variant={user.is_admin ? "default" : "outline"}>
             {user.is_admin ? "Admin" : "User"}
           </Badge>
         </td>
-        <td className="px-3 py-4 align-middle text-center">
-          <div className="mx-auto flex min-w-36 items-center justify-center gap-2">
+        <td className="px-2 py-3 align-middle text-center">
+          <div className="mx-auto flex w-full max-w-28 items-center justify-center gap-1">
             <Input
               aria-label={`Active job limit for ${user.display_name}`}
-              className="w-20"
+              className="h-7 w-14 px-2 text-xs"
               disabled={busy}
               min={0}
               onChange={(event) => setActiveJobLimit(event.target.value)}
@@ -351,8 +379,8 @@ function UserRow({
             </Button>
           </div>
         </td>
-        <td className="px-3 py-4 align-middle text-center">
-          <div className="flex min-w-56 flex-wrap justify-center gap-2">
+        <td className="px-2 py-3 align-middle text-center">
+          <div className="flex flex-wrap justify-center gap-1.5">
             <Button
               disabled={busy}
               id={`remove-admin-${user.user_id}`}
@@ -360,7 +388,7 @@ function UserRow({
                 if (user.is_admin) setConfirmedAction("remove-admin")
                 else update.mutate({ userId: user.user_id, input: { is_admin: true } })
               }}
-              size="sm"
+              size="xs"
               variant={user.is_admin ? "destructive" : "outline"}
             >
               {user.is_admin ? "Remove admin" : "Make admin"}
@@ -378,7 +406,7 @@ function UserRow({
                   setConfirmedAction("disable")
                 }
               }}
-              size="sm"
+              size="xs"
               variant={user.status === "disabled" ? "outline" : "destructive"}
             >
               {user.status === "disabled" ? "Enable" : "Disable"}
@@ -387,7 +415,7 @@ function UserRow({
               disabled={user.status === "disabled" || busy || passwordLinkLocked}
               id={`password-link-${user.user_id}`}
               onClick={() => setConfirmedAction("password-link")}
-              size="sm"
+              size="xs"
               variant="outline"
             >
               New password link
@@ -638,23 +666,23 @@ export default function UsersAdminPage() {
           </div>
         ) : users.data ? (
           <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-            <table className="w-full min-w-[78rem] table-fixed border-collapse text-center">
+            <table className="w-full table-fixed border-collapse text-center">
               <colgroup>
                 <col className="w-[19%]" />
-                <col className="w-[15%]" />
+                <col className="w-[17%]" />
                 <col className="w-[9%]" />
                 <col className="w-[8%]" />
-                <col className="w-[14%]" />
-                <col className="w-[35%]" />
+                <col className="w-[13%]" />
+                <col className="w-[34%]" />
               </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-3 font-medium" scope="col">User</th>
-                  <th className="px-3 py-3 font-medium" scope="col">Email</th>
-                  <th className="px-3 py-3 font-medium" scope="col">Status</th>
-                  <th className="px-3 py-3 font-medium" scope="col">Role</th>
-                  <th className="px-3 py-3 font-medium" scope="col">Active job limit</th>
-                  <th className="px-3 py-3 font-medium" scope="col">Actions</th>
+                  <th className="px-2 py-3 font-medium" scope="col">User</th>
+                  <th className="px-2 py-3 font-medium" scope="col">Email</th>
+                  <th className="px-2 py-3 font-medium" scope="col">Status</th>
+                  <th className="px-2 py-3 font-medium" scope="col">Role</th>
+                  <th className="px-2 py-3 font-medium" scope="col">Active job limit</th>
+                  <th className="px-2 py-3 font-medium" scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>

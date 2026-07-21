@@ -377,8 +377,8 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
 
   return (
     <tr className="border-b last:border-0">
-      <td className="px-4 py-4 align-top text-sm font-medium">{displayName}</td>
-      <td className="px-4 py-4 align-top">
+      <td className="px-3 py-4 align-top text-sm font-medium">{displayName}</td>
+      <td className="px-3 py-4 align-top">
         <RuntimeSettingInput
           aria-label={`Modal app name for ${displayName}`}
           label={`Modal app name for ${displayName}`}
@@ -396,7 +396,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           value={appName}
         />
       </td>
-      <td className="px-4 py-4 align-top">
+      <td className="px-3 py-4 align-top">
         <RuntimeSettingInput
           aria-label={`Modal deployment version for ${displayName}`}
           label={`Modal deployment version for ${displayName}`}
@@ -416,8 +416,8 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           value={appVersion}
         />
       </td>
-      <td className="px-4 py-4 align-top">
-        <div className="flex min-w-64 items-start gap-2 whitespace-nowrap">
+      <td className="px-3 py-4 align-top">
+        <div className="flex min-w-60 items-start gap-2 whitespace-nowrap">
           <span
             className={cn(
               "flex h-8 shrink-0 items-center text-sm tabular-nums",
@@ -426,7 +426,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           >
             {tool.active_jobs} /
           </span>
-          <div className="w-28 shrink-0 whitespace-normal">
+          <div className="w-24 shrink-0 whitespace-normal">
             <RuntimeSettingInput
               aria-label={`Active job limit for ${displayName}`}
               label={`active job limit for ${displayName}`}
@@ -765,19 +765,19 @@ export default function ModalAdminPage() {
           Tools
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[68rem] table-fixed border-collapse text-left">
+          <table className="w-full min-w-[56rem] table-fixed border-collapse text-left">
             <colgroup>
-              <col className="w-[28%]" />
-              <col className="w-[32%]" />
+              <col className="w-[31%]" />
+              <col className="w-[25%]" />
               <col className="w-[16%]" />
-              <col className="w-[24%]" />
+              <col className="w-[28%]" />
             </colgroup>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 font-medium" scope="col">Tool</th>
-                <th className="px-4 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="px-4 py-3 font-medium" scope="col">Modal deployment version</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium" scope="col">
+                <th className="px-3 py-3 font-medium" scope="col">Tool</th>
+                <th className="px-3 py-3 font-medium" scope="col">Deployed Modal app name</th>
+                <th className="px-3 py-3 font-medium" scope="col">Modal deployment version</th>
+                <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
                   Active jobs / active job limit
                 </th>
               </tr>

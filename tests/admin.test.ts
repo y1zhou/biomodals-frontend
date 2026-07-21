@@ -14,9 +14,7 @@ describe("Admin settings", () => {
     expect(settingSourceNote("process_environment")).toBe(
       "Controlled by the process environment."
     )
-    expect(settingSourceNote("configuration_file")).toBe(
-      "Default from the configuration file."
-    )
+    expect(settingSourceNote("configuration_file")).toBeNull()
     expect(settingSourceNote("database")).toBeNull()
     expect(settingSourceNote("default")).toBeNull()
   })
