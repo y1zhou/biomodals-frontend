@@ -10,7 +10,9 @@ const PDB = Buffer.from(
 
 interface BrowserStats {
   password_link: string
+  preflight_versions: number[]
   submit_calls: number
+  submit_versions: number[]
   provider_calls: number
   cancel_calls: number
 }
@@ -28,6 +30,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   const origin = process.env.BIOMODALS_BROWSER_ORIGIN
   if (!origin) throw new Error("BIOMODALS_BROWSER_ORIGIN is missing")
   await expect.poll(async () => (await browserStats()).password_link).not.toBe("")
+  await expect.poll(async () => (await browserStats()).preflight_versions).toEqual([7])
   const setup = (await browserStats()).password_link
 
   await page.goto(setup)
@@ -71,6 +74,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
 
   await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(1)
+  await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
   await expect(page.getByRole("row", { name: /Prepare simulation/ })).toBeVisible()
   await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(2)
   await page.getByRole("button", { name: "Refresh" }).click()
@@ -117,6 +121,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   })
 
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(2)
+  await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7, 7])
   await page.getByRole("button", { name: "Open user menu" }).click()
   await page.getByRole("menuitem", { name: "Sign out" }).click()
   await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible()
