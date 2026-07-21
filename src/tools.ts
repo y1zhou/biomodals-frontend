@@ -22,16 +22,16 @@ export const gromacsTool = {
   slug: "gromacs",
   name: "GROMACS MD simulation",
   description: "Prepare a PDB structure and run a configurable molecular dynamics simulation remotely.",
-  tags: ["PDB", "Molecular dynamics", "Remote compute", "Protein structure"],
+  tags: ["PDB", "Molecular dynamics", "Protein structure"],
   icon: Atom,
   status: "available",
 } satisfies AvailableTool
 
 export const alphafold3Tool = {
   slug: "alphafold3",
-  name: "AlphaFold 3 structure prediction",
+  name: "AlphaFold3 structure prediction",
   description: "Predict biomolecular structures and interactions from molecular inputs.",
-  tags: ["Protein structure", "Structure prediction", "Remote compute"],
+  tags: ["Protein structure", "Structure prediction"],
   icon: Dna,
   status: "wip",
 } satisfies ToolCatalogPlaceholder

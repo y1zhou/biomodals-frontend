@@ -24,14 +24,18 @@ describe("filterToolCatalog", () => {
 
   test("maps API workloads to user-facing tool names", () => {
     expect(toolName("gromacs")).toBe("GROMACS MD simulation")
-    expect(toolName("alphafold3")).toBe("AlphaFold 3 structure prediction")
+    expect(toolName("alphafold3")).toBe("AlphaFold3 structure prediction")
     expect(toolName("future-tool")).toBe("future-tool")
   })
 
-  test("keeps AlphaFold 3 visible but unavailable", () => {
+  test("keeps AlphaFold3 visible but unavailable", () => {
     expect(
       toolCatalog.find((tool) => tool.slug === "alphafold3")?.status
     ).toBe("wip")
     expect(availableTools.map((tool) => tool.slug)).toEqual(["gromacs"])
+  })
+
+  test("keeps catalog tags specific to each tool", () => {
+    expect(toolCatalog.flatMap((tool) => tool.tags)).not.toContain("Remote compute")
   })
 })

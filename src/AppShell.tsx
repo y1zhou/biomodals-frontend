@@ -2,7 +2,6 @@ import { Menu } from "@base-ui/react/menu"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   BriefcaseBusiness,
-  FlaskConical,
   LogOut,
   ShieldCheck,
   UserRound,
@@ -33,10 +32,12 @@ import { cn } from "@/lib/utils"
 
 export function Brand() {
   return (
-    <Link className="inline-flex items-center gap-2 font-heading font-semibold" to="/">
-      <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-        <FlaskConical aria-hidden="true" className="size-4" />
-      </span>
+    <Link
+      aria-label="BioModals home"
+      className="inline-flex items-center gap-2 font-heading font-semibold"
+      to="/"
+    >
+      <img alt="" aria-hidden="true" className="size-8" src="/favicon.svg" />
       <span className="hidden sm:inline">BioModals</span>
     </Link>
   )

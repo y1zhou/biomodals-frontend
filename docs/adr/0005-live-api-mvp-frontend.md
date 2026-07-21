@@ -22,8 +22,11 @@ The first Tool has this catalog identity:
 
 - Display name: `GROMACS MD simulation`
 - Slug and API workload: `gromacs`
-- Tags: `PDB`, `Molecular dynamics`, `Remote compute`, and
-  `Protein structure`
+- Tags: `PDB`, `Molecular dynamics`, and `Protein structure`
+
+The Catalog also presents `AlphaFold3 structure prediction` as a muted `WIP`
+placeholder with `Protein structure` and `Structure prediction` tags. It has no
+route or Submission action until the backend registers that workload.
 
 The public Tool overview explains its PDB Input, simulation options,
 downloadable Result, and durable remote execution before presenting the
