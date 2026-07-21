@@ -33,7 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   formatTimestamp,
   gromacsStageTimeline,
-  isActiveJob,
+  isProgressingJob,
   isPollableJob,
   isJobNotCancellableError,
   isJobUnavailableError,
@@ -234,7 +234,7 @@ export default function JobDetailPage() {
           <Card className={cn("mt-8 border", presentation.className)}>
             <CardHeader>
               <div className="flex items-center gap-3">
-                {isActiveJob(job.state) ? (
+                {isProgressingJob(job.state) ? (
                   <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
                 ) : null}
                 <CardTitle className="text-xl">{presentation.label}</CardTitle>
@@ -308,6 +308,19 @@ export default function JobDetailPage() {
                     <dd className="font-medium">{formatTimestamp(job.next_retry_at)}</dd>
                   </div>
                 </dl>
+              ) : null}
+              {job.state === "state_unknown" ? (
+                <div className="mt-5 text-sm">
+                  <p>
+                    This job continues to use an active-job slot until an administrator resolves it.
+                  </p>
+                  <dl className="mt-2">
+                    <dt className="text-muted-foreground">Administrator review required since</dt>
+                    <dd className="font-medium">
+                      {formatTimestamp(job.state_unknown_at)}
+                    </dd>
+                  </dl>
+                </div>
               ) : null}
             </CardContent>
           </Card>
@@ -409,7 +422,7 @@ export default function JobDetailPage() {
                   </tbody>
                 </table>
               </div>
-              {!currentStage && isActiveJob(job.state) ? (
+              {!currentStage && isProgressingJob(job.state) ? (
                 <p className="px-6 pt-4 text-sm text-muted-foreground">
                   {job.state === "queued"
                     ? "BioModals accepted this job and is waiting to start the first stage."

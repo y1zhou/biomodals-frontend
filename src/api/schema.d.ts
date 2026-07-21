@@ -38,6 +38,23 @@ export interface paths {
         readonly patch: operations["update_modal_environment_api_v1_admin_modal_environment_patch"];
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/modal/state-unknown-jobs/{job_id}/mark-failed": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Mark State Unknown Job Failed */
+        readonly post: operations["mark_state_unknown_job_failed_api_v1_admin_modal_state_unknown_jobs__job_id__mark_failed_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/modal/tools/{workload}": {
         readonly parameters: {
             readonly query?: never;
@@ -391,6 +408,19 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * AdminJobStateConflictResponse
+         * @description A reviewed Job no longer has unknown remote state.
+         */
+        readonly AdminJobStateConflictResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_state_changed";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
          * AdminModalEnvironmentView
          * @description Service-user identity and cross-Tool Modal settings.
          */
@@ -423,6 +453,8 @@ export interface components {
             /** Blocked Jobs */
             readonly blocked_jobs: readonly components["schemas"]["AdminBlockedJobsView"][];
             readonly environment: components["schemas"]["AdminModalEnvironmentView"];
+            /** State Unknown Jobs */
+            readonly state_unknown_jobs: readonly components["schemas"]["AdminStateUnknownJobView"][];
             /** Tools */
             readonly tools: readonly components["schemas"]["AdminModalToolView"][];
         };
@@ -464,6 +496,29 @@ export interface components {
             readonly code: "modal_preflight_failed" | "setting_invalid";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * AdminStateUnknownJobView
+         * @description Safe Job identity needed for manual Modal review.
+         */
+        readonly AdminStateUnknownJobView: {
+            /** Display Name */
+            readonly display_name: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            readonly job_id: string;
+            readonly reason: components["schemas"]["JobStateUnknownReason"];
+            /** Run Name */
+            readonly run_name: string | null;
+            /**
+             * State Unknown At
+             * Format: date-time
+             */
+            readonly state_unknown_at: string;
+            /** Workload */
+            readonly workload: string;
         };
         /**
          * AdminStorageView
@@ -743,7 +798,13 @@ export interface components {
          * @description Durable provider-neutral job states.
          * @enum {string}
          */
-        readonly JobState: "queued" | "running" | "finalizing" | "cancel_requested" | "blocked" | "succeeded" | "partial" | "failed" | "cancelled";
+        readonly JobState: "queued" | "running" | "finalizing" | "cancel_requested" | "state_unknown" | "blocked" | "succeeded" | "partial" | "failed" | "cancelled";
+        /**
+         * JobStateUnknownReason
+         * @description Safe reason that remote execution can no longer be confirmed.
+         * @enum {string}
+         */
+        readonly JobStateUnknownReason: "submission_outcome_unknown" | "cancellation_outcome_unknown";
         /**
          * JobView
          * @description Provider-neutral job details returned to a submitter.
@@ -776,6 +837,8 @@ export interface components {
             /** Stage History */
             readonly stage_history?: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];
+            /** State Unknown At */
+            readonly state_unknown_at?: string | null;
             /**
              * Updated At
              * Format: date-time
@@ -1219,6 +1282,110 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
+                };
+            };
+            /** @description Content Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly mark_state_unknown_job_failed_api_v1_admin_modal_state_unknown_jobs__job_id__mark_failed_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminModalView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminJobStateConflictResponse"];
                 };
             };
             /** @description Content Too Large */

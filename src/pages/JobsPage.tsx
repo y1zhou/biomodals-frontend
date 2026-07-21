@@ -25,7 +25,7 @@ import {
   filterAndSortJobs,
   emptyJobTableFilters,
   formatTimestamp,
-  isActiveJob,
+  isPollableJob,
   jobKey,
   jobListKey,
   jobPollingInterval,
@@ -56,7 +56,7 @@ function JobRow({
     queryFn: ({ signal }) => inspectJob(initialJob.job_id, signal),
     initialData: initialJob,
     initialDataUpdatedAt: updatedAt,
-    enabled: isActiveJob(initialJob.state),
+    enabled: isPollableJob(initialJob.state),
     retry: shouldRetryJobQuery,
     refetchInterval(query) {
       return jobPollingInterval(query.state.data, visibility)

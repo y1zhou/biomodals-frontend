@@ -6,6 +6,7 @@ import {
   filterAndSortJobs,
   gromacsStageTimeline,
   isActiveJob,
+  isProgressingJob,
   isPollableJob,
   isJobNotCancellableError,
   isJobUnavailableError,
@@ -39,8 +40,11 @@ describe("Job lifecycle presentation", () => {
   test("classifies active and terminal states", () => {
     expect(isActiveJob("queued")).toBeTrue()
     expect(isActiveJob("cancel_requested")).toBeTrue()
+    expect(isActiveJob("state_unknown")).toBeTrue()
     expect(isActiveJob("partial")).toBeFalse()
     expect(isActiveJob("cancelled")).toBeFalse()
+    expect(isProgressingJob("state_unknown")).toBeFalse()
+    expect(isPollableJob("state_unknown")).toBeFalse()
     expect(isPollableJob("blocked")).toBeTrue()
   })
 
@@ -124,6 +128,7 @@ describe("Job lifecycle presentation", () => {
     expect(jobPresentation.partial.label).toBe("Completed with warnings")
     expect(jobPresentation.succeeded.label).toBe("Completed")
     expect(jobPresentation.blocked.label).toBe("Result temporarily unavailable")
+    expect(jobPresentation.state_unknown.label).toBe("Status unknown")
   })
 
   test("shows completed, current, and upcoming GROMACS stages", () => {

@@ -16,6 +16,7 @@ export type PasswordLink = components["schemas"]["PasswordLinkView"]
 export type AdminModal = components["schemas"]["AdminModalView"]
 export type AdminModalEnvironment = components["schemas"]["AdminModalEnvironmentView"]
 export type AdminModalTool = components["schemas"]["AdminModalToolView"]
+export type AdminStateUnknownJob = components["schemas"]["AdminStateUnknownJobView"]
 export type UpdateAdminModalEnvironmentInput =
   components["schemas"]["UpdateAdminModalEnvironmentRequest"]
 export type UpdateAdminModalToolInput =
@@ -242,6 +243,16 @@ export function createAdminPasswordLink(userId: string) {
 
 export function inspectAdminModal(signal?: AbortSignal) {
   return requestJson<AdminModal>("/api/v1/admin/modal", { signal })
+}
+
+export function markAdminStateUnknownJobFailed(jobId: string) {
+  return requestJson<AdminModal>(
+    `/api/v1/admin/modal/state-unknown-jobs/${encodeURIComponent(jobId)}/mark-failed`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken() },
+    }
+  )
 }
 
 export function updateAdminModalEnvironment(input: UpdateAdminModalEnvironmentInput) {

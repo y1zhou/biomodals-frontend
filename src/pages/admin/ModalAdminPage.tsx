@@ -8,7 +8,13 @@ import {
   RotateCcw,
   Save,
 } from "lucide-react"
-import { useEffect, useState, type ComponentProps, type FormEvent } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type FormEvent,
+} from "react"
 
 import {
   adminModalKey,
@@ -26,10 +32,12 @@ import {
   apiErrorCode,
   apiRequestId,
   inspectAdminModal,
+  markAdminStateUnknownJobFailed,
   updateAdminModalEnvironment,
   updateAdminModalTool,
   type AdminModal,
   type AdminModalEnvironment,
+  type AdminStateUnknownJob,
   type AdminModalTool,
   type UpdateAdminModalEnvironmentInput,
   type UpdateAdminModalToolInput,
@@ -48,6 +56,7 @@ function errorMessage(error: unknown) {
       "modal_preflight_failed",
       "origin_not_allowed",
       "setting_invalid",
+      "job_state_changed",
     ])
     const support =
       !expected.has(apiErrorCode(error) ?? "") && error.requestId
@@ -56,6 +65,154 @@ function errorMessage(error: unknown) {
     return `${error.message}${support}`
   }
   return "The Modal configuration request failed."
+}
+
+function stateUnknownReason(reason: AdminStateUnknownJob["reason"]) {
+  return reason === "cancellation_outcome_unknown"
+    ? "Cancellation could not be confirmed"
+    : "Submission could not be confirmed"
+}
+
+function StateUnknownJobsCard({
+  jobs,
+  tools,
+}: {
+  jobs: readonly AdminStateUnknownJob[]
+  tools: readonly AdminModalTool[]
+}) {
+  const queryClient = useQueryClient()
+  const confirmationDialog = useRef<HTMLDialogElement>(null)
+  const [selected, setSelected] = useState<AdminStateUnknownJob | null>(null)
+  const resolution = useMutation({
+    mutationFn: markAdminStateUnknownJobFailed,
+    onSuccess(result) {
+      queryClient.setQueryData(adminModalKey, result)
+      confirmationDialog.current?.close()
+      setSelected(null)
+    },
+  })
+  useExpireSession(resolution.error)
+
+  if (!jobs.length) return null
+
+  return (
+    <>
+      <Card className="border-amber-300 bg-amber-50 text-amber-950">
+        <CardHeader>
+          <CardTitle>Jobs with unknown remote status</CardTitle>
+          <p className="text-sm leading-6">
+            Check each job in Modal before resolving it. Marking a job failed does not stop remote work; stop it in Modal first if necessary.
+          </p>
+        </CardHeader>
+        <CardContent className="px-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[56rem] text-left text-sm">
+              <thead className="border-y border-amber-300/70 bg-amber-100/60 text-xs text-amber-950/70">
+                <tr>
+                  <th className="px-6 py-3 font-medium" scope="col">Job</th>
+                  <th className="px-6 py-3 font-medium" scope="col">Tool</th>
+                  <th className="px-6 py-3 font-medium" scope="col">Reason</th>
+                  <th className="px-6 py-3 font-medium" scope="col">Since</th>
+                  <th className="px-6 py-3 font-medium" scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-300/70">
+                {jobs.map((job) => (
+                  <tr key={job.job_id}>
+                    <td className="px-6 py-4 align-top">
+                      <span className="font-medium">{job.display_name}</span>
+                      <span className="mt-1 block break-all font-mono text-[0.7rem] text-amber-950/70">
+                        {job.job_id}
+                      </span>
+                      {job.run_name ? (
+                        <span className="mt-1 block break-all font-mono text-[0.7rem] text-amber-950/70">
+                          Run: {job.run_name}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      {tools.find((tool) => tool.workload === job.workload)?.display_name ??
+                        job.workload}
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      {stateUnknownReason(job.reason)}
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      {formatTimestamp(job.state_unknown_at)}
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      <Button
+                        disabled={resolution.isPending}
+                        onClick={() => {
+                          resolution.reset()
+                          setSelected(job)
+                          confirmationDialog.current?.showModal()
+                        }}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        Mark failed
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <dialog
+        aria-labelledby="resolve-state-unknown-title"
+        className="m-auto w-[min(30rem,calc(100%-2rem))] rounded-xl border bg-background p-0 text-foreground shadow-2xl backdrop:bg-foreground/30"
+        onCancel={(event) => {
+          if (resolution.isPending) event.preventDefault()
+        }}
+        onClose={() => {
+          if (!resolution.isPending) setSelected(null)
+        }}
+        ref={confirmationDialog}
+      >
+        <div className="p-6">
+          <h2 className="font-heading text-xl font-semibold" id="resolve-state-unknown-title">
+            Mark this job failed?
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Do this only after checking Modal. This releases the job's active-job slot and cannot be undone from the Admin panel.
+          </p>
+          {selected ? (
+            <p className="mt-3 break-all text-sm font-medium">{selected.display_name} · {selected.job_id}</p>
+          ) : null}
+          {resolution.error ? (
+            <p className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+              {errorMessage(resolution.error)}
+            </p>
+          ) : null}
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              disabled={resolution.isPending}
+              onClick={() => confirmationDialog.current?.close()}
+              variant="ghost"
+            >
+              Keep unresolved
+            </Button>
+            <Button
+              disabled={resolution.isPending || !selected}
+              onClick={() => {
+                if (selected) resolution.mutate(selected.job_id)
+              }}
+              variant="destructive"
+            >
+              {resolution.isPending ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : null}
+              Mark failed
+            </Button>
+          </div>
+        </div>
+      </dialog>
+    </>
+  )
 }
 
 function SourceNote({ source }: { source: SettingSource }) {
@@ -460,6 +617,11 @@ export default function ModalAdminPage() {
           {apiRequestId(modal.error) ? ` Support ID: ${apiRequestId(modal.error)}.` : ""}
         </p>
       ) : null}
+
+      <StateUnknownJobsCard
+        jobs={modal.data.state_unknown_jobs}
+        tools={modal.data.tools}
+      />
 
       {modal.data.blocked_jobs.length ? (
         <Card className="border-amber-300 bg-amber-50 text-amber-950">

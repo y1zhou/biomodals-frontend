@@ -147,6 +147,7 @@ describe("Admin settings", () => {
     const modal = {
       environment,
       tools: [tool],
+      state_unknown_jobs: [],
       blocked_jobs: [],
     }
 

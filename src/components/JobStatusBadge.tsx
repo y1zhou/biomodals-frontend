@@ -2,7 +2,7 @@ import { LoaderCircle } from "lucide-react"
 
 import type { JobState } from "@/api/client"
 import { Badge } from "@/components/ui/badge"
-import { isActiveJob, jobPresentation } from "@/jobs"
+import { isProgressingJob, jobPresentation } from "@/jobs"
 import { cn } from "@/lib/utils"
 
 export default function JobStatusBadge({ state }: { state: JobState }) {
@@ -15,7 +15,7 @@ export default function JobStatusBadge({ state }: { state: JobState }) {
       className={cn("border", presentation.className)}
       variant="outline"
     >
-      {isActiveJob(state) ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : null}
+      {isProgressingJob(state) ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : null}
       {presentation.label}
     </Badge>
   )

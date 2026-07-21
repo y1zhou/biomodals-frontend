@@ -34,19 +34,27 @@ export function useDocumentVisibility() {
   return visibility
 }
 
-export const activeJobStates = new Set<JobState>([
+export const progressingJobStates = new Set<JobState>([
   "queued",
   "running",
   "finalizing",
   "cancel_requested",
+])
+export const activeJobStates = new Set<JobState>([
+  ...progressingJobStates,
+  "state_unknown",
 ])
 
 export function isActiveJob(state: JobState) {
   return activeJobStates.has(state)
 }
 
+export function isProgressingJob(state: JobState) {
+  return progressingJobStates.has(state)
+}
+
 export function isPollableJob(state: JobState) {
-  return isActiveJob(state) || state === "blocked"
+  return isProgressingJob(state) || state === "blocked"
 }
 
 export function jobPollingInterval(job: Job | undefined, visibility: DocumentVisibilityState) {
@@ -162,6 +170,11 @@ export const jobPresentation: Record<
     description: "BioModals asked the remote work to stop. The simulation may still complete first.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
+  state_unknown: {
+    label: "Status unknown",
+    description: "BioModals cannot confirm whether remote work is still running. An administrator must review this job in Modal.",
+    className: "border-amber-300 bg-amber-50 text-amber-900",
+  },
   blocked: {
     label: "Result temporarily unavailable",
     description: "The simulation output is preserved while BioModals retries result preparation. An administrator may need to repair the service.",
@@ -221,6 +234,7 @@ const jobStates = new Set<JobState>([
   "running",
   "finalizing",
   "cancel_requested",
+  "state_unknown",
   "blocked",
   "succeeded",
   "partial",
