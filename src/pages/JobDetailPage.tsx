@@ -198,10 +198,12 @@ export default function JobDetailPage() {
   const stateDescription =
     job.state === "failed" ? jobFailureMessage(job) : presentation.description
   const stages = gromacsStageTimeline(job)
-  const currentStage = stages.find((stage) => stage.state === "current")
-  const runningFunction = job.state === "running"
-    ? currentStage?.functionName
-    : null
+  const activeStages = stages.filter((stage) => stage.state === "active")
+  const runningFunctions = job.state === "running"
+    ? Array.from(new Set(activeStages.flatMap((stage) =>
+        stage.functionName ? [stage.functionName] : []
+      )))
+    : []
   const downloadError = downloadMutation.error
     ? apiErrorCode(downloadMutation.error) === "result_invalid"
       ? "The result could not be verified. BioModals will keep the simulation output for an administrator to recover."
@@ -236,9 +238,11 @@ export default function JobDetailPage() {
         <section className="mt-8">
           <p aria-atomic="true" aria-live="polite" className="sr-only">
             Job status: {presentation.label}.
-            {currentStage ? ` Current stage: ${currentStage.label}.` : ""}
-            {runningFunction
-              ? ` Running function: ${runningFunction}.`
+            {activeStages.length
+              ? ` Active stages: ${activeStages.map((stage) => stage.label).join(", ")}.`
+              : ""}
+            {runningFunctions.length
+              ? ` Running functions: ${runningFunctions.join(", ")}.`
               : ""}
           </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -390,7 +394,7 @@ export default function JobDetailPage() {
                   </thead>
                   <tbody className="divide-y">
                     {stages.map((stage, index) => {
-                      const current = stage.state === "current"
+                      const active = stage.state === "active"
                       const statusLabel =
                         stage.state === "completed"
                           ? "Completed"
@@ -404,8 +408,7 @@ export default function JobDetailPage() {
 
                       return (
                         <tr
-                          aria-current={current ? "step" : undefined}
-                          className={cn(current && "bg-muted/50")}
+                          className={cn(active && "bg-muted/50")}
                           key={stage.code}
                         >
                           <th className="px-6 py-4 font-medium" scope="row">
@@ -455,7 +458,7 @@ export default function JobDetailPage() {
                   </tbody>
                 </table>
               </div>
-              {!currentStage && isProgressingJob(job.state) ? (
+              {!activeStages.length && isProgressingJob(job.state) ? (
                 <p className="px-6 pt-4 text-sm text-muted-foreground">
                   {job.state === "queued"
                     ? "BioModals accepted this job and is waiting to start the first stage."

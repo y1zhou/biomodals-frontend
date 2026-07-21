@@ -326,19 +326,21 @@ If submission may have reached Modal without a durably recorded call identity,
 or Cancellation status expires without a recoverable final Result, the backend
 returns `state_unknown`. The status panel explains that Administrator review is
 required, shows `state_unknown_at`, and notes that the Job continues consuming
-an Active Job slot. It has no spinner or owner action. The latest known Stage
-remains visible without an invented outcome.
+an Active Job slot. It has no spinner or owner action. The latest known active
+Stages remain visible without invented outcomes.
 
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.
-It also presents the fixed GROMACS stage sequence and highlights the current
-stage and running Function reported by `JobView.stage`. The stage table shows
-Started and Finished columns from `JobView.stage_history`. A started entry has
-`started_at`, nullable `ended_at`, and a nullable outcome of `completed`,
-`failed`, or `cancelled`; active, state-unknown, and blocked stages have no end
-or outcome. The table displays the outcome explicitly and does not invent
-missing timestamps, durations, completed Functions, or numeric Progress. An unchanged `updated_at`
-is not treated as stale because the API does not provide a heartbeat contract.
+It also presents the fixed GROMACS stage display order and highlights every
+active stage and running Function reported by `JobView.active_stages`. The
+singular `JobView.stage` is a compatibility summary rather than the source of
+parallel state. The stage table shows Started and Finished columns from
+`JobView.stage_history`. A started entry has `started_at`, nullable `ended_at`,
+and a nullable outcome of `completed`, `failed`, or `cancelled`; active,
+state-unknown, and blocked stages have no end or outcome. The table displays the
+outcome explicitly and does not invent missing timestamps, durations, completed
+Functions, or numeric Progress. An unchanged `updated_at` is not treated as
+stale because the API does not provide a heartbeat contract.
 
 The rows are Prepare simulation (`prepare_tpr_cpu|gpu`), Analyze NVT
 (`collect_traj_stats`), Analyze NPT (`collect_traj_stats`), Run production
@@ -347,6 +349,12 @@ Prepare result (local service work, with no Running Function). The interface
 does not split preparation, minimization, NVT, or NPT execution out of the
 Prepare simulation row because they occur inside one deployed Function. It
 also does not expose nested App implementation calls as API stages.
+
+After Prepare simulation, Analyze NVT, Analyze NPT, and Run production are
+active concurrently. Analyze production starts after Run production and may
+overlap the two equilibration analyses. Prepare result starts only after all
+three analyses complete. These dependencies do not change the table's fixed
+display order; several rows may show the running Job Status at once.
 
 Missing and unauthorized Jobs share the same `Job unavailable` screen so a Job
 identifier cannot reveal ownership. A structurally invalid Job identifier
@@ -426,9 +434,9 @@ OpenAPI declares the runtime session-cookie security scheme on every protected
 operation as well as required CSRF headers, request and response bodies, Job
 states and conditional fields, per-operation frontend-handled error codes,
 relevant response headers, and binary and byte-range Result downloads. It also
-contains the `blocked` and `state_unknown` Job fields and the Admin Modal
-preflight, unknown-state resolution, and Storage contracts. Backend contract
-tests assert these details rather than checking only that paths exist.
+contains `active_stages`, the `blocked` and `state_unknown` Job fields, and the
+Admin Modal preflight, unknown-state resolution, and Storage contracts. Backend
+contract tests assert these details rather than checking only that paths exist.
 
 A live `api:check` compares the OpenAPI document with the generated TypeScript
 contract. The generated file is never edited manually. Backend changes check

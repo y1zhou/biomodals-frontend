@@ -103,15 +103,22 @@ completed/total work or an indeterminate phase and message.
 _Avoid_: Job Status, progress log
 
 **Job Stage**:
-The current workload-specific step of a Job and, when applicable, the deployed
-function associated with that step.
+One workload-specific step of a Job and, when applicable, the deployed function
+associated with that step. Several Job Stages may be active concurrently.
 _Avoid_: Job Status, Modal call
+
+**Active Job Stages**:
+The complete set of started Job Stages whose outcomes are not yet known. They
+may overlap and finish in a different order from their display rows. The
+singular API `stage` field is only a compatibility summary.
+_Avoid_: Current Stage, Modal call graph
 
 **Stage History**:
 The ordered started and finished times plus terminal outcomes that the backend
 retained while a Job moved through its workload-specific stages. Active,
-state-unknown, and blocked stages have no finish time or outcome. It is not a
-Modal call graph, provider log, or source of raw provider identifiers.
+state-unknown, and blocked stages have no finish time or outcome. Concurrent
+entries may overlap. It is not a Modal call graph, provider log, or source of
+raw provider identifiers.
 _Avoid_: Job Status, audit log, Modal call graph
 
 **Stage Outcome**:

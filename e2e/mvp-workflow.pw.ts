@@ -96,11 +96,14 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
     )
   ).toBe(true)
   await expect(page.getByRole("row", { name: /Prepare simulation/ })).toBeVisible()
-  await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(2)
+  await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(4)
   await page.getByRole("button", { name: "Refresh" }).click()
-  await expect(
-    page.locator('tr[aria-current="step"]', { hasText: "Analyze NVT" })
-  ).toBeVisible({ timeout: 5_000 })
+  for (const stage of ["Analyze NVT", "Analyze NPT", "Run production"]) {
+    await expect(page.getByRole("row", { name: new RegExp(stage) })).toContainText(
+      "Running",
+      { timeout: 5_000 }
+    )
+  }
   await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible({
     timeout: 15_000,
   })

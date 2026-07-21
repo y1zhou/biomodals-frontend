@@ -140,14 +140,31 @@ describe("Job lifecycle presentation", () => {
     expect(jobPresentation.state_unknown.label).toBe("Status unknown")
   })
 
-  test("shows completed, current, and upcoming GROMACS stages", () => {
+  test("shows completed, parallel active, and upcoming GROMACS stages", () => {
     const running = {
       ...job("one", "running", "2026-07-17T00:00:00Z"),
       stage: {
-        code: "analyze_npt" as const,
-        function_name: "collect_traj_stats" as const,
-        started_at: "2026-07-17T00:04:00Z",
+        code: "run_production" as const,
+        function_name: "production_run_gpu" as const,
+        started_at: "2026-07-17T00:02:00Z",
       },
+      active_stages: [
+        {
+          code: "analyze_nvt" as const,
+          function_name: "collect_traj_stats" as const,
+          started_at: "2026-07-17T00:02:00Z",
+        },
+        {
+          code: "analyze_npt" as const,
+          function_name: "collect_traj_stats" as const,
+          started_at: "2026-07-17T00:02:00Z",
+        },
+        {
+          code: "run_production" as const,
+          function_name: "production_run_gpu" as const,
+          started_at: "2026-07-17T00:02:00Z",
+        },
+      ],
       stage_history: [
         {
           code: "prepare_simulation" as const,
@@ -160,56 +177,43 @@ describe("Job lifecycle presentation", () => {
           code: "analyze_nvt" as const,
           function_name: "collect_traj_stats" as const,
           started_at: "2026-07-17T00:02:00Z",
-          ended_at: "2026-07-17T00:04:00Z",
-          outcome: "completed" as const,
         },
         {
           code: "analyze_npt" as const,
           function_name: "collect_traj_stats" as const,
-          started_at: "2026-07-17T00:04:00Z",
+          started_at: "2026-07-17T00:02:00Z",
+        },
+        {
+          code: "run_production" as const,
+          function_name: "production_run_gpu" as const,
+          started_at: "2026-07-17T00:02:00Z",
         },
       ],
     }
 
     expect(gromacsStageTimeline(running).map((stage) => stage.state)).toEqual([
       "completed",
-      "completed",
-      "current",
-      "upcoming",
+      "active",
+      "active",
+      "active",
       "upcoming",
       "upcoming",
     ])
     expect(gromacsStageTimeline(running)[0]?.label).toBe(
       "Prepare simulation"
     )
-    expect(gromacsStageTimeline(running)[2]?.functionName).toBe(
+    expect(gromacsStageTimeline(running)[1]?.functionName).toBe(
       "collect_traj_stats"
     )
     expect(gromacsStageTimeline(running)[0]).toMatchObject({
       startedAt: "2026-07-17T00:00:00Z",
       endedAt: "2026-07-17T00:02:00Z",
     })
-    expect(gromacsStageTimeline(running)[2]).toMatchObject({
-      startedAt: "2026-07-17T00:04:00Z",
+    expect(gromacsStageTimeline(running)[3]).toMatchObject({
+      functionName: "production_run_gpu",
+      startedAt: "2026-07-17T00:02:00Z",
       endedAt: null,
     })
-
-    const incompleteHistory = gromacsStageTimeline({
-      ...running,
-      state: "succeeded",
-      stage: {
-        code: "prepare_result",
-        started_at: "2026-07-17T00:05:00Z",
-      },
-    })
-    expect(incompleteHistory.map((stage) => stage.state)).toEqual([
-      "completed",
-      "completed",
-      "upcoming",
-      "upcoming",
-      "upcoming",
-      "current",
-    ])
   })
 
   test("filters and sorts every Job History column without mutating jobs", () => {

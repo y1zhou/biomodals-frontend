@@ -129,21 +129,26 @@ const gromacsStageDefinitions: readonly {
 ]
 
 export function gromacsStageTimeline(job: Job) {
-  const currentIndex = gromacsStageDefinitions.findIndex(
-    ({ code }) => code === job.stage?.code
+  const activeStages = new Map(
+    (job.active_stages ?? (job.stage ? [job.stage] : [])).map((stage) => [
+      stage.code,
+      stage,
+    ])
   )
   const stageHistory = new Map(
     (job.stage_history ?? []).map((stage) => [stage.code, stage])
   )
 
-  return gromacsStageDefinitions.map((stage, index) => {
+  return gromacsStageDefinitions.map((stage) => {
     const timing = stageHistory.get(stage.code)
+    const active = activeStages.get(stage.code)
     return {
       ...stage,
       functionName:
         timing?.function_name ??
-        (index === currentIndex ? (job.stage?.function_name ?? null) : null),
-      startedAt: timing?.started_at ?? null,
+        active?.function_name ??
+        null,
+      startedAt: timing?.started_at ?? active?.started_at ?? null,
       endedAt: timing?.ended_at ?? null,
       outcome: timing?.outcome ?? null,
       state:
@@ -151,10 +156,10 @@ export function gromacsStageTimeline(job: Job) {
           ? ("completed" as const)
           : timing?.outcome === "failed"
             ? ("failed" as const)
-            : timing?.outcome === "cancelled"
+          : timing?.outcome === "cancelled"
               ? ("cancelled" as const)
-          : index === currentIndex
-            ? ("current" as const)
+          : active
+            ? ("active" as const)
             : ("upcoming" as const),
     }
   })

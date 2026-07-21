@@ -85,16 +85,18 @@ not infer that the Job is stale, stalled, or failed. A long-running deployed
 Function may legitimately leave `updated_at` unchanged for hours, and the API
 does not provide a heartbeat contract.
 
-`JobView.stage` is a workload-specific current-stage snapshot. For GROMACS it
-contains a stable stage code and, when a deployed Function is associated with
-that stage, its safe Function name. `JobView.stage_history` retains the ordered
-started stages. Each entry has `started_at`, nullable `ended_at`, and a nullable
-outcome of `completed`, `failed`, or `cancelled`. Active, state-unknown, and
-blocked stages have no end or outcome. The detail page merges these entries
-into the fixed sequence but never invents timestamps or outcomes. Modal call IDs, App names,
-Environments, and storage paths remain private.
+`JobView.active_stages` contains every workload-specific stage whose outcome is
+not yet known. For GROMACS each entry contains a stable stage code and, when a
+deployed Function is associated with that stage, its safe Function name. The
+singular `JobView.stage` remains a compatibility summary. `JobView.stage_history`
+retains the ordered started stages. Each entry has `started_at`, nullable
+`ended_at`, and a nullable outcome of `completed`, `failed`, or `cancelled`.
+Active, state-unknown, and blocked stages have no end or outcome. The detail
+page merges these entries into the fixed display order but never invents
+timestamps or outcomes. Modal call IDs, App names, Environments, and storage
+paths remain private.
 
-The fixed GROMACS sequence is `prepare_simulation`, `analyze_nvt`,
+The fixed GROMACS display order is `prepare_simulation`, `analyze_nvt`,
 `analyze_npt`, `run_production`, `analyze_production`, and `prepare_result`.
 Their labels are Prepare simulation, Analyze NVT, Analyze NPT, Run production,
 Analyze production, and Prepare result. The first five rows display their exact
@@ -104,6 +106,22 @@ Prepare result is local backend work and displays no Running Function.
 Preparation, minimization, NVT, and NPT execution inside `prepare_tpr_*`, and
 nested implementation calls such as `postprocess_traj`, are not separate
 timeline stages.
+
+The execution dependencies are:
+
+```text
+prepare_simulation
+  |-> analyze_nvt --------------------------------|
+  |-> analyze_npt --------------------------------|
+  `-> run_production -> analyze_production -------|
+                                                   `-> prepare_result
+```
+
+The three branches after preparation run concurrently. Analyze production may
+start while Analyze NVT or Analyze NPT is still active. Prepare result starts
+only after every analysis stage completes. The detail table highlights every
+entry in `active_stages`, so several rows may show the running Job Status with
+overlapping timestamps.
 
 The deployed GROMACS App uses one `run_name` for both its Volume directory and
 scientific filenames. The API therefore derives each new run name from a

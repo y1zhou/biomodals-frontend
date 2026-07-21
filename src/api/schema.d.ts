@@ -810,6 +810,8 @@ export interface components {
          * @description Provider-neutral job details returned to a submitter.
          */
         readonly JobView: {
+            /** Active Stages */
+            readonly active_stages?: readonly components["schemas"]["JobStageView"][];
             /** Blocked At */
             readonly blocked_at?: string | null;
             /** Cancel Requested At */
