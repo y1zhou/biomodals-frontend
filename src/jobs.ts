@@ -71,9 +71,13 @@ export function isPollableJob(state: JobState) {
   return isProgressingJob(state) || state === "blocked"
 }
 
+export function visibilityPollingInterval(visibility: DocumentVisibilityState) {
+  return visibility === "visible" ? 60_000 : 300_000
+}
+
 export function jobPollingInterval(job: Job | undefined, visibility: DocumentVisibilityState) {
   if (!job || !isPollableJob(job.state)) return false
-  return visibility === "hidden" ? 60_000 : 10_000
+  return visibilityPollingInterval(visibility)
 }
 
 export function newestJobsFirst(jobs: readonly Job[]) {

@@ -19,6 +19,7 @@ import {
   latestJob,
   newestJobsFirst,
   shouldRetryJobQuery,
+  visibilityPollingInterval,
 } from "../src/jobs"
 
 function job(jobId: string, state: Job["state"], createdAt: string): Job {
@@ -57,14 +58,16 @@ describe("Job lifecycle presentation", () => {
     expect(isPollableJob("blocked")).toBeTrue()
   })
 
-  test("uses the agreed active polling cadence", () => {
+  test("uses the agreed foreground and background polling cadence", () => {
     const running = job("one", "running", "2026-07-17T00:00:00Z")
     const complete = job("two", "succeeded", "2026-07-17T00:00:00Z")
     const blocked = job("three", "blocked", "2026-07-17T00:00:00Z")
 
-    expect(jobPollingInterval(running, "visible")).toBe(10_000)
-    expect(jobPollingInterval(running, "hidden")).toBe(60_000)
-    expect(jobPollingInterval(blocked, "visible")).toBe(10_000)
+    expect(visibilityPollingInterval("visible")).toBe(60_000)
+    expect(visibilityPollingInterval("hidden")).toBe(300_000)
+    expect(jobPollingInterval(running, "visible")).toBe(60_000)
+    expect(jobPollingInterval(running, "hidden")).toBe(300_000)
+    expect(jobPollingInterval(blocked, "visible")).toBe(60_000)
     expect(jobPollingInterval(complete, "visible")).toBeFalse()
   })
 

@@ -85,6 +85,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   })
 
   await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
+  const completedJobId = page.url().split("/").at(-1)
+  if (!completedJobId) throw new Error("Completed Job ID is missing")
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(1)
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
   const statusMetadata = page.locator("p", { hasText: "Job updated" }).first()
@@ -119,6 +121,13 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(
     page.getByRole("button", { name: "Download result" })
   ).toHaveCount(0)
+  await expect.poll(async () => {
+    const response = await page.context().request.get(
+      `/api/v1/jobs/${completedJobId}`
+    )
+    return (await response.json() as { state: string }).state
+  }).toBe("succeeded")
+  await page.getByRole("button", { name: "Refresh" }).click()
   await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible({
     timeout: 15_000,
   })

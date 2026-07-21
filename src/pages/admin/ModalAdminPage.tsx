@@ -46,7 +46,11 @@ import { RefreshButton } from "@/components/RefreshButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { formatTimestamp, useDocumentVisibility } from "@/jobs"
+import {
+  formatTimestamp,
+  useDocumentVisibility,
+  visibilityPollingInterval,
+} from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 
@@ -496,8 +500,8 @@ export default function ModalAdminPage() {
   const modal = useQuery({
     queryKey: adminModalKey,
     queryFn: ({ signal }) => inspectAdminModal(signal),
-    refetchInterval: visibility === "visible" ? 10_000 : false,
-    refetchIntervalInBackground: false,
+    refetchInterval: visibilityPollingInterval(visibility),
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   })
   const [environmentName, setEnvironmentName] = useState("")
