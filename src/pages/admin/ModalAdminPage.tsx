@@ -378,46 +378,50 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   return (
     <tr className="border-b last:border-0">
       <td className="px-3 py-4 text-center align-top text-sm font-medium">{displayName}</td>
-      <td className="px-3 py-4 align-top">
-        <RuntimeSettingInput
-          aria-label={`Modal app name for ${displayName}`}
-          label={`Modal app name for ${displayName}`}
-          onChange={(value) => {
-            resetMutationErrors()
-            setAppName(value)
-            setAppDirty(value.trim() !== tool.modal_app_name.value)
-          }}
-          onRestoreOverride={() => {
-            resetMutationErrors()
-            appUpdate.mutate({ modal_app_name: null })
-          }}
-          pending={appPending}
-          setting={tool.modal_app_name}
-          value={appName}
-        />
+      <td className="px-3 py-4 text-center align-top">
+        <div className="mx-auto max-w-48">
+          <RuntimeSettingInput
+            aria-label={`Modal app name for ${displayName}`}
+            label={`Modal app name for ${displayName}`}
+            onChange={(value) => {
+              resetMutationErrors()
+              setAppName(value)
+              setAppDirty(value.trim() !== tool.modal_app_name.value)
+            }}
+            onRestoreOverride={() => {
+              resetMutationErrors()
+              appUpdate.mutate({ modal_app_name: null })
+            }}
+            pending={appPending}
+            setting={tool.modal_app_name}
+            value={appName}
+          />
+        </div>
       </td>
-      <td className="px-3 py-4 align-top">
-        <RuntimeSettingInput
-          aria-label={`Modal deployment version for ${displayName}`}
-          label={`Modal deployment version for ${displayName}`}
-          min={1}
-          onChange={(value) => {
-            resetMutationErrors()
-            setAppVersion(value)
-            setVersionDirty(positiveInteger(value) !== tool.modal_app_version.value)
-          }}
-          onRestoreOverride={() => {
-            resetMutationErrors()
-            versionUpdate.mutate({ modal_app_version: null })
-          }}
-          pending={versionPending}
-          setting={tool.modal_app_version}
-          type="number"
-          value={appVersion}
-        />
+      <td className="px-6 py-4 text-center align-top">
+        <div className="mx-auto max-w-28">
+          <RuntimeSettingInput
+            aria-label={`Modal deployment version for ${displayName}`}
+            label={`Modal deployment version for ${displayName}`}
+            min={1}
+            onChange={(value) => {
+              resetMutationErrors()
+              setAppVersion(value)
+              setVersionDirty(positiveInteger(value) !== tool.modal_app_version.value)
+            }}
+            onRestoreOverride={() => {
+              resetMutationErrors()
+              versionUpdate.mutate({ modal_app_version: null })
+            }}
+            pending={versionPending}
+            setting={tool.modal_app_version}
+            type="number"
+            value={appVersion}
+          />
+        </div>
       </td>
-      <td className="px-3 py-4 align-top">
-        <div className="flex min-w-60 items-start gap-2 whitespace-nowrap">
+      <td className="py-4 pr-3 pl-6 text-center align-top">
+        <div className="mx-auto flex min-w-60 items-start justify-center gap-2 whitespace-nowrap">
           <span
             className={cn(
               "flex h-8 shrink-0 items-center text-sm tabular-nums",
@@ -476,7 +480,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           </Button>
         </div>
         {mutationError ? (
-          <p className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert">
+          <p className="mt-2 flex items-center justify-center gap-2 text-sm text-destructive" role="alert">
             <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
             {errorMessage(mutationError)}
           </p>
@@ -765,21 +769,21 @@ export default function ModalAdminPage() {
           Tools
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[56rem] table-fixed border-collapse text-left">
+          <table className="w-full min-w-[56rem] table-fixed border-collapse text-center">
             <colgroup>
               <col className="w-[29%]" />
-              <col className="w-[24%]" />
-              <col className="w-[19%]" />
-              <col className="w-[28%]" />
+              <col className="w-[20%]" />
+              <col className="w-[20%]" />
+              <col className="w-[31%]" />
             </colgroup>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-3 py-3 text-center font-medium" scope="col">Tool</th>
+                <th className="px-3 py-3 font-medium" scope="col">Tool</th>
                 <th className="px-3 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
+                <th className="whitespace-nowrap px-6 py-3 font-medium" scope="col">
                   Modal deployment version
                 </th>
-                <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
+                <th className="whitespace-nowrap py-3 pr-3 pl-6 font-medium" scope="col">
                   Active jobs / active job limit
                 </th>
               </tr>

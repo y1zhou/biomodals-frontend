@@ -139,6 +139,18 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(
     page.getByRole("button", { name: "Copy email browser-admin@example.com" })
   ).toBeVisible()
+  const createdAtHeader = usersTable.getByRole("columnheader", {
+    name: /Created at/,
+  })
+  await expect(createdAtHeader).toHaveAttribute("aria-sort", "descending")
+  await page.getByRole("button", {
+    name: "Created at, sorted newest first. Sort oldest first",
+  }).click()
+  await expect(createdAtHeader).toHaveAttribute("aria-sort", "ascending")
+  await page.getByRole("button", {
+    name: "Created at, sorted oldest first. Sort newest first",
+  }).click()
+  await expect(createdAtHeader).toHaveAttribute("aria-sort", "descending")
   expect(
     await usersTable.getByRole("row").nth(1).evaluate(
       (row) => row.getBoundingClientRect().height
@@ -152,6 +164,14 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(page.getByRole("menuitem", { name: "Remove admin" })).toBeVisible()
   await expect(page.getByRole("menuitem", { name: "Disable" })).toBeVisible()
   await expect(page.getByRole("menuitem", { name: "New password link" })).toBeVisible()
+  const removeAdmin = page.getByRole("menuitem", { name: "Remove admin" })
+  const restingBackground = await removeAdmin.evaluate(
+    (item) => getComputedStyle(item).backgroundColor
+  )
+  await removeAdmin.hover()
+  expect(
+    await removeAdmin.evaluate((item) => getComputedStyle(item).backgroundColor)
+  ).not.toBe(restingBackground)
   await page.keyboard.press("Escape")
   await expect(page.getByRole("menuitem", { name: "Remove admin" })).not.toBeVisible()
 
@@ -186,6 +206,22 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
       exact: true,
     })
   ).toHaveCSS("text-align", "center")
+  expect(
+    await toolsTable.getByRole("columnheader").evaluateAll((headers) =>
+      headers.every((header) => getComputedStyle(header).textAlign === "center")
+    )
+  ).toBe(true)
+  expect(
+    await toolsTable.getByRole("cell").evaluateAll((cells) =>
+      cells.every((cell) => getComputedStyle(cell).textAlign === "center")
+    )
+  ).toBe(true)
+  expect(
+    await page.getByRole("textbox", {
+      name: "Modal app name for GROMACS MD simulation",
+      exact: true,
+    }).evaluate((input) => input.getBoundingClientRect().width)
+  ).toBeLessThan(190)
 
   await page.getByRole("button", { name: "Open user menu" }).click()
   await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()
