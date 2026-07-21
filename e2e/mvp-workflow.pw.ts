@@ -59,6 +59,18 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   ).toBe(true)
   await page.setViewportSize({ width: 1280, height: 720 })
 
+  await page.goto("/tools/gromacs")
+  await expect(
+    page.getByText("Select a PDB file and click the button below.")
+  ).toBeVisible()
+  await expect(
+    page.getByText("Sign in before selecting a PDB so your input stays in place.")
+  ).toHaveCount(0)
+  const filteredJobsLink = page.getByRole("link", { name: "View My Jobs" })
+  await expect(filteredJobsLink).toHaveAttribute("href", "/jobs?tool=gromacs")
+  await filteredJobsLink.click()
+  await expect(page).toHaveURL(`${origin}/jobs?tool=gromacs`)
+
   await page.goto("/tools/gromacs/new")
   await page.getByLabel("PDB file").setInputFiles({
     buffer: PDB,
@@ -75,6 +87,14 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(1)
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
+  const statusMetadata = page.locator("p", { hasText: "Job updated" }).first()
+  await expect(statusMetadata).toContainText(/Last checked \d+s ago/)
+  const stagesTable = page.getByRole("table", { name: "GROMACS execution stages" })
+  expect(
+    await stagesTable.evaluate(
+      (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
+    )
+  ).toBe(true)
   await expect(page.getByRole("row", { name: /Prepare simulation/ })).toBeVisible()
   await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(2)
   await page.getByRole("button", { name: "Refresh" }).click()
@@ -84,6 +104,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(page.getByText("Completed", { exact: true }).first()).toBeVisible({
     timeout: 15_000,
   })
+  await expect(page.getByRole("button", { name: "Download result" })).toBeVisible({
+    timeout: 15_000,
+  })
+  await expect(statusMetadata).not.toContainText("ago")
 
   const downloadEvent = page.waitForEvent("download")
   await page.getByRole("button", { name: "Download result" }).click()
@@ -119,6 +143,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(page.getByText("Cancelled", { exact: true }).first()).toBeVisible({
     timeout: 5_000,
   })
+  await expect(page.locator("p", { hasText: "Job updated" }).first()).not.toContainText("ago")
 
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(2)
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7, 7])

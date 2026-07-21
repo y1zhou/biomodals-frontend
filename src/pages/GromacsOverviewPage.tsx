@@ -79,23 +79,50 @@ export default function GromacsOverviewPage() {
           </div>
         </div>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Ready to simulate?</CardTitle>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Sign in before selecting a PDB so your input stays in place.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Link
-              className={cn(buttonVariants({ size: "lg" }), "w-full")}
-              to={target}
-            >
-              {currentUser ? "Start a simulation" : "Sign in to start"}
-              <ArrowRight aria-hidden="true" data-icon="inline-end" />
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Ready to simulate?</CardTitle>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {currentUser
+                  ? "Select a PDB file and click the button below."
+                  : "Sign in before selecting a PDB so your input stays in place."}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Link
+                className={cn(buttonVariants({ size: "lg" }), "w-full")}
+                to={target}
+              >
+                {currentUser ? "Start a simulation" : "Sign in to start"}
+                <ArrowRight aria-hidden="true" data-icon="inline-end" />
+              </Link>
+            </CardContent>
+          </Card>
+
+          {currentUser ? (
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>GROMACS jobs</CardTitle>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Review the progress and results of your GROMACS simulations.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  className={cn(
+                    buttonVariants({ size: "lg", variant: "outline" }),
+                    "w-full"
+                  )}
+                  to={`/jobs?tool=${encodeURIComponent(gromacsTool.slug)}`}
+                >
+                  View My Jobs
+                  <ArrowRight aria-hidden="true" data-icon="inline-end" />
+                </Link>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
       </section>
 
       <section aria-labelledby="workflow-heading" className="mt-20">
