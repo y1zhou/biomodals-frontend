@@ -1,13 +1,20 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog"
 import { Dialog } from "@base-ui/react/dialog"
+import { Menu } from "@base-ui/react/menu"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
   Check,
   Copy,
+  EllipsisVertical,
+  KeyRound,
   LoaderCircle,
   Plus,
   Save,
+  ShieldMinus,
+  ShieldPlus,
+  UserRoundCheck,
+  UserRoundX,
 } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 
@@ -45,6 +52,11 @@ const expectedAdminErrorCodes = new Set([
   "user_inactive",
   "user_invalid",
 ])
+
+const menuItemClass =
+  "flex h-8 cursor-default items-center gap-2 rounded-lg px-2.5 text-sm outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted"
+const destructiveMenuItemClass =
+  `${menuItemClass} bg-destructive/10 text-destructive data-[highlighted]:bg-destructive/20`
 
 function errorMessage(error: unknown) {
   if (!(error instanceof ApiError)) return "The administrator request failed. Try again."
@@ -199,9 +211,7 @@ function UserRow({
   const [confirmedAction, setConfirmedAction] = useState<ConfirmedAction | null>(null)
   useEffect(() => setDisplayName(user.display_name), [user.display_name])
   useEffect(() => setActiveJobLimit(String(user.active_job_limit)), [user.active_job_limit])
-  const triggerId = confirmedAction
-    ? `${confirmedAction}-${user.user_id}`
-    : undefined
+  const actionsTriggerId = `user-actions-${user.user_id}`
   const updateBusy = update.isPending
   const resetBusy = reset.isPending
   const busy = updateBusy || resetBusy
@@ -227,7 +237,7 @@ function UserRow({
       try {
         const result = await reset.mutateAsync(user)
         reset.reset()
-        onPasswordLink(user, result, `password-link-${user.user_id}`)
+        onPasswordLink(user, result, actionsTriggerId)
       } catch (error) {
         endPasswordLinkRequest()
         throw error
@@ -256,8 +266,8 @@ function UserRow({
 
   return (
     <>
-      <tr className="border-b last:border-0">
-        <td className="px-2 py-3 align-middle text-center">
+      <tr className={rowError ? undefined : "border-b last:border-0"}>
+        <td className="px-2 py-4 align-middle text-center">
           <div className="mx-auto flex w-full max-w-44 items-center justify-center gap-1">
             <Input
               aria-label={`Display name for ${user.email}`}
@@ -291,7 +301,7 @@ function UserRow({
             </Button>
           </div>
         </td>
-        <td className="px-2 py-3 align-middle text-center">
+        <td className="px-2 py-4 align-middle text-center">
           <div className="mx-auto flex w-full max-w-40 items-center">
             <span
               className="h-7 min-w-0 flex-1 truncate rounded-l-md border border-r-0 bg-muted/60 px-2 py-1.5 text-left text-xs text-muted-foreground"
@@ -320,7 +330,7 @@ function UserRow({
             </Button>
           </div>
         </td>
-        <td className="px-2 py-3 align-middle text-center">
+        <td className="px-2 py-4 align-middle text-center">
           <Badge
             className={
               user.status === "enabled"
@@ -338,12 +348,12 @@ function UserRow({
                 : "Disabled"}
           </Badge>
         </td>
-        <td className="px-2 py-3 align-middle text-center">
+        <td className="px-2 py-4 align-middle text-center">
           <Badge variant={user.is_admin ? "default" : "outline"}>
             {user.is_admin ? "Admin" : "User"}
           </Badge>
         </td>
-        <td className="px-2 py-3 align-middle text-center">
+        <td className="px-2 py-4 align-middle text-center">
           <div className="mx-auto flex w-full max-w-28 items-center justify-center gap-1">
             <Input
               aria-label={`Active job limit for ${user.display_name}`}
@@ -379,56 +389,78 @@ function UserRow({
             </Button>
           </div>
         </td>
-        <td className="px-2 py-3 align-middle text-center">
-          <div className="flex flex-wrap justify-center gap-1.5">
-            <Button
+        <td className="px-2 py-4 align-middle text-center">
+          <Menu.Root>
+            <Menu.Trigger
+              aria-label={`Actions for ${user.display_name}`}
+              className="mx-auto grid size-8 place-items-center rounded-lg text-muted-foreground outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95 active:bg-muted active:text-foreground active:brightness-90 disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100"
               disabled={busy}
-              id={`remove-admin-${user.user_id}`}
-              onClick={() => {
-                if (user.is_admin) setConfirmedAction("remove-admin")
-                else update.mutate({ userId: user.user_id, input: { is_admin: true } })
-              }}
-              size="xs"
-              variant={user.is_admin ? "destructive" : "outline"}
+              id={actionsTriggerId}
             >
-              {user.is_admin ? "Remove admin" : "Make admin"}
-            </Button>
-            <Button
-              disabled={busy}
-              id={`disable-${user.user_id}`}
-              onClick={() => {
-                if (user.status === "disabled") {
-                  update.mutate({
-                    userId: user.user_id,
-                    input: { status: "enabled" },
-                  })
-                } else {
-                  setConfirmedAction("disable")
-                }
-              }}
-              size="xs"
-              variant={user.status === "disabled" ? "outline" : "destructive"}
-            >
-              {user.status === "disabled" ? "Enable" : "Disable"}
-            </Button>
-            <Button
-              disabled={user.status === "disabled" || busy || passwordLinkLocked}
-              id={`password-link-${user.user_id}`}
-              onClick={() => setConfirmedAction("password-link")}
-              size="xs"
-              variant="outline"
-            >
-              New password link
-            </Button>
-          </div>
-          {rowError ? (
-            <p className="mt-2 flex items-center gap-2 text-sm text-destructive" role="alert">
+              <EllipsisVertical aria-hidden="true" className="size-4" />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner align="end" className="z-50" sideOffset={6}>
+                <Menu.Popup className="w-48 rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+                  <Menu.Item
+                    className={user.is_admin ? destructiveMenuItemClass : menuItemClass}
+                    onClick={() => {
+                      if (user.is_admin) setConfirmedAction("remove-admin")
+                      else update.mutate({ userId: user.user_id, input: { is_admin: true } })
+                    }}
+                  >
+                    {user.is_admin ? (
+                      <ShieldMinus aria-hidden="true" className="size-4" />
+                    ) : (
+                      <ShieldPlus aria-hidden="true" className="size-4" />
+                    )}
+                    {user.is_admin ? "Remove admin" : "Make admin"}
+                  </Menu.Item>
+                  <Menu.Item
+                    className={user.status === "disabled" ? menuItemClass : destructiveMenuItemClass}
+                    onClick={() => {
+                      if (user.status === "disabled") {
+                        update.mutate({
+                          userId: user.user_id,
+                          input: { status: "enabled" },
+                        })
+                      } else {
+                        setConfirmedAction("disable")
+                      }
+                    }}
+                  >
+                    {user.status === "disabled" ? (
+                      <UserRoundCheck aria-hidden="true" className="size-4" />
+                    ) : (
+                      <UserRoundX aria-hidden="true" className="size-4" />
+                    )}
+                    {user.status === "disabled" ? "Enable" : "Disable"}
+                  </Menu.Item>
+                  <Menu.Separator className="my-1 h-px bg-border" />
+                  <Menu.Item
+                    className={menuItemClass}
+                    disabled={user.status === "disabled" || passwordLinkLocked}
+                    onClick={() => setConfirmedAction("password-link")}
+                  >
+                    <KeyRound aria-hidden="true" className="size-4" />
+                    New password link
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        </td>
+      </tr>
+      {rowError ? (
+        <tr className="border-b last:border-0">
+          <td className="px-4 pb-4" colSpan={6}>
+            <p className="flex items-center justify-end gap-2 text-sm text-destructive" role="alert">
               <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
               {errorMessage(rowError)}
             </p>
-          ) : null}
-        </td>
-      </tr>
+          </td>
+        </tr>
+      ) : null}
 
       <AlertDialog.Root
         onOpenChange={(open) => {
@@ -441,9 +473,7 @@ function UserRow({
           <AlertDialog.Viewport className="fixed inset-0 z-50 grid place-items-center p-4">
             <AlertDialog.Popup
               className="w-full max-w-md rounded-xl border bg-background p-6 text-foreground shadow-2xl outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0"
-              finalFocus={() =>
-                triggerId ? document.getElementById(triggerId) : null
-              }
+              finalFocus={() => document.getElementById(actionsTriggerId)}
             >
               <AlertDialog.Title className="font-heading text-xl font-semibold">
                 {confirmation.title}
@@ -668,12 +698,12 @@ export default function UsersAdminPage() {
           <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
             <table className="w-full table-fixed border-collapse text-center">
               <colgroup>
-                <col className="w-[19%]" />
-                <col className="w-[17%]" />
-                <col className="w-[9%]" />
+                <col className="w-[24%]" />
+                <col className="w-[22%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[24%]" />
                 <col className="w-[8%]" />
-                <col className="w-[13%]" />
-                <col className="w-[34%]" />
               </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -682,7 +712,9 @@ export default function UsersAdminPage() {
                   <th className="px-2 py-3 font-medium" scope="col">Status</th>
                   <th className="px-2 py-3 font-medium" scope="col">Role</th>
                   <th className="px-2 py-3 font-medium" scope="col">Active job limit</th>
-                  <th className="px-2 py-3 font-medium" scope="col">Actions</th>
+                  <th className="px-2 py-3 font-medium" scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

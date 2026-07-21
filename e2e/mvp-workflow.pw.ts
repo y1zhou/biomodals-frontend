@@ -139,6 +139,22 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(
     page.getByRole("button", { name: "Copy email browser-admin@example.com" })
   ).toBeVisible()
+  expect(
+    await usersTable.getByRole("row").nth(1).evaluate(
+      (row) => row.getBoundingClientRect().height
+    )
+  ).toBeGreaterThanOrEqual(60)
+  const userActions = page.getByRole("button", {
+    name: "Actions for Browser Administrator",
+  })
+  await expect(page.getByRole("menuitem", { name: "Remove admin" })).toHaveCount(0)
+  await userActions.click()
+  await expect(page.getByRole("menuitem", { name: "Remove admin" })).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: "Disable" })).toBeVisible()
+  await expect(page.getByRole("menuitem", { name: "New password link" })).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("menuitem", { name: "Remove admin" })).not.toBeVisible()
+
   const adminRefresh = page.getByRole("button", { name: "Refresh" })
   await adminRefresh.click()
   await expect(adminRefresh).toHaveAccessibleName("Refreshing…")
@@ -161,6 +177,15 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
       (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
     )
   ).toBe(true)
+  await expect(
+    toolsTable.getByRole("columnheader", { name: "Modal deployment version" })
+  ).toHaveCSS("white-space", "nowrap")
+  await expect(
+    toolsTable.getByRole("cell", {
+      name: "GROMACS MD simulation",
+      exact: true,
+    })
+  ).toHaveCSS("text-align", "center")
 
   await page.getByRole("button", { name: "Open user menu" }).click()
   await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()

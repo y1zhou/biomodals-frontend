@@ -377,7 +377,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
 
   return (
     <tr className="border-b last:border-0">
-      <td className="px-3 py-4 align-top text-sm font-medium">{displayName}</td>
+      <td className="px-3 py-4 text-center align-top text-sm font-medium">{displayName}</td>
       <td className="px-3 py-4 align-top">
         <RuntimeSettingInput
           aria-label={`Modal app name for ${displayName}`}
@@ -767,16 +767,18 @@ export default function ModalAdminPage() {
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
           <table className="w-full min-w-[56rem] table-fixed border-collapse text-left">
             <colgroup>
-              <col className="w-[31%]" />
-              <col className="w-[25%]" />
-              <col className="w-[16%]" />
+              <col className="w-[29%]" />
+              <col className="w-[24%]" />
+              <col className="w-[19%]" />
               <col className="w-[28%]" />
             </colgroup>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-3 py-3 font-medium" scope="col">Tool</th>
+                <th className="px-3 py-3 text-center font-medium" scope="col">Tool</th>
                 <th className="px-3 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="px-3 py-3 font-medium" scope="col">Modal deployment version</th>
+                <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
+                  Modal deployment version
+                </th>
                 <th className="whitespace-nowrap px-3 py-3 font-medium" scope="col">
                   Active jobs / active job limit
                 </th>
