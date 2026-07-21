@@ -67,14 +67,15 @@ _Avoid_: Task, Modal call
 
 **Job Status**:
 The authoritative lifecycle state of a Job. The live states are queued,
-running, finalizing, blocked, cancel_requested, succeeded, partial, failed,
-and cancelled. Expired is planned for a retained Job whose Result has passed
-its retention period.
+running, finalizing, blocked, cancel_requested, state_unknown, succeeded,
+partial, failed, and cancelled. Expired is planned for a retained Job whose
+Result has passed its retention period.
 _Avoid_: Upload state, progress state
 
 **Active Job**:
-A queued, running, finalizing, or cancel_requested Job that counts against
-admission limits. A blocked Job is recoverable but is not an Active Job.
+A queued, running, finalizing, cancel_requested, or state_unknown Job that
+counts against admission limits. A blocked Job is recoverable but is not an
+Active Job.
 _Avoid_: Non-terminal Job, Modal call
 
 **Blocked Job**:
@@ -83,6 +84,12 @@ an Administrator-fixable service problem resolved before finalization or exact
 published-Result recovery can continue. A previously succeeded Job may become
 blocked if its immutable Result can no longer be restored exactly.
 _Avoid_: Failed Job, stalled Job, queued Job
+
+**State-unknown Job**:
+A Job for which remote work may still exist but BioModals cannot safely confirm
+or reconcile it. It consumes Active Job Limits until an Administrator checks
+Modal and marks it failed. The UI label is Status unknown.
+_Avoid_: Blocked Job, stalled Job, provider-unknown Job
 
 **Blocking Category**:
 An Administrator-visible classification of the service problem preventing
@@ -102,14 +109,14 @@ _Avoid_: Job Status, Modal call
 
 **Stage History**:
 The ordered started and finished times plus terminal outcomes that the backend
-retained while a Job moved through its workload-specific stages. Active and
-blocked stages have no finish time or outcome. It is not a Modal call graph,
-provider log, or source of raw provider identifiers.
+retained while a Job moved through its workload-specific stages. Active,
+state-unknown, and blocked stages have no finish time or outcome. It is not a
+Modal call graph, provider log, or source of raw provider identifiers.
 _Avoid_: Job Status, audit log, Modal call graph
 
 **Stage Outcome**:
 How a started Job Stage ended: completed, failed, or cancelled. It remains
-absent while that Stage is active or blocked.
+absent while that Stage is active, state-unknown, or blocked.
 _Avoid_: Job Status, Progress
 
 **Job History**:
@@ -139,6 +146,8 @@ _Avoid_: Restart, rerun in place
 A durable best-effort request to stop an Active Job without deleting its
 record. It continues consuming Active Job Limits until the remote outcome is
 known and never becomes cancelled solely because time elapsed.
+If the provider status expires before BioModals can confirm the outcome, the
+Job becomes state_unknown for Administrator review.
 _Avoid_: Deletion, request abort
 
 **Deletion**:

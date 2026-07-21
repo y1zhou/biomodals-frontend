@@ -13,8 +13,8 @@ original unchanged.
 ## Lifecycle and Progress
 
 The live Job Status vocabulary is `queued`, `running`, `finalizing`,
-`blocked`, `cancel_requested`, `succeeded`, `partial`, `failed`, and
-`cancelled`.
+`blocked`, `cancel_requested`, `state_unknown`, `succeeded`, `partial`,
+`failed`, and `cancelled`.
 `finalizing` means remote computation has finished but the Result is not yet
 validated and ready. A Job becomes `succeeded` only when its complete Result is
 retrievable; `partial` is terminal and means a useful Result is retrievable
@@ -60,6 +60,22 @@ An owner-visible blocked Job supplies generic recovery copy, `blocked_at`, and
 to terminal failed Jobs. Raw provider details and Blocking Categories are not
 part of owner-visible Job detail.
 
+`state_unknown` means remote work may still exist but BioModals no longer has a
+durable Function Call identity or status sufficient for safe automatic
+reconciliation. It is entered immediately when a direct submission outcome is
+explicitly ambiguous, after an interrupted submission lease expires, or when
+Cancellation status expires and no verified final Result can be recovered. The
+backend never resubmits that operation automatically.
+
+A state-unknown Job consumes every applicable Active Job Limit and is excluded
+from interval polling and backend reconciliation. Job detail labels it
+`Status unknown`, exposes `state_unknown_at`, leaves manual Refresh and focus refetch
+available, and offers no Cancel, Download, or Start Again action. The latest
+recorded Stage remains visible without a spinner or invented terminal outcome.
+An Administrator must inspect Modal, stop remote work there when necessary, and
+then use the Admin-only `Mark failed` action. That action does not contact Modal;
+it records safe terminal `failed/compute_failed` and releases capacity.
+
 Progress is a separate latest snapshot, not a history or log. It may be
 determinate when completed and total work are known, or indeterminate with a
 phase and message; the frontend must never manufacture a percentage or ETA.
@@ -73,9 +89,9 @@ does not provide a heartbeat contract.
 contains a stable stage code and, when a deployed Function is associated with
 that stage, its safe Function name. `JobView.stage_history` retains the ordered
 started stages. Each entry has `started_at`, nullable `ended_at`, and a nullable
-outcome of `completed`, `failed`, or `cancelled`. Active and blocked stages have
-no end or outcome. The detail page merges these entries into the fixed sequence
-but never invents timestamps or outcomes. Modal call IDs, App names,
+outcome of `completed`, `failed`, or `cancelled`. Active, state-unknown, and
+blocked stages have no end or outcome. The detail page merges these entries
+into the fixed sequence but never invents timestamps or outcomes. Modal call IDs, App names,
 Environments, and storage paths remain private.
 
 The fixed GROMACS sequence is `prepare_simulation`, `analyze_nvt`,
@@ -102,12 +118,13 @@ new Jobs.
 ## Polling and capacity
 
 The first version uses HTTP polling instead of server-sent events or WebSockets.
-Poll every 10 seconds while the page is visible, back off to every 60 seconds in
-the background, refetch on focus, offer manual Refresh, and stop after any
-terminal status. This matches the backend's default 10-second remote-state
-reconciliation cadence. Long-running Jobs require no email, push, or
-service-worker notification in the first version because Job History provides
-recovery.
+Poll progressing and blocked Jobs every 10 seconds while the page is visible,
+back off to every 60 seconds in the background, refetch on focus, and offer
+manual Refresh. Stop interval polling after a terminal or `state_unknown`
+status; focus and manual refetch remain available for the latter. This matches
+the backend's default 10-second remote-state reconciliation cadence.
+Long-running Jobs require no email, push, or service-worker notification in the
+first version because Job History provides recovery.
 
 When a refresh request fails, retain the last known Job state, show "Unable to
 refresh job status," keep manual Refresh available, and continue the normal
@@ -119,9 +136,9 @@ Cancellation of the durable Job; only an explicit backend action can request
 that transition.
 
 The MVP enforces per-User, per-Tool, and Global Active Job Limits across
-`queued`, `running`, `finalizing`, and `cancel_requested` Jobs. A blocked
-Job does not consume those limits. A Submission beyond a limit is rejected
-before a Job is created. A distinct
+`queued`, `running`, `finalizing`, `cancel_requested`, and `state_unknown` Jobs.
+A blocked Job does not consume those limits. A Submission beyond a limit is
+rejected before a Job is created. A distinct
 execution Capacity Limit, where an accepted Job waits in a durable admission
 queue, is planned only after the backend can retain Input for later dispatch.
 Numeric limits remain an operational decision.
@@ -177,6 +194,11 @@ request, retries transient Modal failures, and resumes reconciliation after a
 restart. A stage that completed before Cancellation is recorded as completed,
 but its successor is not submitted. Pending Cancellation continues consuming
 every applicable Active Job Limit. The MVP has no Job Deletion action.
+
+If Modal's call status expires before Cancellation is confirmed, the backend
+recovers a verified final Result when possible. Otherwise the Job becomes
+`state_unknown`; elapsed time or an expired provider handle never proves that
+remote work stopped.
 
 After 15 minutes in `cancel_requested`, the page shows "Cancellation is taking
 longer than expected." This warning is derived from `cancel_requested_at`; it

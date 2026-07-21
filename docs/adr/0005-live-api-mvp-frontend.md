@@ -274,6 +274,7 @@ labels and actions as follows:
 | `finalizing` | Preparing result | Active | None |
 | `blocked` | Result temporarily unavailable | Recoverable | None |
 | `cancel_requested` | Cancellation requested | Active | None |
+| `state_unknown` | Status unknown | Active, Admin review required | None |
 | `succeeded` | Completed | Terminal | Download result |
 | `partial` | Completed with warnings | Terminal | Download result |
 | `failed` | Failed | Terminal | Start a new simulation |
@@ -318,15 +319,22 @@ After 15 minutes the status panel shows "Cancellation is taking longer than
 expected" without changing the status or claiming that remote execution has
 stopped. A fully published Result still wins a Cancellation race.
 
+If submission may have reached Modal without a durably recorded call identity,
+or Cancellation status expires without a recoverable final Result, the backend
+returns `state_unknown`. The status panel explains that Administrator review is
+required, shows `state_unknown_at`, and notes that the Job continues consuming
+an Active Job slot. It has no spinner or owner action. The latest known Stage
+remains visible without an invented outcome.
+
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.
 It also presents the fixed GROMACS stage sequence and highlights the current
 stage and running Function reported by `JobView.stage`. The stage table shows
 Started and Finished columns from `JobView.stage_history`. A started entry has
 `started_at`, nullable `ended_at`, and a nullable outcome of `completed`,
-`failed`, or `cancelled`; active and blocked stages have no end or outcome. The
-table displays the outcome explicitly and does not invent missing timestamps,
-durations, completed Functions, or numeric Progress. An unchanged `updated_at`
+`failed`, or `cancelled`; active, state-unknown, and blocked stages have no end
+or outcome. The table displays the outcome explicitly and does not invent
+missing timestamps, durations, completed Functions, or numeric Progress. An unchanged `updated_at`
 is not treated as stale because the API does not provide a heartbeat contract.
 
 The rows are Prepare simulation (`prepare_tpr_cpu|gpu`), Analyze NVT
@@ -344,10 +352,12 @@ Jobs and the GROMACS Tool. A `401` remains a distinct authentication case.
 
 ## Polling and Job History
 
-An active or `blocked` Job detail is polled every `10` seconds while its page is
-visible and every `60` seconds while it is in the background. This makes an
-automatic blocked-Result recovery visible without a manual reload. A Refresh
-button requests an immediate update. Polling stops for every terminal state.
+An actively progressing or `blocked` Job detail is polled every `10` seconds
+while its page is visible and every `60` seconds while it is in the background.
+This makes automatic blocked-Result recovery visible without a manual reload. A
+Refresh button requests an immediate update. Interval polling stops for every
+terminal state and for `state_unknown`; the latter still refetches on focus and
+manual Refresh because an Administrator may resolve it.
 
 If polling fails, the page retains the last known Job state and last successful
 update time, shows "Unable to refresh job status," keeps Refresh available,
@@ -385,10 +395,11 @@ total-count queries, and visible page controls remain deferred until measured
 histories justify them.
 
 The collection endpoint is loaded initially, after manual Refresh, and once
-when the page regains focus. Between collection loads, only individual active
-Jobs are polled through their detail endpoints at the `10`/`60` second cadence.
-Terminal rows and the full collection are never periodically polled. When an
-individual Job becomes terminal, its polling stops.
+when the page regains focus. Between collection loads, only individual
+progressing or blocked Jobs are polled through their detail endpoints at the
+`10`/`60` second cadence. Terminal and state-unknown rows and the full
+collection are never periodically polled. When an individual Job becomes
+terminal or state-unknown, its interval polling stops.
 
 `updated_at` is display metadata rather than a strict Job version. When a
 collection snapshot and its detail snapshot have equal timestamps, the detail
@@ -412,9 +423,9 @@ OpenAPI declares the runtime session-cookie security scheme on every protected
 operation as well as required CSRF headers, request and response bodies, Job
 states and conditional fields, per-operation frontend-handled error codes,
 relevant response headers, and binary and byte-range Result downloads. It also
-contains the `blocked` Job fields and the Admin Modal preflight and Storage
-contracts. Backend contract tests assert these details rather than checking
-only that paths exist.
+contains the `blocked` and `state_unknown` Job fields and the Admin Modal
+preflight, unknown-state resolution, and Storage contracts. Backend contract
+tests assert these details rather than checking only that paths exist.
 
 A live `api:check` compares the OpenAPI document with the generated TypeScript
 contract. The generated file is never edited manually. Backend changes check
@@ -547,9 +558,10 @@ Submission, durable recovery, Cancellation, and Result download without first
 expanding the backend to the longer-term model.
 
 The MVP deliberately omits self-service signup, password changes, numeric Job
-Progress, Retry from retained Input, Job Deletion, expiry handling, configuration
-recall, Job History pagination, and dark-mode controls because the live API does
-not support them or the first vertical slice does not need them.
+Progress, Retry from retained Input, Job Deletion, expiry handling,
+configuration recall, server-side Job History filtering and visible pagination
+controls, and dark-mode controls because the live API does not support them or
+the first vertical slice does not need them.
 
 The glossary and ADR-0002 through ADR-0004 now align with these MVP decisions.
 `expired` remains explicitly planned for Result-retention handling. Deferred

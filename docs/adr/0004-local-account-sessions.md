@@ -30,11 +30,12 @@ already exists and otherwise to `pending_setup`. Administrator role is
 separate from User Status, but only an enabled Administrator satisfies the
 last-administrator safeguard.
 
-Disabling a User does not cancel Jobs that were already admitted. They continue
-through reconciliation and finalization, retain their owner, and consume the
-applicable Active Job Limits until they finish or become blocked. Their Results
-remain inaccessible while the User is disabled and become available again
-after re-enabling. Disabling never grants an Administrator access to those Jobs.
+Disabling a User does not cancel Jobs that were already admitted. They retain
+their owner and continue according to their existing lifecycle. They consume
+the applicable Active Job Limits, including while state-unknown, until they
+finish or become blocked. Their Results remain inaccessible while the User is
+disabled and become available again after re-enabling. Disabling never grants
+an Administrator access to those Jobs.
 
 Offline account bootstrap and recovery use `biomodals api admin` against the
 same configured SQLite state as the service. Those commands enforce the same

@@ -55,14 +55,16 @@ measured User count or response latency requires them.
 
 The Disable action confirms that Sessions and Password Links will be revoked
 and new Submissions refused, while already admitted Jobs will continue and
-retain their owner. Those Jobs continue consuming applicable Active Job Limits
-until they finish or become blocked. Their Results are unavailable to the
-disabled User until re-enabling; Administrators do not gain access to them.
+retain their owner. Those Jobs continue consuming applicable Active Job Limits,
+including while state-unknown, until they finish or become blocked. Their
+Results are unavailable to the disabled User until re-enabling; Administrators
+do not gain access to them.
 
 Disable User, Remove Administrator role, replacement Password Link issuance,
-and Clear Result Cache are the only actions requiring confirmation. Their
-dialogs identify the exact User or cache scope, explain the consequence, and
-use the destructive red confirmation style without a typed phrase. Saving or
+Clear Result Cache, and Mark failed for a state-unknown Job are the only actions
+requiring confirmation. Their dialogs identify the exact User, Job, or cache
+scope, explain the consequence, and use the destructive red confirmation style
+without a typed phrase. Saving or
 restoring a setting, enabling a User, granting Administrator role, and copying
 a value remain immediate.
 
@@ -99,10 +101,18 @@ its own bottom row aligned right, making its form-wide scope clear. It submits
 only fields whose values changed.
 
 The Modal page also shows aggregate blocked-Job counts grouped by safe Blocking
-Category and the age of the oldest blocked Job. It exposes no owner identity,
-Job identifier, Input, Result, Modal exception, Volume path, or private Job
-detail; Administrator access still does not grant inspection of another User's
-Jobs.
+Category and the age of the oldest blocked Job. Those aggregates expose no
+owner identity, Job identifier, Input, Result, Modal exception, Volume path, or
+private Job detail; Administrator access still does not grant inspection of
+another User's Jobs.
+
+A separate `Jobs with unknown remote status` table is the narrow operational
+exception. It exposes only Job ID, workload display name, Job display name,
+safe run name, fixed ambiguity reason, and `state_unknown_at` so an
+Administrator can locate the remote work in Modal. The Administrator must stop
+remote work in Modal first when necessary. A red `Mark failed` action requires
+confirmation, records terminal `failed/compute_failed`, and releases Active Job
+Limits; it does not contact Modal and cannot be undone from the Admin panel.
 
 ## Storage administration
 
@@ -141,12 +151,12 @@ without rerunning scientific compute.
 The Tools section is a four-column table containing the user-facing Tool name,
 editable deployed Modal app name, editable exact positive deployment version,
 and a combined Active Jobs / Tool Active Job Limit field. The API property is
-`active_jobs`; it counts exactly the `queued`, `running`, `finalizing`, and
-`cancel_requested` states consumed by admission limits, while `blocked` and
-terminal Jobs are excluded. The backend's fixed workload descriptor supplies
-the display name and stable workload key. The key remains code-owned because
-workload routes and compute adapters are registered code, not dynamic catalog
-records.
+`active_jobs`; it counts exactly the `queued`, `running`, `finalizing`,
+`cancel_requested`, and `state_unknown` states consumed by admission limits,
+while `blocked` and terminal Jobs are excluded. The backend's fixed workload
+descriptor supplies the display name and stable workload key. The key remains
+code-owned because workload routes and compute adapters are registered code,
+not dynamic catalog records.
 
 While the page is visible, its operational snapshot refreshes every 10 seconds.
 Polling pauses when the document is hidden and refetches immediately on focus
@@ -183,10 +193,10 @@ pending state remain unchanged.
 
 The Tool Active Job Limit counts Active Jobs for one workload across all Users.
 The Global Active Job Limit counts Active Jobs across all Users and Tools.
-Blocked Jobs consume neither limit. Admission reads the User limit and
-database-backed Runtime Settings,
-checks User, Tool, and Global counts, and writes the Job snapshot within the
-same SQLite write transaction. Reusing an idempotency key still returns the
+State-unknown Jobs consume both limits until Administrator resolution; blocked
+Jobs consume neither limit. Admission reads the User limit and database-backed
+Runtime Settings, checks User, Tool, and Global counts, and writes the Job
+snapshot within the same SQLite write transaction. Reusing an idempotency key still returns the
 original Job after rechecking that the User remains enabled but before applying
 current limits.
 
