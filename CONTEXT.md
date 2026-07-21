@@ -11,8 +11,15 @@ Client Operations, create Jobs, or do both.
 _Avoid_: App, external tool
 
 **Tool Catalog**:
-The curated set of Tools that Users can discover and open.
+A curated set of available Tools that Users can discover and open, plus any
+explicitly announced Tool Catalog Placeholders.
 _Avoid_: Marketplace, external catalog
+
+**Tool Catalog Placeholder**:
+A visibly muted, non-interactive preview of a planned Tool. It is labelled WIP,
+has no route or Submission, and is excluded from available-Tool navigation and
+filters until the workflow exists.
+_Avoid_: Tool, disabled Tool, fake route
 
 **Client Operation**:
 A computation that completes entirely in the browser without creating a Job.

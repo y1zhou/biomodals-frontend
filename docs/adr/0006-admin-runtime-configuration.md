@@ -138,14 +138,15 @@ Clearing the Result Cache never deletes a Job or its authoritative remote Modal
 Volume data. A later User download restores or reconstructs the Result locally
 without rerunning scientific compute.
 
-The Tools section is a three-column table containing the user-facing Tool name,
-editable deployed Modal app name, and a combined Active Jobs / Tool Active Job
-Limit field. The API property is `active_jobs`; it counts exactly the `queued`,
-`running`, `finalizing`, and `cancel_requested` states consumed by admission
-limits, while `blocked` and terminal Jobs are excluded. The frontend derives
-the display name from its typed Tool Catalog using the fixed API workload key.
-The workload key remains code-owned because workload routes and compute
-adapters are registered code, not dynamic catalog records.
+The Tools section is a four-column table containing the user-facing Tool name,
+editable deployed Modal app name, editable exact positive deployment version,
+and a combined Active Jobs / Tool Active Job Limit field. The API property is
+`active_jobs`; it counts exactly the `queued`, `running`, `finalizing`, and
+`cancel_requested` states consumed by admission limits, while `blocked` and
+terminal Jobs are excluded. The backend's fixed workload descriptor supplies
+the display name and stable workload key. The key remains code-owned because
+workload routes and compute adapters are registered code, not dynamic catalog
+records.
 
 While the page is visible, its operational snapshot refreshes every 10 seconds.
 Polling pauses when the document is hidden and refetches immediately on focus
@@ -169,11 +170,12 @@ behavior. Revisit this only if concurrent administration becomes common.
 
 Changing the Modal Environment performs a read-only backend preflight of the
 configured output Volume and every required GROMACS Function in that
-Environment before the database update commits. Changing the deployed App name
-preflights its required Functions in the current effective Environment.
-Limit-only changes do not validate unrelated Modal fields. A failed preflight
-leaves every prior Runtime Setting intact and returns a stable configuration
-error; validation never invokes a paid Function.
+Environment at each Tool's effective App name and deployment version before the
+database update commits. Changing either a deployed App name or deployment
+version preflights the candidate name/version pair in the current effective
+Environment. Limit-only changes do not validate unrelated Modal fields. A
+failed preflight leaves every prior Runtime Setting intact and returns a stable
+configuration error; validation never invokes a paid Function.
 
 Only the fields participating in the preflight display a spinner and disabled
 save/restore controls while validation is pending. Other field provenance and
@@ -185,7 +187,8 @@ Blocked Jobs consume neither limit. Admission reads the User limit and
 database-backed Runtime Settings,
 checks User, Tool, and Global counts, and writes the Job snapshot within the
 same SQLite write transaction. Reusing an idempotency key still returns the
-original Job before applying current limits.
+original Job after rechecking that the User remains enabled but before applying
+current limits.
 
 These policies reject excess Submissions with
 `409 active_job_limit_reached`. They are admission controls, not Capacity
@@ -256,10 +259,11 @@ URL is embedded in the frontend or stored as an Administrator setting.
 
 ## Live changes and existing Jobs
 
-Modal Environment and deployed app changes apply to newly admitted Jobs. Each
-Job stores a Modal Configuration Snapshot at admission. Submission and later
-Volume access use that snapshot, so existing Jobs remain attached to the
-environment and app under which they were accepted.
+Modal Environment, deployed app name, and exact deployment-version changes
+apply to newly admitted Jobs. Each Job stores a Modal Configuration Snapshot at
+admission. Submission, later deployed-Function lookups, and Volume access use
+that snapshot, so existing Jobs remain attached to the environment, app, and
+version under which they were accepted.
 
 Backend startup applies the same read-only preflight to effective
 process/file-controlled Modal settings before accepting traffic.

@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { filterTools, gromacsPaths, toolOverviewPath, tools } from "@/tools"
+import {
+  filterToolCatalog,
+  gromacsPaths,
+  toolCatalog,
+  toolOverviewPath,
+} from "@/tools"
 
 const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
@@ -27,7 +32,7 @@ const UsersAdminPage = lazy(() => import("@/pages/admin/UsersAdminPage"))
 
 function LandingPage() {
   const [query, setQuery] = useState("")
-  const visibleTools = filterTools(tools, query)
+  const visibleCatalogEntries = filterToolCatalog(toolCatalog, query)
 
   return (
     <main className="min-h-[calc(100svh-73px)] bg-[radial-gradient(circle_at_top_left,var(--color-muted),transparent_34rem)]">
@@ -61,12 +66,13 @@ function LandingPage() {
 
         <section aria-label="Tools" className="mt-8">
           <p aria-live="polite" className="text-sm text-muted-foreground">
-            {visibleTools.length} {visibleTools.length === 1 ? "tool" : "tools"}
+            {visibleCatalogEntries.length}{" "}
+            {visibleCatalogEntries.length === 1 ? "tool" : "tools"}
           </p>
 
-          {visibleTools.length > 0 ? (
+          {visibleCatalogEntries.length > 0 ? (
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {visibleTools.map((tool) => {
+              {visibleCatalogEntries.map((tool) => {
                 const Icon = tool.icon
 
                 return (

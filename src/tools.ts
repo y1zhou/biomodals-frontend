@@ -1,13 +1,22 @@
 import { Atom, Dna, type LucideIcon } from "lucide-react"
 
-export interface Tool {
+interface ToolCatalogEntryBase {
   slug: string
   name: string
   description: string
   tags: string[]
   icon: LucideIcon
-  status: "available" | "wip"
 }
+
+export interface AvailableTool extends ToolCatalogEntryBase {
+  status: "available"
+}
+
+export interface ToolCatalogPlaceholder extends ToolCatalogEntryBase {
+  status: "wip"
+}
+
+export type ToolCatalogEntry = AvailableTool | ToolCatalogPlaceholder
 
 export const gromacsTool = {
   slug: "gromacs",
@@ -16,7 +25,7 @@ export const gromacsTool = {
   tags: ["PDB", "Molecular dynamics", "Remote compute", "Protein structure"],
   icon: Atom,
   status: "available",
-} satisfies Tool
+} satisfies AvailableTool
 
 export const alphafold3Tool = {
   slug: "alphafold3",
@@ -25,9 +34,9 @@ export const alphafold3Tool = {
   tags: ["Protein structure", "Structure prediction", "Remote compute"],
   icon: Dna,
   status: "wip",
-} satisfies Tool
+} satisfies ToolCatalogPlaceholder
 
-export function toolOverviewPath(tool: Pick<Tool, "slug">) {
+export function toolOverviewPath(tool: AvailableTool) {
   return `/tools/${tool.slug}`
 }
 
@@ -40,13 +49,20 @@ export const gromacsPaths = {
   job: (jobId: string) => `${gromacsOverviewPath}/jobs/${encodeURIComponent(jobId)}`,
 }
 
-export const tools: Tool[] = [gromacsTool, alphafold3Tool]
+export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool]
+
+export const availableTools = toolCatalog.filter(
+  (entry): entry is AvailableTool => entry.status === "available"
+)
 
 export function toolName(workload: string) {
-  return tools.find((tool) => tool.slug === workload)?.name ?? workload
+  return toolCatalog.find((entry) => entry.slug === workload)?.name ?? workload
 }
 
-export function filterTools(catalog: Tool[], query: string) {
+export function filterToolCatalog(
+  catalog: readonly ToolCatalogEntry[],
+  query: string
+) {
   const normalizedQuery = query.trim().toLocaleLowerCase()
 
   if (!normalizedQuery) return catalog

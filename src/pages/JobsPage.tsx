@@ -39,7 +39,7 @@ import {
   type JobTableSort,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-import { gromacsPaths, gromacsTool, toolName, tools } from "@/tools"
+import { availableTools, gromacsPaths, gromacsTool, toolName } from "@/tools"
 
 function JobRow({
   job: initialJob,
@@ -66,7 +66,7 @@ function JobRow({
   })
   useExpireSession(jobQuery.error)
   const job = latestJob(initialJob, jobQuery.data)
-  const tool = tools.find((candidate) => candidate.slug === job.workload)
+  const tool = availableTools.find((candidate) => candidate.slug === job.workload)
   const path = tool?.slug === gromacsTool.slug ? gromacsPaths.job(job.job_id) : "/jobs"
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, normalized, sort } = jobTableViewFromSearchParams(
     searchParams,
-    tools.map((tool) => tool.slug)
+    availableTools.map((tool) => tool.slug)
   )
   const jobsQuery = useQuery({
     queryKey: jobListKey,
@@ -337,7 +337,7 @@ export default function JobsPage() {
                     value={filters.tool}
                   >
                     <option value="">All tools</option>
-                    {tools.map((tool) => (
+                    {availableTools.map((tool) => (
                       <option key={tool.slug} value={tool.slug}>{tool.name}</option>
                     ))}
                   </select>

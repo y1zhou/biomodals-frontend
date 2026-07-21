@@ -6,8 +6,10 @@
   configuration live elsewhere unless the scope is explicitly changed.
 - Production API requests use same-origin `/api/*` URLs. The external static
   server must fall back to `index.html` for browser routes.
-- Keep one Vite/React SPA. Every Tool is an internal route, and real Tool route
-  modules should be lazy-loaded as they are introduced.
+- Keep one Vite/React SPA. Every available Tool is an internal route, and real
+  Tool route modules should be lazy-loaded as they are introduced. An explicit
+  WIP Tool Catalog Placeholder is non-interactive and has no route until its
+  workflow exists.
 - Keep Tool metadata in the typed frontend Tool Catalog rather than duplicating
   it in card markup or fetching a catalog from the backend.
 - Read `CONTEXT.md` before naming domain concepts. Read relevant files in
@@ -29,8 +31,10 @@
 - Use shadcn components selectively and preserve the `base-nova` style in
   `components.json`. Prefer native browser controls where they are sufficient,
   including a file input for uploads.
-- Use real links for Tool cards so keyboard navigation, open-in-new-tab, and
-  browser history work normally.
+- Use real links for available Tool cards so keyboard navigation,
+  open-in-new-tab, and browser history work normally. WIP Tool Catalog
+  Placeholders must be visibly muted, labelled WIP, and excluded from available
+  Tool navigation and filters.
 - Do not add a TypeScript `baseUrl`. TypeScript 6 rejects the deprecated option;
   the project aliases work through `paths` alone.
 - Keep generated shadcn variant exports allowed by the Oxlint Fast Refresh

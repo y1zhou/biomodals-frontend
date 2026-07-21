@@ -1,22 +1,25 @@
 import { describe, expect, test } from "bun:test"
 
-import { filterTools, toolName, tools } from "../src/tools"
+import {
+  availableTools,
+  filterToolCatalog,
+  toolCatalog,
+  toolName,
+} from "../src/tools"
 
-describe("filterTools", () => {
+describe("filterToolCatalog", () => {
   test("matches names, descriptions, and tags without case sensitivity", () => {
-    expect(filterTools(tools, "STRUCTURE").map((tool) => tool.slug)).toEqual([
-      "gromacs",
-      "alphafold3",
-    ])
-    expect(filterTools(tools, "molecular").map((tool) => tool.slug)).toEqual([
-      "gromacs",
-      "alphafold3",
-    ])
-    expect(filterTools(tools, "csv")).toEqual([])
+    expect(
+      filterToolCatalog(toolCatalog, "STRUCTURE").map((tool) => tool.slug)
+    ).toEqual(["gromacs", "alphafold3"])
+    expect(
+      filterToolCatalog(toolCatalog, "molecular").map((tool) => tool.slug)
+    ).toEqual(["gromacs", "alphafold3"])
+    expect(filterToolCatalog(toolCatalog, "csv")).toEqual([])
   })
 
   test("returns all tools for blank input", () => {
-    expect(filterTools(tools, "   ")).toEqual(tools)
+    expect(filterToolCatalog(toolCatalog, "   ")).toEqual(toolCatalog)
   })
 
   test("maps API workloads to user-facing tool names", () => {
@@ -26,6 +29,9 @@ describe("filterTools", () => {
   })
 
   test("keeps AlphaFold 3 visible but unavailable", () => {
-    expect(tools.find((tool) => tool.slug === "alphafold3")?.status).toBe("wip")
+    expect(
+      toolCatalog.find((tool) => tool.slug === "alphafold3")?.status
+    ).toBe("wip")
+    expect(availableTools.map((tool) => tool.slug)).toEqual(["gromacs"])
   })
 })
