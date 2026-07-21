@@ -376,10 +376,13 @@ than breaking the route. The frontend does not duplicate this state in local or
 session storage, and the parameters continue to drive client-side behavior
 rather than implying an undocumented server filter contract.
 
-The MVP collection endpoint remains unpaginated and returns every Job owned by
-the authenticated User, newest-first, without a hidden cap. Server filtering,
-total-count queries, and pagination are deferred until measured histories in
-the hundreds or response latency justify the larger contract.
+The MVP collection endpoint returns stable owner-scoped cursor pages, with 50
+records by default and at most 100 per response. The frontend follows every
+continuation cursor and assembles all Jobs owned by the authenticated User,
+newest-first, without a hidden cap. This bounds each SQLite query and HTTP
+response while preserving the client-side table contract. Server filtering,
+total-count queries, and visible page controls remain deferred until measured
+histories justify them.
 
 The collection endpoint is loaded initially, after manual Refresh, and once
 when the page regains focus. Between collection loads, only individual active

@@ -47,9 +47,11 @@ The page and API expose User Status as `pending_setup`, `enabled`, or
 established password produces `enabled`; re-enabling one without a password
 produces `pending_setup`.
 
-The MVP Users endpoint returns the complete small department collection without
-pagination or a hidden cap. Pagination and server-side filtering are deferred
-until measured User count or response latency requires them.
+The MVP Users endpoint returns stable cursor pages, with 50 records by default
+and at most 100 per response. The frontend follows every continuation cursor to
+assemble the complete small-department collection without a hidden cap. Visible
+page controls, total counts, and server-side filtering remain deferred until
+measured User count or response latency requires them.
 
 The Disable action confirms that Sessions and Password Links will be revoked
 and new Submissions refused, while already admitted Jobs will continue and
