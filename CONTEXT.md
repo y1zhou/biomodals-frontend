@@ -166,8 +166,9 @@ explicit process environment variable controls it.
 _Avoid_: Modal credential, frontend API URL
 
 **Modal Configuration Snapshot**:
-The Modal Environment and deployed Modal app name captured on a Job when it is
-admitted, so later Runtime Setting changes affect only subsequent Jobs.
+The Modal Environment, deployed Modal app name, and exact positive deployment
+version captured on a Job when it is admitted, so later Runtime Setting changes
+or App redeployments affect only subsequent Jobs.
 _Avoid_: current Modal config, mutable Job config
 
 **Job Error**:
