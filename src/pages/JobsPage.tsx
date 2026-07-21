@@ -11,7 +11,6 @@ import {
   ListFilter,
   LoaderCircle,
   Plus,
-  RefreshCw,
 } from "lucide-react"
 import { useEffect, type ReactNode } from "react"
 import { Link, useSearchParams } from "react-router"
@@ -19,6 +18,7 @@ import { Link, useSearchParams } from "react-router"
 import { ApiError, apiRequestId, inspectJob, listJobs, type Job } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
+import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -151,7 +151,7 @@ function SortableHeader({
     >
       <div className="flex items-center gap-1">
         <button
-          className="inline-flex items-center gap-1.5 hover:text-foreground"
+          className="inline-flex items-center gap-1.5 rounded-sm transition-all hover:text-foreground active:scale-[0.97] active:text-foreground active:brightness-90 motion-reduce:active:scale-100"
           onClick={() => onSort(column)}
           type="button"
         >
@@ -162,7 +162,7 @@ function SortableHeader({
           <Popover.Trigger
             aria-label={`${filterLabel}${filterActive ? " (active)" : ""}`}
             className={cn(
-              "grid size-6 place-items-center rounded-md outline-none hover:bg-background hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 data-[popup-open]:bg-background data-[popup-open]:text-foreground",
+              "grid size-6 place-items-center rounded-md outline-none transition-all hover:bg-background hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95 active:bg-background active:text-foreground active:brightness-90 motion-reduce:active:scale-100 data-[popup-open]:bg-background data-[popup-open]:text-foreground",
               filterActive && "bg-primary/10 text-primary"
             )}
             title={filterLabel}
@@ -230,10 +230,15 @@ export default function JobsPage() {
           Check the connection and try again.
           {apiRequestId(jobsQuery.error) ? ` Support ID: ${apiRequestId(jobsQuery.error)}.` : ""}
         </p>
-        <Button className="mt-7" onClick={() => void jobsQuery.refetch()}>
-          <RefreshCw aria-hidden="true" />
-          Try again
-        </Button>
+        <RefreshButton
+          className="mt-7"
+          idleLabel="Try again"
+          onRefresh={async () => {
+            const result = await jobsQuery.refetch()
+            if (result.isError) throw result.error
+          }}
+          variant="default"
+        />
       </main>
     )
   }
@@ -277,14 +282,13 @@ export default function JobsPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button
+          <RefreshButton
             disabled={jobsQuery.isFetching}
-            onClick={() => void jobsQuery.refetch()}
-            variant="outline"
-          >
-            <RefreshCw aria-hidden="true" className={cn(jobsQuery.isFetching && "animate-spin")} />
-            Refresh
-          </Button>
+            onRefresh={async () => {
+              const result = await jobsQuery.refetch()
+              if (result.isError) throw result.error
+            }}
+          />
           <Link className={buttonVariants()} to="/">
             <Plus aria-hidden="true" data-icon="inline-start" />
             New job

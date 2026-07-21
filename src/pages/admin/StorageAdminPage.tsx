@@ -5,7 +5,6 @@ import {
   Database,
   HardDrive,
   LoaderCircle,
-  RefreshCw,
   Trash2,
 } from "lucide-react"
 import { useState } from "react"
@@ -18,10 +17,10 @@ import {
   type AdminCacheCleanup,
 } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
+import { RefreshButton } from "@/components/RefreshButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatTimestamp } from "@/jobs"
-import { cn } from "@/lib/utils"
 import { formatBytes } from "@/storage"
 
 function errorMessage(error: unknown) {
@@ -92,10 +91,14 @@ export default function StorageAdminPage() {
     return (
       <div>
         <p className="text-sm text-destructive" role="alert">{errorMessage(storage.error)}</p>
-        <Button className="mt-4" onClick={() => void storage.refetch()} variant="outline">
-          <RefreshCw aria-hidden="true" />
-          Try again
-        </Button>
+        <RefreshButton
+          className="mt-4"
+          idleLabel="Try again"
+          onRefresh={async () => {
+            const result = await storage.refetch()
+            if (result.isError) throw result.error
+          }}
+        />
       </div>
     )
   }
@@ -114,14 +117,13 @@ export default function StorageAdminPage() {
             Last updated {formatTimestamp(storage.dataUpdatedAt)}
           </p>
         </div>
-        <Button
+        <RefreshButton
           disabled={storage.isFetching}
-          onClick={() => void storage.refetch()}
-          variant="outline"
-        >
-          <RefreshCw aria-hidden="true" className={cn(storage.isFetching && "animate-spin")} />
-          Refresh
-        </Button>
+          onRefresh={async () => {
+            const result = await storage.refetch()
+            if (result.isError) throw result.error
+          }}
+        />
       </div>
 
       {storage.isError ? (

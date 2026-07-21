@@ -6,7 +6,6 @@ import {
   Clipboard,
   Download,
   LoaderCircle,
-  RefreshCw,
   RotateCcw,
   XCircle,
 } from "lucide-react"
@@ -28,6 +27,7 @@ import {
 import { adminStorageKey } from "@/admin"
 import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
+import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -157,10 +157,15 @@ export default function JobDetailPage() {
           Check the connection and try again.
           {apiRequestId(queryError) ? ` Support ID: ${apiRequestId(queryError)}.` : ""}
         </p>
-        <Button className="mt-7" onClick={() => void jobQuery.refetch()}>
-          <RefreshCw aria-hidden="true" />
-          Try again
-        </Button>
+        <RefreshButton
+          className="mt-7"
+          idleLabel="Try again"
+          onRefresh={async () => {
+            const result = await jobQuery.refetch()
+            if (result.isError) throw result.error
+          }}
+          variant="default"
+        />
       </main>
     )
   }
@@ -199,14 +204,13 @@ export default function JobDetailPage() {
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
             My Jobs
           </Link>
-          <Button
+          <RefreshButton
             disabled={jobQuery.isFetching}
-            onClick={() => void jobQuery.refetch()}
-            variant="outline"
-          >
-            <RefreshCw aria-hidden="true" className={cn(jobQuery.isFetching && "animate-spin")} />
-            Refresh
-          </Button>
+            onRefresh={async () => {
+              const result = await jobQuery.refetch()
+              if (result.isError) throw result.error
+            }}
+          />
         </div>
 
         <section className="mt-8">

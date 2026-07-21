@@ -105,7 +105,7 @@ export default function AppShell() {
                   <span className="hidden sm:inline">My Jobs</span>
                 </Link>
                 <Menu.Root>
-                  <Menu.Trigger className="ml-1 flex size-9 cursor-pointer items-center justify-center rounded-full border bg-muted text-sm font-medium outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50">
+                  <Menu.Trigger className="ml-1 flex size-9 cursor-pointer items-center justify-center rounded-full border bg-muted text-sm font-medium outline-none transition-all hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95 active:bg-accent active:brightness-90 motion-reduce:active:scale-100">
                     <span className="sr-only">Open user menu</span>
                     {currentUser.display_name.slice(0, 1).toLocaleUpperCase() || (
                       <UserRound aria-hidden="true" className="size-4" />

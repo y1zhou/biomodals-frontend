@@ -4,7 +4,6 @@ import {
   Check,
   Copy,
   LoaderCircle,
-  RefreshCw,
   RotateCcw,
   Save,
 } from "lucide-react"
@@ -43,6 +42,7 @@ import {
   type UpdateAdminModalToolInput,
 } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
+import { RefreshButton } from "@/components/RefreshButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -601,14 +601,13 @@ export default function ModalAdminPage() {
         <p className="text-xs text-muted-foreground">
           Last updated {formatTimestamp(modal.dataUpdatedAt)}
         </p>
-        <Button
+        <RefreshButton
           disabled={modal.isFetching}
-          onClick={() => void modal.refetch()}
-          variant="outline"
-        >
-          <RefreshCw aria-hidden="true" className={cn(modal.isFetching && "animate-spin")} />
-          Refresh
-        </Button>
+          onRefresh={async () => {
+            const result = await modal.refetch()
+            if (result.isError) throw result.error
+          }}
+        />
       </div>
 
       {modal.isError ? (

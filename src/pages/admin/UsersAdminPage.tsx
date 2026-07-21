@@ -7,7 +7,6 @@ import {
   Copy,
   LoaderCircle,
   Plus,
-  RefreshCw,
   Save,
 } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
@@ -31,6 +30,7 @@ import {
   useExpireSession,
   type CurrentUserState,
 } from "@/auth-state"
+import { RefreshButton } from "@/components/RefreshButton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -608,18 +608,14 @@ export default function UsersAdminPage() {
             {users.data ? (
               <p className="text-sm text-muted-foreground">{users.data.length} total</p>
             ) : null}
-            <Button
+            <RefreshButton
               disabled={users.isFetching}
-              onClick={() => void users.refetch()}
+              onRefresh={async () => {
+                const result = await users.refetch()
+                if (result.isError) throw result.error
+              }}
               size="sm"
-              variant="outline"
-            >
-              <RefreshCw
-                aria-hidden="true"
-                className={users.isFetching ? "animate-spin" : undefined}
-              />
-              Refresh
-            </Button>
+            />
           </div>
         </div>
 
