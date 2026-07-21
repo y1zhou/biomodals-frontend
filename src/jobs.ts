@@ -20,6 +20,20 @@ export function formatTimestamp(value: string | number | null | undefined) {
   return value ? timestamp.format(new Date(value)) : "—"
 }
 
+export function formatRelativeTimestamp(
+  value: string | number,
+  now = Date.now()
+) {
+  const seconds = Math.max(
+    0,
+    Math.floor((now - new Date(value).getTime()) / 1_000)
+  )
+  if (seconds < 60) return `${seconds}s ago`
+  if (seconds < 3_600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)}h ago`
+  return `${Math.floor(seconds / 86_400)}d ago`
+}
+
 export function useDocumentVisibility() {
   const [visibility, setVisibility] = useState<DocumentVisibilityState>(
     () => document.visibilityState

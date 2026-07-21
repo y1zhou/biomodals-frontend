@@ -9,7 +9,7 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
 import {
@@ -32,6 +32,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   formatTimestamp,
+  formatRelativeTimestamp,
   gromacsStageTimeline,
   isProgressingJob,
   isPollableJob,
@@ -48,6 +49,21 @@ import {
 import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import { gromacsPaths, gromacsTool } from "@/tools"
+
+function RelativeTimestamp({ value }: { value: number }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  return (
+    <time dateTime={new Date(value).toISOString()} title={formatTimestamp(value)}>
+      {formatRelativeTimestamp(value, now)}
+    </time>
+  )
+}
 
 function JobUnavailable() {
   return (
@@ -175,6 +191,10 @@ export default function JobDetailPage() {
   const canCancel = job.state === "queued" || job.state === "running"
   const canDownload = job.state === "succeeded" || job.state === "partial"
   const canStartAgain = job.state === "failed" || job.state === "cancelled"
+  const relativeLastChecked =
+    job.state !== "succeeded" &&
+    job.state !== "partial" &&
+    job.state !== "cancelled"
   const stateDescription =
     job.state === "failed" ? jobFailureMessage(job) : presentation.description
   const stages = gromacsStageTimeline(job)
@@ -251,7 +271,12 @@ export default function JobDetailPage() {
             <CardContent>
               <p className="max-w-2xl leading-7">{stateDescription}</p>
               <p className="mt-2 text-xs opacity-80">
-                Job updated {formatTimestamp(job.updated_at)} · Last checked {formatTimestamp(jobQuery.dataUpdatedAt)}
+                Job updated {formatTimestamp(job.updated_at)} · Last checked{" "}
+                {relativeLastChecked ? (
+                  <RelativeTimestamp value={jobQuery.dataUpdatedAt} />
+                ) : (
+                  formatTimestamp(jobQuery.dataUpdatedAt)
+                )}
               </p>
               {job.warnings?.length ? (
                 <div className="mt-5 rounded-lg border border-current/20 bg-background/70 p-4">
@@ -342,7 +367,7 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent className="px-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[64rem] text-left text-sm">
+                <table className="w-full min-w-[58rem] text-left text-sm">
                   <caption className="sr-only">GROMACS execution stages</caption>
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
                     <tr>
@@ -355,10 +380,10 @@ export default function JobDetailPage() {
                       <th className="px-6 py-3 font-medium" scope="col">
                         Running function
                       </th>
-                      <th className="px-6 py-3 font-medium" scope="col">
+                      <th className="px-3 py-3 font-medium" scope="col">
                         Started
                       </th>
-                      <th className="px-6 py-3 font-medium" scope="col">
+                      <th className="px-3 py-3 font-medium" scope="col">
                         Finished
                       </th>
                     </tr>
@@ -418,10 +443,10 @@ export default function JobDetailPage() {
                               <span className="text-muted-foreground">—</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-muted-foreground">
+                          <td className="px-3 py-4 text-muted-foreground">
                             {formatTimestamp(stage.startedAt)}
                           </td>
-                          <td className="px-6 py-4 text-muted-foreground">
+                          <td className="px-3 py-4 text-muted-foreground">
                             {formatTimestamp(stage.endedAt)}
                           </td>
                         </tr>

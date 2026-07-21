@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { ApiError, type Job } from "../src/api/client"
 import {
   formatTimestamp,
+  formatRelativeTimestamp,
   filterAndSortJobs,
   gromacsStageTimeline,
   isActiveJob,
@@ -35,6 +36,14 @@ describe("Job lifecycle presentation", () => {
   test("formats missing timestamps consistently", () => {
     expect(formatTimestamp(null)).toBe("—")
     expect(formatTimestamp(0)).toBe("—")
+  })
+
+  test("formats recent checks relative to a fixed current time", () => {
+    const now = Date.parse("2026-07-21T12:00:20Z")
+
+    expect(formatRelativeTimestamp("2026-07-21T12:00:00Z", now)).toBe("20s ago")
+    expect(formatRelativeTimestamp("2026-07-21T11:58:00Z", now)).toBe("2m ago")
+    expect(formatRelativeTimestamp("2026-07-21T10:00:00Z", now)).toBe("2h ago")
   })
 
   test("classifies active and terminal states", () => {
