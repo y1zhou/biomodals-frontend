@@ -85,7 +85,11 @@ export default function JobDetailPage() {
     },
     refetchIntervalInBackground: true,
     refetchOnWindowFocus(query) {
-      return Boolean(query.state.data && isPollableJob(query.state.data.state))
+      return Boolean(
+        query.state.data &&
+          (isPollableJob(query.state.data.state) ||
+            query.state.data.state === "state_unknown")
+      )
     },
   })
   const cancelMutation = useMutation({
