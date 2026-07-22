@@ -363,8 +363,8 @@ Jobs and the GROMACS Tool. A `401` remains a distinct authentication case.
 
 ## Polling and Job History
 
-An actively progressing or `blocked` Job detail is polled every `10` seconds
-while its page is visible and every `60` seconds while it is in the background.
+An actively progressing or `blocked` Job detail is polled every `60` seconds
+while its page is visible and every `5` minutes while it is in the background.
 This makes automatic blocked-Result recovery visible without a manual reload. A
 Refresh button requests an immediate update. Interval polling stops for every
 terminal state and for `state_unknown`; the latter still refetches on focus and
@@ -408,7 +408,7 @@ histories justify them.
 The collection endpoint is loaded initially, after manual Refresh, and once
 when the page regains focus. Between collection loads, only individual
 progressing or blocked Jobs are polled through their detail endpoints at the
-`10`/`60` second cadence. Terminal and state-unknown rows and the full
+60-second/5-minute cadence. Terminal and state-unknown rows and the full
 collection are never periodically polled. When an individual Job becomes
 terminal or state-unknown, its interval polling stops.
 

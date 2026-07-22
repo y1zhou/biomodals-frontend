@@ -161,12 +161,12 @@ descriptor supplies the display name and stable workload key. The key remains
 code-owned because workload routes and compute adapters are registered code,
 not dynamic catalog records.
 
-While the page is visible, its operational snapshot refreshes every 10 seconds.
-Polling pauses when the document is hidden and refetches immediately on focus
-and after a successful setting mutation. A manual Refresh control and small
-last-updated indicator make the snapshot age explicit. Refetches update counts
-and committed setting values without overwriting unsaved Environment or Tool
-form edits. No push or streaming transport is introduced.
+While the page is visible, its operational snapshot refreshes every 60 seconds.
+It backs off to every 5 minutes when the document is hidden and refetches
+immediately on focus and after a successful setting mutation. A manual Refresh
+control and small last-updated indicator make the snapshot age explicit.
+Refetches update counts and committed setting values without overwriting unsaved
+Environment or Tool form edits. No push or streaming transport is introduced.
 
 Tool-row saves are likewise serialized and display failures in the initiating
 row. Environment-setting failures remain inside the Environment section.

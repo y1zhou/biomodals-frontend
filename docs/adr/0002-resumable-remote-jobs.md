@@ -136,11 +136,12 @@ new Jobs.
 ## Polling and capacity
 
 The first version uses HTTP polling instead of server-sent events or WebSockets.
-Poll progressing and blocked Jobs every 10 seconds while the page is visible,
-back off to every 60 seconds in the background, refetch on focus, and offer
+Poll progressing and blocked Jobs every 60 seconds while the page is visible,
+back off to every 5 minutes in the background, refetch on focus, and offer
 manual Refresh. Stop interval polling after a terminal or `state_unknown`
-status; focus and manual refetch remain available for the latter. This matches
-the backend's default 10-second remote-state reconciliation cadence.
+status; focus and manual refetch remain available for the latter. The browser
+cadence is deliberately slower than the backend's default 10-second
+remote-state reconciliation cadence to reduce API traffic.
 Long-running Jobs require no email, push, or service-worker notification in the
 first version because Job History provides recovery.
 
