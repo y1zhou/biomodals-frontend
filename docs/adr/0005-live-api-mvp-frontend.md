@@ -368,17 +368,19 @@ Function Call ID. The backend resolves the selected Stage to that private ID
 and redacts that exact value if provider output contains it. Active and
 state-unknown Stages stream plain-text output; completed, failed, and cancelled
 Stages fetch the retained output for their recorded time range without follow
-mode. The first successful terminal fetch is cached for the lifetime of the Job
-detail page, so reopening the row reuses identical text. A page refresh clears
-that cache.
+mode. TanStack Query caches the first successful terminal fetch indefinitely
+for the current browser page, so reopening the row reuses identical text without
+requiring fresh target metadata. A full page refresh clears that cache.
 
 The viewer refreshes target metadata every ten seconds only for a live target.
 It has a bounded-height viewport and retains at most the latest 500,000
 characters, visibly noting if earlier output was omitted. Provider timestamps
 use compact sans-serif text beside monospace messages. Copy and Download buttons
 use the retained text, with downloads named
-`<current-timestamp>_<tool>_<stage>.log`. Empty, interrupted, or completed log
-output never changes Job Status or supplies an invented Stage outcome.
+`<current-timestamp>_<tool>_<stage>.log`. A failed provider stream displays
+short diagnostic guidance; a live viewer also retains text already received.
+Empty, interrupted, or completed log output never changes Job Status or supplies
+an invented Stage outcome.
 
 Missing and unauthorized Jobs share the same `Job unavailable` screen so a Job
 identifier cannot reveal ownership. A structurally invalid Job identifier
