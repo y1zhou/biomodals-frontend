@@ -889,17 +889,30 @@ export interface components {
          * @description Safe execution stage timing without a provider call identifier.
          */
         readonly JobStageView: {
-            /** Code */
+            /**
+             * Code
+             * @description Stable workload stage code.
+             */
             readonly code: string;
-            /** Ended At */
+            /**
+             * Ended At
+             * @description Time this stage ended; absent while the stage is active.
+             */
             readonly ended_at?: string | null;
-            /** Function Name */
+            /**
+             * Function Name
+             * @description Deployed provider function for this stage, when applicable.
+             */
             readonly function_name?: string | null;
-            /** Outcome */
+            /**
+             * Outcome
+             * @description Terminal stage outcome; absent while the stage is active.
+             */
             readonly outcome?: ("completed" | "failed" | "cancelled") | null;
             /**
              * Started At
              * Format: date-time
+             * @description Time this stage began.
              */
             readonly started_at: string;
         };
@@ -920,13 +933,25 @@ export interface components {
          * @description Provider-neutral job details returned to a submitter.
          */
         readonly JobView: {
-            /** Active Stages */
+            /**
+             * Active Stages
+             * @description All execution stages that are currently active.
+             */
             readonly active_stages?: readonly components["schemas"]["JobStageView"][];
-            /** Blocked At */
+            /**
+             * Blocked At
+             * @description Time recoverable finalization first became blocked.
+             */
             readonly blocked_at?: string | null;
-            /** Cancel Requested At */
+            /**
+             * Cancel Requested At
+             * @description Time cancellation was requested, when applicable.
+             */
             readonly cancel_requested_at?: string | null;
-            /** Completed At */
+            /**
+             * Completed At
+             * @description Terminal completion time; absent for non-terminal Jobs.
+             */
             readonly completed_at?: string | null;
             /**
              * Created At
@@ -935,28 +960,50 @@ export interface components {
             readonly created_at: string;
             /** Display Name */
             readonly display_name: string;
-            /** Download Url */
+            /**
+             * Download Url
+             * @description Result download path for succeeded or partial Jobs only.
+             */
             readonly download_url?: string | null;
-            /** Error Code */
+            /**
+             * Error Code
+             * @description Stable failure code; present only for failed Jobs.
+             */
             readonly error_code?: ("compute_failed" | "result_invalid") | null;
-            /** Error Message */
+            /**
+             * Error Message
+             * @description Safe failure explanation; present only for failed Jobs.
+             */
             readonly error_message?: string | null;
             /** Job Id */
             readonly job_id: string;
-            /** Next Retry At */
+            /**
+             * Next Retry At
+             * @description Scheduled time for the next recoverable finalization retry.
+             */
             readonly next_retry_at?: string | null;
+            /** @description Representative active or most recently relevant execution stage; absent before execution starts or for an unknown workload. */
             readonly stage?: components["schemas"]["JobStageView"] | null;
-            /** Stage History */
+            /**
+             * Stage History
+             * @description Recorded execution stages in lifecycle order.
+             */
             readonly stage_history?: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];
-            /** State Unknown At */
+            /**
+             * State Unknown At
+             * @description Time remote execution state first became unknown; retained after administrator resolution.
+             */
             readonly state_unknown_at?: string | null;
             /**
              * Updated At
              * Format: date-time
              */
             readonly updated_at: string;
-            /** Warnings */
+            /**
+             * Warnings
+             * @description Safe owner-visible lifecycle warnings.
+             */
             readonly warnings?: readonly string[];
             /** Workload */
             readonly workload: string;
@@ -1369,6 +1416,16 @@ export interface operations {
             /** @description Logs for the selected remote stage */
             readonly 200: {
                 headers: {
+                    /** @description Disables storage and response transformation for logs. */
+                    readonly "Cache-Control"?: string;
+                    /** @description Requests that compatible reverse proxies stream immediately. */
+                    readonly "X-Accel-Buffering"?: "no";
+                    /** @description Whether the response is a live stream or historical window. */
+                    readonly "X-BioModals-Log-Mode"?: "live" | "historical";
+                    /** @description Inclusive beginning of a selected historical window. */
+                    readonly "X-BioModals-Log-Since"?: string;
+                    /** @description Exclusive end of a selected historical window. */
+                    readonly "X-BioModals-Log-Until"?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
@@ -3225,8 +3282,16 @@ export interface operations {
             /** @description Complete ZIP result archive. */
             readonly 200: {
                 headers: {
+                    /** @description Supported range unit for resumable downloads. */
+                    readonly "Accept-Ranges"?: "bytes";
+                    /** @description Prevents shared or browser caching of private Results. */
+                    readonly "Cache-Control"?: string;
                     /** @description Browser attachment using the server-provided result filename. */
                     readonly "Content-Disposition"?: string;
+                    /** @description Number of archive bytes in this response. */
+                    readonly "Content-Length"?: number;
+                    /** @description Immutable archive identity derived from its SHA-256 digest. */
+                    readonly ETag?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
@@ -3238,10 +3303,18 @@ export interface operations {
             /** @description Requested byte range of the ZIP result archive. */
             readonly 206: {
                 headers: {
+                    /** @description Supported range unit for resumable downloads. */
+                    readonly "Accept-Ranges"?: "bytes";
+                    /** @description Prevents shared or browser caching of private Results. */
+                    readonly "Cache-Control"?: string;
                     /** @description Browser attachment using the server-provided result filename. */
                     readonly "Content-Disposition"?: string;
+                    /** @description Number of archive bytes in this response. */
+                    readonly "Content-Length"?: number;
                     /** @description Byte range returned from the complete archive. */
                     readonly "Content-Range"?: string;
+                    /** @description Immutable archive identity derived from its SHA-256 digest. */
+                    readonly ETag?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;

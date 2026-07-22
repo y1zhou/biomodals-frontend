@@ -59,6 +59,7 @@ export function settingSourceNote(source: SettingSource) {
     case "process_environment":
       return "Controlled by the process environment."
     case "configuration_file":
+      return "Current value comes from the configured .env file."
     case "database":
     case "default":
       return null

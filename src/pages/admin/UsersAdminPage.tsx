@@ -256,7 +256,7 @@ function UserRow({
   const confirmation = confirmedAction === "disable"
     ? {
         title: `Disable ${user.display_name}?`,
-        description: "This user will not be able to sign in, submit jobs, or access results. Already admitted jobs continue running and are not cancelled.",
+        description: "Active sessions and password links will be revoked, and this user cannot submit new jobs or access results until re-enabled. Already admitted jobs keep this owner, continue using active-job capacity, and are not cancelled.",
         action: "Disable user",
       }
     : confirmedAction === "remove-admin"
@@ -670,7 +670,7 @@ export default function UsersAdminPage() {
         </CardContent>
       </Card>
 
-      <section aria-labelledby="users-heading">
+      <section aria-labelledby="users-heading" className="min-w-0">
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-heading text-xl font-semibold" id="users-heading">
             Users
@@ -708,8 +708,8 @@ export default function UsersAdminPage() {
             Loading users…
           </div>
         ) : users.data ? (
-          <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-            <table className="w-full table-fixed border-collapse text-center">
+          <div className="mt-4 max-w-full contain-paint overflow-x-auto rounded-xl border bg-card shadow-sm">
+            <table className="w-full min-w-[58rem] table-fixed border-collapse text-center">
               <colgroup>
                 <col className="w-[20%]" />
                 <col className="w-[18%]" />

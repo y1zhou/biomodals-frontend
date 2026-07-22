@@ -205,6 +205,57 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
   await expect.poll(async () => (await browserStats()).log_fetches).toBe(2)
 
+  const historicalEnd = Date.now() - 60_000
+  const historicalStart = historicalEnd - 20 * 60_000
+  const targetsRoute = `**/api/v1/admin/jobs/${completedJobId}/log-targets`
+  const logsRoute = `**/api/v1/admin/jobs/${completedJobId}/logs?*`
+  await page.route(targetsRoute, async (route) => {
+    const response = await route.fetch()
+    const body = await response.json() as {
+      job_id: string
+      targets: Array<{
+        ended_at: string | null
+        stage_code: string
+        started_at: string
+      }>
+    }
+    for (const target of body.targets) {
+      if (target.stage_code !== "analyze_production") continue
+      target.started_at = new Date(historicalStart).toISOString()
+      target.ended_at = new Date(historicalEnd).toISOString()
+    }
+    await route.fulfill({ response, json: body })
+  })
+  await page.route(logsRoute, async (route) => {
+    const url = new URL(route.request().url())
+    if (url.searchParams.get("stage") !== "analyze_production") {
+      await route.continue()
+      return
+    }
+    const since = Date.parse(url.searchParams.get("since") ?? "")
+    await route.fulfill({
+      contentType: "text/plain",
+      status: 200,
+      body: since < historicalEnd - 10 * 60_000
+        ? "2026-07-22 10:00:00 Older retained log\n"
+        : "",
+    })
+  })
+  const productionAnalysis = page.getByRole("button", {
+    name: /Analyze production/,
+  })
+  const productionLogs = page.getByRole("region", {
+    name: "Logs for Analyze production",
+  })
+  await productionAnalysis.click()
+  await expect(
+    productionLogs.getByRole("button", { name: "Load earlier logs" })
+  ).toBeVisible()
+  await productionLogs.getByRole("button", { name: "Load earlier logs" }).click()
+  await expect(productionLogs.getByText("Older retained log")).toBeVisible()
+  await page.unroute(logsRoute)
+  await page.unroute(targetsRoute)
+
   const downloadEvent = page.waitForEvent("download")
   await page.getByRole("button", { name: "Download result" }).click()
   const download = await downloadEvent
@@ -295,6 +346,25 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   ).not.toBe(restingBackground)
   await page.keyboard.press("Escape")
   await expect(page.getByRole("menuitem", { name: "Remove admin" })).not.toBeVisible()
+
+  await page.setViewportSize({ width: 360, height: 800 })
+  await page.reload()
+  expect(
+    await usersTable.evaluate(
+      (table) => table.scrollWidth > (table.parentElement?.clientWidth ?? 0)
+    )
+  ).toBe(true)
+  expect(
+    await page.evaluate(
+      () => {
+        window.scrollTo({ left: 1_000, top: window.scrollY })
+        return window.scrollX
+      }
+    )
+  ).toBe(0)
+  await userActions.scrollIntoViewIfNeeded()
+  await expect(userActions).toBeVisible()
+  await page.setViewportSize({ width: 1024, height: 768 })
 
   const adminRefresh = page.getByRole("button", { name: "Refresh" })
   await adminRefresh.click()

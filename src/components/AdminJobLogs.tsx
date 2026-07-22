@@ -385,7 +385,14 @@ function StageLogViewer({
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">{statusLabel}</p>
+          <p
+            aria-atomic="true"
+            aria-live="polite"
+            className="text-sm font-medium"
+            role="status"
+          >
+            {statusLabel}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {target.function_name}
             {target.state === "state_unknown" ? " · status unknown" : ""}
@@ -483,14 +490,31 @@ function StageLogViewer({
           </>
         ) : (
           <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-slate-300">
-            {logsLoading ? (
-              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-            ) : null}
-            {noLogs
-              ? "Modal returned no logs for this stage. They may no longer be retained."
-              : target.mode === "historical"
-                ? "Fetching logs from Modal…"
-                : "Waiting for log output…"}
+            {loadingOlder ? (
+              <>
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                Loading earlier logs…
+              </>
+            ) : hasUnloadedEarlier ? (
+              <button
+                className="rounded px-3 py-1 transition-colors hover:bg-slate-800 hover:text-slate-100 active:bg-slate-700"
+                onClick={loadEarlier}
+                type="button"
+              >
+                Load earlier logs
+              </button>
+            ) : (
+              <>
+                {logsLoading ? (
+                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                ) : null}
+                {noLogs
+                  ? "Modal returned no logs for this stage. They may no longer be retained."
+                  : target.mode === "historical"
+                    ? "Fetching logs from Modal…"
+                    : "Waiting for log output…"}
+              </>
+            )}
           </div>
         )}
       </div>

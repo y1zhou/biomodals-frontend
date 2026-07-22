@@ -1,4 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query"
 import { useEffect } from "react"
 
 import { ApiError, apiErrorCode, currentUser, type Principal } from "@/api/client"
@@ -6,6 +10,14 @@ import { ApiError, apiErrorCode, currentUser, type Principal } from "@/api/clien
 export const currentUserKey = ["auth", "current-user"] as const
 export const REAUTHENTICATION_REQUIRED = { reauthenticationRequired: true } as const
 export type CurrentUserState = Principal | null | typeof REAUTHENTICATION_REQUIRED
+
+export function installAuthenticatedPrincipal(
+  queryClient: QueryClient,
+  principal: Principal
+) {
+  queryClient.removeQueries()
+  queryClient.setQueryData<CurrentUserState>(currentUserKey, principal)
+}
 
 export function useCurrentUser() {
   return useQuery<CurrentUserState>({

@@ -265,7 +265,10 @@ export default function JobDetailPage() {
           </div>
 
           {jobQuery.isError ? (
-            <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            <div
+              className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+              role="alert"
+            >
               <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               Unable to refresh job status. Showing the last known state from {formatTimestamp(jobQuery.dataUpdatedAt)}.
               {apiRequestId(jobQuery.error) ? ` Support ID: ${apiRequestId(jobQuery.error)}.` : ""}

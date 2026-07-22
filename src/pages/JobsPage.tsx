@@ -101,7 +101,7 @@ function JobRow({
       <td className="px-4 py-4 align-top">
         <JobStatusBadge state={job.state} />
         {jobQuery.isError ? (
-          <p className="mt-1 text-xs text-amber-700">
+          <p className="mt-1 text-xs text-amber-700" role="alert">
             Refresh failed{apiRequestId(jobQuery.error) ? ` · Support ID ${apiRequestId(jobQuery.error)}` : ""}
           </p>
         ) : null}
@@ -297,7 +297,10 @@ export default function JobsPage() {
       </div>
 
       {jobsQuery.isError ? (
-        <div className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        <div
+          className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+          role="alert"
+        >
           <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           My Jobs could not be refreshed. Showing the last loaded collection.
           {apiRequestId(jobsQuery.error) ? ` Support ID: ${apiRequestId(jobsQuery.error)}.` : ""}

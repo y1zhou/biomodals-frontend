@@ -190,6 +190,10 @@ Environment. Limit-only changes do not validate unrelated Modal fields. A
 failed preflight leaves every prior Runtime Setting intact and returns a stable
 configuration error; validation never invokes a paid Function.
 
+Within one API process, provider-identity mutations serialize their effective
+setting read, preflight, and database commit. Concurrent Environment and Tool
+edits therefore cannot commit a combined identity that was never preflighted.
+
 Only the fields participating in the preflight display a spinner and disabled
 save/restore controls while validation is pending. Other field provenance and
 pending state remain unchanged.

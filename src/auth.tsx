@@ -20,7 +20,7 @@ import {
   type Principal,
 } from "@/api/client"
 import {
-  currentUserKey,
+  installAuthenticatedPrincipal,
   isReauthenticationRequired,
   passwordSetupLocation,
   safeReturnTo,
@@ -96,7 +96,7 @@ export function LoginForm({ onSuccess, submitLabel = "Sign in" }: LoginFormProps
     mutationFn: login,
     retry: false,
     onSuccess(user) {
-      queryClient.setQueryData(currentUserKey, user)
+      installAuthenticatedPrincipal(queryClient, user)
       onSuccess(user)
     },
   })
@@ -263,7 +263,7 @@ export function SetPasswordPage() {
     mutationFn: setPassword,
     retry: false,
     onSuccess(user) {
-      queryClient.setQueryData(currentUserKey, user)
+      installAuthenticatedPrincipal(queryClient, user)
       navigate("/", { replace: true })
     },
   })

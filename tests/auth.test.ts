@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { QueryClient } from "@tanstack/react-query"
 
 import {
   ApiError,
@@ -10,11 +11,39 @@ import {
 } from "../src/api/client"
 import {
   REAUTHENTICATION_REQUIRED,
+  currentUserKey,
+  installAuthenticatedPrincipal,
   isReauthenticationRequired,
   passwordSetupLocation,
   requiresReauthentication,
   safeReturnTo,
 } from "../src/auth-state"
+
+describe("authenticated principal cache", () => {
+  test("discards data cached for the previous principal", () => {
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(currentUserKey, {
+      display_name: "Alice",
+      email: "alice@example.com",
+      is_admin: true,
+      user_id: "00000000-0000-4000-8000-000000000001",
+    })
+    queryClient.setQueryData(["jobs"], [{ job_id: "private-job" }])
+    queryClient.setQueryData(["admin", "users"], [{ email: "private@example.com" }])
+
+    const bob = {
+      display_name: "Bob",
+      email: "bob@example.com",
+      is_admin: false,
+      user_id: "00000000-0000-4000-8000-000000000002",
+    }
+    installAuthenticatedPrincipal(queryClient, bob)
+
+    expect(queryClient.getQueryData(currentUserKey)).toEqual(bob)
+    expect(queryClient.getQueryData(["jobs"])).toBeUndefined()
+    expect(queryClient.getQueryData(["admin", "users"])).toBeUndefined()
+  })
+})
 
 describe("readCookie", () => {
   test("reads and decodes the requested cookie", () => {
