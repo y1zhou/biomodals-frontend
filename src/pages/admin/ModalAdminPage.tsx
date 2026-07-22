@@ -219,7 +219,14 @@ function StateUnknownJobsCard({
   )
 }
 
-function SourceNote({ source }: { source: SettingSource }) {
+function SourceNote({
+  omitConfigurationFileNote = false,
+  source,
+}: {
+  omitConfigurationFileNote?: boolean
+  source: SettingSource
+}) {
+  if (omitConfigurationFileNote && source === "configuration_file") return null
   const note = settingSourceNote(source)
   return note ? <span className="mt-1 text-xs text-muted-foreground">{note}</span> : null
 }
@@ -228,6 +235,7 @@ function RuntimeSettingInput({
   label,
   onChange,
   onRestoreOverride,
+  omitConfigurationFileNote,
   pending,
   setting,
   value,
@@ -239,6 +247,7 @@ function RuntimeSettingInput({
   label: string
   onChange: (value: string) => void
   onRestoreOverride: () => void
+  omitConfigurationFileNote?: boolean
   pending: boolean
   setting: { editable: boolean; source: SettingSource; value: string | number }
   value: string
@@ -281,7 +290,10 @@ function RuntimeSettingInput({
           </Button>
         ) : null}
       </div>
-      <SourceNote source={setting.source} />
+      <SourceNote
+        omitConfigurationFileNote={omitConfigurationFileNote}
+        source={setting.source}
+      />
     </>
   )
 }
@@ -417,6 +429,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               resetMutationErrors()
               versionUpdate.mutate({ modal_app_version: null })
             }}
+            omitConfigurationFileNote
             pending={versionPending}
             setting={tool.modal_app_version}
             type="number"
