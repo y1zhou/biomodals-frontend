@@ -508,6 +508,19 @@ export interface components {
             readonly state: "running" | "state_unknown" | "completed" | "failed" | "cancelled";
         };
         /**
+         * AdminJobLogWindowInvalidResponse
+         * @description The requested historical window is incomplete or too large.
+         */
+        readonly AdminJobLogWindowInvalidResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_log_window_invalid";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
          * AdminJobStateConflictResponse
          * @description A reviewed Job no longer has unknown remote state.
          */
@@ -1341,7 +1354,9 @@ export interface operations {
     readonly stream_job_logs_api_v1_admin_jobs__job_id__logs_get: {
         readonly parameters: {
             readonly query: {
+                readonly since?: string | null;
                 readonly stage: string;
+                readonly until?: string | null;
             };
             readonly header?: never;
             readonly path: {
@@ -1360,6 +1375,17 @@ export interface operations {
                 };
                 content: {
                     readonly "text/plain": string;
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminJobLogWindowInvalidResponse"];
                 };
             };
             /** @description Unauthorized */

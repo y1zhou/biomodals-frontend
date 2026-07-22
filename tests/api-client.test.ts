@@ -137,4 +137,31 @@ describe("Administrator Job logs", () => {
       )
     ).rejects.toThrow("Modal log connection failed")
   })
+
+  test("requests a bounded historical window", async () => {
+    let requested = ""
+    globalThis.fetch = (async (input) => {
+      requested = String(input)
+      return new Response("windowed output\n", {
+        headers: { "Content-Type": "text/plain" },
+      })
+    }) as typeof fetch
+    const chunks: string[] = []
+
+    await streamAdminJobLogs(
+      "job/one",
+      "prepare simulation",
+      new AbortController().signal,
+      (chunk) => chunks.push(chunk),
+      {
+        since: "2026-07-22T00:00:00.000Z",
+        until: "2026-07-22T00:10:00.000Z",
+      }
+    )
+
+    expect(requested).toBe(
+      "/api/v1/admin/jobs/job%2Fone/logs?stage=prepare+simulation&since=2026-07-22T00%3A00%3A00.000Z&until=2026-07-22T00%3A10%3A00.000Z"
+    )
+    expect(chunks.join("")).toBe("windowed output\n")
+  })
 })

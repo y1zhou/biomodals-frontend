@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test"
 
-import { logDownloadFilename, modalLogLines } from "@/logs"
+import {
+  ansiLogSegments,
+  firstModalLogTimestamp,
+  logDownloadFilename,
+  modalLogLines,
+} from "@/logs"
 
 describe("administrator stage logs", () => {
   test("separates Modal timestamps from monospace log messages", () => {
@@ -25,5 +30,32 @@ describe("administrator stage logs", () => {
         "prepare_simulation"
       )
     ).toBe("2026-07-22T06-07-08Z_gromacs_prepare_simulation.log")
+  })
+
+  test("turns ANSI styling into safe virtual-DOM segments", () => {
+    expect(
+      ansiLogSegments("\u001b[1;31mError <unsafe>\u001b[0m plain")
+    ).toEqual([
+      {
+        background: null,
+        decorations: ["bold"],
+        foreground: "rgb(187 0 0)",
+        text: "Error <unsafe>",
+      },
+      {
+        background: null,
+        decorations: [],
+        foreground: null,
+        text: " plain",
+      },
+    ])
+  })
+
+  test("finds the first timestamp after an unstructured prefix", () => {
+    expect(
+      firstModalLogTimestamp(
+        "Following logs…\n2026-07-22 14:05:33+08:00 Running\n"
+      )
+    ).toBe("2026-07-22 14:05:33+08:00")
   })
 })

@@ -26,6 +26,11 @@ export type UpdateAdminModalToolInput =
 export type AdminStorage = components["schemas"]["AdminStorageView"]
 export type AdminCacheCleanup = components["schemas"]["AdminCacheCleanupView"]
 
+export interface AdminJobLogWindow {
+  since: string
+  until: string
+}
+
 export const SERVICE_CONFIGURATION_ERROR_MESSAGE =
   "BioModals is not configured to accept requests from this site. Contact an administrator."
 
@@ -264,9 +269,14 @@ export async function streamAdminJobLogs(
   jobId: string,
   stageCode: string,
   signal: AbortSignal,
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  window?: AdminJobLogWindow
 ) {
   const parameters = new URLSearchParams({ stage: stageCode })
+  if (window) {
+    parameters.set("since", window.since)
+    parameters.set("until", window.until)
+  }
   const response = await requestResponse(
     `/api/v1/admin/jobs/${encodeURIComponent(jobId)}/logs?${parameters}`,
     {

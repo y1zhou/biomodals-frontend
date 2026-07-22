@@ -31,7 +31,7 @@ import {
   useCurrentUser,
   useExpireSession,
 } from "@/auth-state"
-import GromacsStageLogs from "@/components/AdminJobLogs"
+import AdminStageLogs from "@/components/AdminJobLogs"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -525,10 +525,11 @@ export default function JobDetailPage() {
                                 className="max-w-0 bg-muted/20 px-6 py-4"
                                 colSpan={5}
                               >
-                                <GromacsStageLogs
+                                <AdminStageLogs
                                   jobId={job.job_id}
                                   stageCode={stage.code}
                                   stageLabel={stage.label}
+                                  toolSlug={gromacsTool.slug}
                                 />
                               </td>
                             </tr>
