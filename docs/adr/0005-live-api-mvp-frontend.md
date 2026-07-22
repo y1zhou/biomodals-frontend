@@ -356,22 +356,29 @@ overlap the two equilibration analyses. Prepare result starts only after all
 three analyses complete. These dependencies do not change the table's fixed
 display order; several rows may show the running Job Status at once.
 
-For an enabled Administrator, Active Job detail adds a `Logs` box below the
-ordinary timing and support cards. It is collapsed by default and makes no
-request until opened. The box lists every currently loggable Stage; when
-parallel Stages are active, a native selector names each Stage and Running
-Function. Selecting another Stage aborts the earlier stream and starts the new
-one. Collapsing the box or leaving the page aborts the connection. Ordinary
-Users never render the box.
+For an enabled Administrator, each started remote row in the Execution stages
+table can expand an inline log viewer. Rows are collapsed by default and only
+one is expanded at a time. Selecting another row aborts an earlier live stream;
+collapsing the row or leaving the page also aborts it. Ordinary Users see no log
+interactivity or explanatory Administrator copy.
 
 The target API exposes safe Stage codes, Running Function names, operation
-state, and start times, but no Modal Function Call ID. The backend resolves the
-selected Stage to that private ID, redacts that exact value if provider output
-contains it, and streams plain-text output. The panel refreshes its choices
-every ten seconds only while open and retains at most the latest 500,000
-characters, visibly noting if earlier output was omitted. Empty, interrupted,
-or completed log output never changes Job Status or supplies an invented Stage
-outcome.
+state, live-or-historical mode, start time, and nullable end time, but no Modal
+Function Call ID. The backend resolves the selected Stage to that private ID
+and redacts that exact value if provider output contains it. Active and
+state-unknown Stages stream plain-text output; completed, failed, and cancelled
+Stages fetch the retained output for their recorded time range without follow
+mode. The first successful terminal fetch is cached for the lifetime of the Job
+detail page, so reopening the row reuses identical text. A page refresh clears
+that cache.
+
+The viewer refreshes target metadata every ten seconds only for a live target.
+It has a bounded-height viewport and retains at most the latest 500,000
+characters, visibly noting if earlier output was omitted. Provider timestamps
+use compact sans-serif text beside monospace messages. Copy and Download buttons
+use the retained text, with downloads named
+`<current-timestamp>_<tool>_<stage>.log`. Empty, interrupted, or completed log
+output never changes Job Status or supplies an invented Stage outcome.
 
 Missing and unauthorized Jobs share the same `Job unavailable` screen so a Job
 identifier cannot reveal ownership. A structurally invalid Job identifier
