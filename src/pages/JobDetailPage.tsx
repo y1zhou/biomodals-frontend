@@ -3,13 +3,14 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
+  ChevronDown,
   Clipboard,
   Download,
   LoaderCircle,
   RotateCcw,
   XCircle,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
 import {
@@ -30,7 +31,9 @@ import {
   useCurrentUser,
   useExpireSession,
 } from "@/auth-state"
-import GromacsAdminJobLogs from "@/components/AdminJobLogs"
+import GromacsStageLogs, {
+  type StageLogSnapshot,
+} from "@/components/AdminJobLogs"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -39,7 +42,6 @@ import {
   formatTimestamp,
   formatRelativeTimestamp,
   gromacsStageTimeline,
-  isActiveJob,
   isProgressingJob,
   isPollableJob,
   isJobNotCancellableError,
@@ -96,6 +98,19 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient()
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [copied, setCopied] = useState(false)
+  const [expandedLogStage, setExpandedLogStage] = useState<string | null>(null)
+  const [historicalLogs, setHistoricalLogs] = useState<
+    Record<string, StageLogSnapshot>
+  >({})
+  const rememberHistoricalLog = useCallback(
+    (stageCode: string, snapshot: StageLogSnapshot) => {
+      const cacheKey = `${jobId}:${stageCode}`
+      setHistoricalLogs((current) =>
+        current[cacheKey] ? current : { ...current, [cacheKey]: snapshot }
+      )
+    },
+    [jobId]
+  )
   const currentUserQuery = useCurrentUser()
   const visibility = useDocumentVisibility()
   const jobQuery = useQuery({
@@ -376,6 +391,9 @@ export default function JobDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Highlighted rows are the active stages last reported by BioModals.
                 Timestamps show when BioModals recorded each transition.
+                {currentUser?.is_admin
+                  ? " Administrators can click a started remote stage to view its Modal logs."
+                  : null}
               </p>
             </CardHeader>
             <CardContent className="px-0">
@@ -404,6 +422,19 @@ export default function JobDetailPage() {
                   <tbody className="divide-y">
                     {stages.map((stage, index) => {
                       const active = stage.state === "active"
+                      const canInspectLogs = Boolean(
+                        currentUser?.is_admin &&
+                        stage.functionName &&
+                        stage.startedAt
+                      )
+                      const logsExpanded =
+                        canInspectLogs && expandedLogStage === stage.code
+                      const toggleLogs = () => {
+                        if (!canInspectLogs) return
+                        setExpandedLogStage((current) =>
+                          current === stage.code ? null : stage.code
+                        )
+                      }
                       const statusLabel =
                         stage.state === "completed"
                           ? "Completed"
@@ -416,52 +447,102 @@ export default function JobDetailPage() {
                             : presentation.label
 
                       return (
-                        <tr
-                          className={cn(active && "bg-muted/50")}
-                          key={stage.code}
-                        >
-                          <th className="px-6 py-4 font-medium" scope="row">
-                            <span className="mr-3 text-xs text-muted-foreground">
-                              {index + 1}
-                            </span>
-                            {stage.label}
-                          </th>
-                          <td
+                        <Fragment key={stage.code}>
+                          <tr
                             className={cn(
-                              "px-6 py-4",
-                              stage.state === "completed"
-                                ? "text-emerald-700"
-                                : stage.state === "failed"
-                                  ? "text-destructive"
-                                  : stage.state === "cancelled"
-                                    ? "text-muted-foreground"
-                                : stage.state === "upcoming"
-                                  ? "text-muted-foreground"
-                                  : "font-medium"
+                              active && "bg-muted/50",
+                              canInspectLogs &&
+                                "cursor-pointer transition-colors hover:bg-muted/60 active:bg-muted",
+                              logsExpanded && "bg-muted/60"
                             )}
+                            onClick={toggleLogs}
                           >
-                            {statusLabel}
-                          </td>
-                          <td className="px-6 py-4">
-                            {stage.functionName ? (
-                              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                                {stage.functionName}
-                              </code>
-                            ) : stage.code === "prepare_result" && stage.startedAt ? (
-                              <span className="text-muted-foreground">
-                                Not applicable (API service)
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-4 text-muted-foreground">
-                            {formatTimestamp(stage.startedAt)}
-                          </td>
-                          <td className="px-3 py-4 text-muted-foreground">
-                            {formatTimestamp(stage.endedAt)}
-                          </td>
-                        </tr>
+                            <th className="px-6 py-4 font-medium" scope="row">
+                              {canInspectLogs ? (
+                                <button
+                                  aria-controls={`stage-logs-${stage.code}`}
+                                  aria-expanded={logsExpanded}
+                                  className="flex w-full items-center gap-3 text-left outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    toggleLogs()
+                                  }}
+                                  type="button"
+                                >
+                                  <span className="text-xs text-muted-foreground">
+                                    {index + 1}
+                                  </span>
+                                  <span>{stage.label}</span>
+                                  <ChevronDown
+                                    aria-hidden="true"
+                                    className={cn(
+                                      "ml-auto size-4 text-muted-foreground transition-transform",
+                                      logsExpanded && "rotate-180"
+                                    )}
+                                  />
+                                </button>
+                              ) : (
+                                <>
+                                  <span className="mr-3 text-xs text-muted-foreground">
+                                    {index + 1}
+                                  </span>
+                                  {stage.label}
+                                </>
+                              )}
+                            </th>
+                            <td
+                              className={cn(
+                                "px-6 py-4",
+                                stage.state === "completed"
+                                  ? "text-emerald-700"
+                                  : stage.state === "failed"
+                                    ? "text-destructive"
+                                    : stage.state === "cancelled"
+                                      ? "text-muted-foreground"
+                                      : stage.state === "upcoming"
+                                        ? "text-muted-foreground"
+                                        : "font-medium"
+                              )}
+                            >
+                              {statusLabel}
+                            </td>
+                            <td className="px-6 py-4">
+                              {stage.functionName ? (
+                                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                                  {stage.functionName}
+                                </code>
+                              ) : stage.code === "prepare_result" && stage.startedAt ? (
+                                <span className="text-muted-foreground">
+                                  Not applicable (API service)
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-4 text-muted-foreground">
+                              {formatTimestamp(stage.startedAt)}
+                            </td>
+                            <td className="px-3 py-4 text-muted-foreground">
+                              {formatTimestamp(stage.endedAt)}
+                            </td>
+                          </tr>
+                          {logsExpanded ? (
+                            <tr>
+                              <td className="bg-muted/20 px-6 py-4" colSpan={5}>
+                                <GromacsStageLogs
+                                  historicalLog={
+                                    historicalLogs[`${job.job_id}:${stage.code}`]
+                                  }
+                                  jobId={job.job_id}
+                                  onHistoricalLogLoaded={rememberHistoricalLog}
+                                  stageIsActive={active}
+                                  stageCode={stage.code}
+                                  stageLabel={stage.label}
+                                />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
                       )
                     })}
                   </tbody>
@@ -527,10 +608,6 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
           </div>
-
-          {currentUser?.is_admin && isActiveJob(job.state) ? (
-            <GromacsAdminJobLogs jobId={job.job_id} />
-          ) : null}
         </section>
       </main>
 

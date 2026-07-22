@@ -15,6 +15,7 @@ interface BrowserStats {
   submit_versions: number[]
   provider_calls: number
   cancel_calls: number
+  log_fetches: number
 }
 
 async function browserStats() {
@@ -25,10 +26,16 @@ async function browserStats() {
   ) as BrowserStats
 }
 
-test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }) => {
+test("MVP password, jobs, download, cancellation, and sign-out", async ({
+  context,
+  page,
+}) => {
   test.setTimeout(60_000)
   const origin = process.env.BIOMODALS_BROWSER_ORIGIN
   if (!origin) throw new Error("BIOMODALS_BROWSER_ORIGIN is missing")
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin,
+  })
   await expect.poll(async () => (await browserStats()).password_link).not.toBe("")
   await expect.poll(async () => (await browserStats()).preflight_versions).toEqual([7])
   const setup = (await browserStats()).password_link
@@ -87,10 +94,28 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
   await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
   const completedJobId = page.url().split("/").at(-1)
   if (!completedJobId) throw new Error("Completed Job ID is missing")
-  const logs = page.locator("details", { hasText: "Logs" })
-  await expect(logs).not.toHaveAttribute("open", "")
-  await logs.locator("summary").click()
-  await expect(logs.getByText("Browser test remote log")).toBeVisible()
+  await expect(page.locator("details", { hasText: "Logs" })).toHaveCount(0)
+  await expect(
+    page.getByText("Administrators can click a started remote stage to view its Modal logs.")
+  ).toBeVisible()
+  const prepareStage = page.getByRole("button", { name: /Prepare simulation/ })
+  const prepareLogs = page.getByRole("region", {
+    name: "Logs for Prepare simulation",
+  })
+  await expect(prepareLogs).toHaveCount(0)
+  await prepareStage.click()
+  await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
+  await expect(prepareLogs.getByText("Streaming logs")).toBeVisible()
+  await prepareLogs.getByRole("button", { name: "Copy logs" }).click()
+  await expect(prepareLogs.getByRole("button", { name: "Copied" })).toBeVisible()
+  const logDownloadEvent = page.waitForEvent("download")
+  await prepareLogs.getByRole("button", { name: "Download logs" }).click()
+  const logDownload = await logDownloadEvent
+  expect(logDownload.suggestedFilename()).toMatch(
+    /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z_gromacs_prepare_simulation\.log$/
+  )
+  await prepareStage.click()
+  await expect(prepareLogs).toHaveCount(0)
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(1)
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
   const statusMetadata = page.locator("p", { hasText: "Job updated" }).first()
@@ -139,6 +164,16 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({ page }
     timeout: 15_000,
   })
   await expect(statusMetadata).not.toContainText("ago")
+  await prepareStage.click()
+  await expect(prepareLogs.getByText("Fetched logs")).toBeVisible()
+  await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
+  await expect.poll(async () => (await browserStats()).log_fetches).toBe(2)
+  await prepareStage.click()
+  await expect(prepareLogs).toHaveCount(0)
+  await prepareStage.click()
+  await expect(prepareLogs.getByText("Fetched logs")).toBeVisible()
+  await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
+  await expect.poll(async () => (await browserStats()).log_fetches).toBe(2)
 
   const downloadEvent = page.waitForEvent("download")
   await page.getByRole("button", { name: "Download result" }).click()

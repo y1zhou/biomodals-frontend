@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ChevronDown, FileTerminal, LoaderCircle } from "lucide-react"
+import { Check, Clipboard, Download, LoaderCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import {
@@ -7,20 +7,35 @@ import {
   apiRequestId,
   inspectAdminJobLogTargets,
   streamAdminJobLogs,
-  type AdminJobLogTarget,
 } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
-import { gromacsStageLabel } from "@/jobs"
+import { Button } from "@/components/ui/button"
+import { copyText } from "@/lib/clipboard"
+import { logDownloadFilename, modalLogLines } from "@/logs"
 
 const MAX_LOG_CHARACTERS = 500_000
-const EMPTY_TARGETS: readonly AdminJobLogTarget[] = []
 
-interface LogBuffer {
+export interface StageLogSnapshot {
   text: string
   truncated: boolean
 }
 
-function appendLogChunk(current: LogBuffer, chunk: string): LogBuffer {
+interface GromacsStageLogsProps {
+  historicalLog?: StageLogSnapshot
+  jobId: string
+  onHistoricalLogLoaded: (
+    stageCode: string,
+    snapshot: StageLogSnapshot
+  ) => void
+  stageIsActive: boolean
+  stageCode: string
+  stageLabel: string
+}
+
+function appendLogChunk(
+  current: StageLogSnapshot,
+  chunk: string
+): StageLogSnapshot {
   const combined = current.text + chunk
   if (combined.length <= MAX_LOG_CHARACTERS) {
     return { text: combined, truncated: current.truncated }
@@ -31,76 +46,109 @@ function appendLogChunk(current: LogBuffer, chunk: string): LogBuffer {
   }
 }
 
-function targetLabel(target: AdminJobLogTarget) {
-  const status = target.state === "state_unknown" ? " · status unknown" : ""
-  return `${gromacsStageLabel(target.stage_code)} — ${target.function_name}${status}`
-}
-
 function streamFailureMessage(error: unknown) {
   if (apiErrorCode(error) === "job_log_target_unavailable") {
-    return "That stage is no longer active. Choose another available stage."
+    return "Logs are not available for this stage. Modal may no longer retain this Function Call."
   }
   if (apiErrorCode(error) === "job_logs_unavailable") {
-    return "Modal logs are temporarily unavailable. Collapse and reopen Logs to try again."
+    return "Logs could not be fetched from Modal. Check the Modal deployment and service credentials."
   }
   const supportId = apiRequestId(error)
-  return `The log stream stopped unexpectedly.${supportId ? ` Support ID: ${supportId}.` : ""}`
+  return `Logs could not be fetched from Modal.${supportId ? ` Support ID: ${supportId}.` : " Try again."}`
 }
 
-export default function GromacsAdminJobLogs({ jobId }: { jobId: string }) {
-  const [expanded, setExpanded] = useState(false)
-  const [selectedStage, setSelectedStage] = useState("")
+function downloadLog(text: string, filename: string) {
+  const url = URL.createObjectURL(
+    new Blob([text], { type: "text/plain;charset=utf-8" })
+  )
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  link.hidden = true
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+export default function GromacsStageLogs({
+  historicalLog,
+  jobId,
+  onHistoricalLogLoaded,
+  stageIsActive,
+  stageCode,
+  stageLabel,
+}: GromacsStageLogsProps) {
   const [streamState, setStreamState] = useState<
     "idle" | "connecting" | "streaming" | "ended" | "error"
   >("idle")
   const [streamError, setStreamError] = useState<unknown>(null)
-  const [buffer, setBuffer] = useState<LogBuffer>({ text: "", truncated: false })
-  const output = useRef<HTMLPreElement>(null)
+  const [buffer, setBuffer] = useState<StageLogSnapshot>({
+    text: "",
+    truncated: false,
+  })
+  const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<number | null>(null)
+  const output = useRef<HTMLDivElement>(null)
   const targetsQuery = useQuery({
     queryKey: ["admin", "jobs", jobId, "log-targets"],
     queryFn: ({ signal }) => inspectAdminJobLogTargets(jobId, signal),
-    enabled: expanded,
     retry: 1,
-    refetchInterval: expanded ? 10_000 : false,
+    refetchInterval(query) {
+      const target = query.state.data?.targets.find(
+        (candidate) => candidate.stage_code === stageCode
+      )
+      return target?.mode === "live" ? 10_000 : false
+    },
     refetchIntervalInBackground: false,
   })
-  const targets = targetsQuery.data?.targets ?? EMPTY_TARGETS
-  const selectedTarget = targets.find(
-    (target) => target.stage_code === selectedStage
+  const targetCandidate = targetsQuery.data?.targets.find(
+    (candidate) => candidate.stage_code === stageCode
   )
-  const selectedStageCode = selectedTarget?.stage_code ?? ""
+  const expectedMode = stageIsActive ? "live" : "historical"
+  const target = targetCandidate?.mode === expectedMode
+    ? targetCandidate
+    : undefined
+  const targetMode = target?.mode
+  const awaitingFreshTarget = Boolean(
+    targetCandidate && !target && targetsQuery.isFetching
+  )
   useExpireSession(targetsQuery.error)
   useExpireSession(streamError)
 
   useEffect(() => {
-    if (!expanded || targetsQuery.isPending) return
-    setSelectedStage((current) =>
-      targets.some((target) => target.stage_code === current)
-        ? current
-        : (targets[0]?.stage_code ?? "")
-    )
-  }, [expanded, targets, targetsQuery.isPending])
+    return () => {
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!expanded || !selectedStageCode) {
+    if (!targetMode) {
       setStreamState("idle")
       return
     }
+    if (targetMode === "historical" && historicalLog) {
+      setBuffer(historicalLog)
+      setStreamError(null)
+      setStreamState("ended")
+      return
+    }
     const controller = new AbortController()
+    let fetched = { text: "", truncated: false }
     setBuffer({ text: "", truncated: false })
     setStreamError(null)
     setStreamState("connecting")
-    void streamAdminJobLogs(
-      jobId,
-      selectedStageCode,
-      controller.signal,
-      (chunk) => {
-        setStreamState("streaming")
-        setBuffer((current) => appendLogChunk(current, chunk))
-      }
-    )
+    void streamAdminJobLogs(jobId, stageCode, controller.signal, (chunk) => {
+      fetched = appendLogChunk(fetched, chunk)
+      setStreamState("streaming")
+      setBuffer(fetched)
+    })
       .then(() => {
-        if (!controller.signal.aborted) setStreamState("ended")
+        if (controller.signal.aborted) return
+        setStreamState("ended")
+        if (targetMode === "historical") {
+          onHistoricalLogLoaded(stageCode, fetched)
+        }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
@@ -108,108 +156,160 @@ export default function GromacsAdminJobLogs({ jobId }: { jobId: string }) {
         setStreamState("error")
       })
     return () => controller.abort()
-  }, [expanded, jobId, selectedStageCode])
+  }, [
+    historicalLog,
+    jobId,
+    onHistoricalLogLoaded,
+    stageCode,
+    targetMode,
+  ])
 
   useEffect(() => {
     if (output.current) output.current.scrollTop = output.current.scrollHeight
   }, [buffer.text])
 
-  const loadingTargets = expanded && targetsQuery.isPending
-  const empty = expanded && !loadingTargets && !targetsQuery.isError && !targets.length
-  const logText = buffer.text || (
-    streamState === "connecting"
-      ? "Connecting to Modal…"
-      : "Waiting for log output…"
-  )
+  const statusLabel = targetMode === "historical"
+    ? streamState === "connecting" || streamState === "streaming"
+      ? "Fetching logs…"
+      : streamState === "ended"
+        ? "Fetched logs"
+        : streamState === "error"
+          ? "Log fetch failed"
+          : "Waiting"
+    : streamState === "connecting"
+      ? "Connecting…"
+      : streamState === "streaming"
+        ? "Streaming logs"
+        : streamState === "ended"
+          ? "Stream ended"
+          : streamState === "error"
+            ? "Log stream stopped"
+            : "Waiting"
+  const lines = buffer.text ? modalLogLines(buffer.text) : []
+  const noLogs = streamState === "ended" && !buffer.text.trim()
 
   return (
-    <details
-      className="group mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
-      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    <section
+      aria-label={`Logs for ${stageLabel}`}
+      className="rounded-lg border bg-background p-4"
+      id={`stage-logs-${stageCode}`}
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-5 font-heading font-semibold transition-colors select-none marker:hidden hover:bg-muted/50 active:bg-muted">
-        <FileTerminal aria-hidden="true" className="size-5 text-muted-foreground" />
-        Logs
-        <ChevronDown
-          aria-hidden="true"
-          className="ml-auto size-5 text-muted-foreground transition-transform group-open:rotate-180"
-        />
-      </summary>
-      <div className="border-t px-6 py-5">
-        <p className="text-sm text-muted-foreground">
-          Live output from the selected running function. Visible only to administrators.
-        </p>
-
-        {loadingTargets ? (
-          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-            Finding active stages…
-          </div>
-        ) : null}
-        {targetsQuery.isError ? (
-          <p className="mt-4 text-sm text-destructive" role="alert">
-            Active stages could not be loaded. Collapse and reopen Logs to try again.
-          </p>
-        ) : null}
-        {empty ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            No active Modal function is available for this job.
-          </p>
-        ) : null}
-
-        {targets.length > 1 ? (
-          <label className="mt-4 grid max-w-xl gap-2 text-sm font-medium">
-            Running function
-            <select
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              onChange={(event) => setSelectedStage(event.target.value)}
-              value={selectedStage}
-            >
-              {targets.map((target) => (
-                <option key={target.stage_code} value={target.stage_code}>
-                  {targetLabel(target)}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : targets[0] ? (
-          <p className="mt-4 text-sm">
-            <span className="font-medium">Running function:</span>{" "}
-            {targetLabel(targets[0])}
-          </p>
-        ) : null}
-
-        {selectedTarget ? (
-          <div className="mt-4">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>
-                {streamState === "connecting"
-                  ? "Connecting…"
-                  : streamState === "streaming"
-                    ? "Streaming"
-                    : streamState === "ended"
-                      ? "Stream ended"
-                      : streamState === "error"
-                        ? "Stream stopped"
-                        : "Waiting"}
-              </span>
-              {buffer.truncated ? <span>Earlier output was omitted.</span> : null}
-            </div>
-            <pre
-              aria-label={`Logs for ${targetLabel(selectedTarget)}`}
-              className="max-h-[32rem] min-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100"
-              ref={output}
-            >
-              {logText}
-            </pre>
-          </div>
-        ) : null}
-        {streamError ? (
-          <p className="mt-3 text-sm text-destructive" role="alert">
-            {streamFailureMessage(streamError)}
-          </p>
-        ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">{statusLabel}</p>
+          {target ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {target.function_name}
+              {target.state === "state_unknown" ? " · status unknown" : ""}
+            </p>
+          ) : null}
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button
+            disabled={!buffer.text}
+            onClick={() => {
+              void copyText(buffer.text)
+                .then(() => {
+                  setCopied(true)
+                  if (copiedTimer.current !== null) {
+                    window.clearTimeout(copiedTimer.current)
+                  }
+                  copiedTimer.current = window.setTimeout(
+                    () => setCopied(false),
+                    2_000
+                  )
+                })
+                .catch(() => setCopied(false))
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {copied ? <Check aria-hidden="true" /> : <Clipboard aria-hidden="true" />}
+            {copied ? "Copied" : "Copy logs"}
+          </Button>
+          <Button
+            disabled={!buffer.text}
+            onClick={() =>
+              downloadLog(
+                buffer.text,
+                logDownloadFilename(new Date(), "gromacs", stageCode)
+              )
+            }
+            size="sm"
+            variant="outline"
+          >
+            <Download aria-hidden="true" />
+            Download logs
+          </Button>
+        </div>
       </div>
-    </details>
+
+      {targetsQuery.isPending || awaitingFreshTarget ? (
+        <div className="mt-4 flex min-h-40 items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm text-slate-300">
+          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          Finding this Modal Function Call…
+        </div>
+      ) : null}
+      {targetsQuery.isError ? (
+        <p className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+          Logs could not be fetched from Modal. Check the connection and try again.
+        </p>
+      ) : null}
+      {!targetsQuery.isPending &&
+      !awaitingFreshTarget &&
+      !targetsQuery.isError &&
+      !target ? (
+        <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-950" role="status">
+          Logs are not available for this stage. Modal may no longer retain this Function Call.
+        </p>
+      ) : null}
+
+      {target ? (
+        <div
+          className="mt-4 max-h-80 min-h-40 overflow-auto rounded-lg bg-slate-950 p-4 text-xs leading-5 text-slate-100"
+          ref={output}
+        >
+          {lines.length ? (
+            lines.map((line, index) => (
+              <div className="flex min-w-0 gap-3" key={`${index}-${line.timestamp ?? "plain"}`}>
+                {line.timestamp ? (
+                  <time
+                    className="shrink-0 font-sans text-[10px] leading-5 tabular-nums text-slate-400"
+                    dateTime={line.timestamp.replace(" ", "T")}
+                  >
+                    {line.timestamp}
+                  </time>
+                ) : null}
+                <span className="min-w-0 whitespace-pre-wrap break-all font-mono">
+                  {line.message || " "}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-slate-300">
+              {streamState === "connecting" ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              {noLogs
+                ? "Modal returned no logs for this stage. They may no longer be retained."
+                : targetMode === "historical"
+                  ? "Fetching logs from Modal…"
+                  : "Waiting for log output…"}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {buffer.truncated ? (
+        <p className="mt-2 text-xs text-amber-700">
+          Earlier output was omitted from this browser view and download.
+        </p>
+      ) : null}
+      {streamError ? (
+        <p className="mt-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+          {streamFailureMessage(streamError)}
+        </p>
+      ) : null}
+    </section>
   )
 }

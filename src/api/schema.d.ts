@@ -469,7 +469,7 @@ export interface components {
         };
         /**
          * AdminJobLogTargetUnavailableResponse
-         * @description The selected stage no longer identifies an active provider call.
+         * @description The selected stage does not identify a retained provider call.
          */
         readonly AdminJobLogTargetUnavailableResponse: {
             /**
@@ -482,11 +482,18 @@ export interface components {
         };
         /**
          * AdminJobLogTargetView
-         * @description One active provider operation whose logs an Administrator may inspect.
+         * @description One provider operation whose logs an Administrator may inspect.
          */
         readonly AdminJobLogTargetView: {
+            /** Ended At */
+            readonly ended_at: string | null;
             /** Function Name */
             readonly function_name: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            readonly mode: "live" | "historical";
             /** Stage Code */
             readonly stage_code: string;
             /**
@@ -498,7 +505,7 @@ export interface components {
              * State
              * @enum {string}
              */
-            readonly state: "running" | "state_unknown";
+            readonly state: "running" | "state_unknown" | "completed" | "failed" | "cancelled";
         };
         /**
          * AdminJobStateConflictResponse
@@ -1344,7 +1351,7 @@ export interface operations {
         };
         readonly requestBody?: never;
         readonly responses: {
-            /** @description Live logs for the selected active stage */
+            /** @description Logs for the selected remote stage */
             readonly 200: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */

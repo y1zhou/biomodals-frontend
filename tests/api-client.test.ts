@@ -65,7 +65,9 @@ describe("Administrator Job logs", () => {
             stage_code: "run_production",
             function_name: "production_run_gpu",
             state: "running",
+            mode: "live",
             started_at: "2026-07-22T00:00:00Z",
+            ended_at: null,
           },
         ],
       })
@@ -75,6 +77,7 @@ describe("Administrator Job logs", () => {
 
     expect(requested).toBe("/api/v1/admin/jobs/job%2Fone/log-targets")
     expect(result.targets?.[0]?.stage_code).toBe("run_production")
+    expect(result.targets?.[0]?.mode).toBe("live")
     expect(result).not.toHaveProperty("modal_call_id")
   })
 
