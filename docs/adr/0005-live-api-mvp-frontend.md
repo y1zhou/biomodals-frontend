@@ -368,15 +368,26 @@ Function Call ID. The backend resolves the selected Stage to that private ID
 and redacts that exact value if provider output contains it. Active and
 state-unknown Stages stream plain-text output; completed, failed, and cancelled
 Stages fetch the retained output for their recorded time range without follow
-mode. TanStack Query caches the first successful terminal fetch indefinitely
-for the current browser page, so reopening the row reuses identical text without
-requiring fresh target metadata. A full page refresh clears that cache.
+mode. Paired `since` and `until` parameters select a timezone-aware historical
+window of at most 15 minutes and are clamped to the Stage lifetime. The browser
+uses 10-minute windows so it can request older output only when needed.
+
+TanStack Query caches every successful terminal window indefinitely for the
+current browser page. Reopening a row refreshes the small target selector so a
+formerly active Stage is not mistaken for a live one, then reuses identical log
+pages without contacting Modal. A full page refresh clears that cache.
 
 The viewer refreshes target metadata every ten seconds only for a live target.
-It has a bounded-height viewport and retains at most the latest 500,000
-characters, visibly noting if earlier output was omitted. Provider timestamps
-use compact sans-serif text beside monospace messages. Copy and Download buttons
-use the retained text, with downloads named
+It has a bounded-height viewport, opens at the newest terminal window, and
+prepends older windows when the Administrator scrolls to the top while
+preserving the viewport position. Active streams retain a 500,000-character
+tail until older history is requested; the viewer then pins that tail and keeps
+new stream output while paging backward.
+
+Provider timestamps use compact sans-serif text beside monospace messages.
+ANSI SGR colors and decorations are parsed into structured React spans instead
+of provider-generated HTML. Copy and Download keep the raw loaded text, clearly
+say when older windows are not yet loaded, and name downloads
 `<current-timestamp>_<tool>_<stage>.log`. A failed provider stream displays
 short diagnostic guidance; a live viewer also retains text already received.
 Empty, interrupted, or completed log output never changes Job Status or supplies
