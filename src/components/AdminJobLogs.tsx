@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { FileTerminal, LoaderCircle } from "lucide-react"
+import { ChevronDown, FileTerminal, LoaderCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import {
@@ -47,7 +47,7 @@ function streamFailureMessage(error: unknown) {
   return `The log stream stopped unexpectedly.${supportId ? ` Support ID: ${supportId}.` : ""}`
 }
 
-export default function AdminJobLogs({ jobId }: { jobId: string }) {
+export default function GromacsAdminJobLogs({ jobId }: { jobId: string }) {
   const [expanded, setExpanded] = useState(false)
   const [selectedStage, setSelectedStage] = useState("")
   const [streamState, setStreamState] = useState<
@@ -124,12 +124,16 @@ export default function AdminJobLogs({ jobId }: { jobId: string }) {
 
   return (
     <details
-      className="mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
+      className="group mt-6 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-5 font-heading font-semibold select-none marker:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-5 font-heading font-semibold transition-colors select-none marker:hidden hover:bg-muted/50 active:bg-muted">
         <FileTerminal aria-hidden="true" className="size-5 text-muted-foreground" />
         Logs
+        <ChevronDown
+          aria-hidden="true"
+          className="ml-auto size-5 text-muted-foreground transition-transform group-open:rotate-180"
+        />
       </summary>
       <div className="border-t px-6 py-5">
         <p className="text-sm text-muted-foreground">

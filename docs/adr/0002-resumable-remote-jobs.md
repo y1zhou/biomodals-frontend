@@ -235,7 +235,8 @@ Job identifier for support. An unknown code receives generic failure copy. Raw
 Modal exceptions, stack traces, paths, environment details, and provider call
 IDs never enter owner-facing Job responses. A separate Administrator-only
 diagnostic may stream logs for an active Stage without making those logs Job
-state or prescribing an owner action.
+state or prescribing an owner action. Its backend stream boundary redacts the
+selected provider call ID if the provider output itself contains it.
 
 The current Job Error codes are:
 

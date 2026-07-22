@@ -366,11 +366,12 @@ Users never render the box.
 
 The target API exposes safe Stage codes, Running Function names, operation
 state, and start times, but no Modal Function Call ID. The backend resolves the
-selected Stage to that private ID and streams plain-text provider output. The
-panel refreshes its choices every ten seconds only while open and retains at
-most the latest 500,000 characters, visibly noting if earlier output was
-omitted. Empty, interrupted, or completed log output never changes Job Status
-or supplies an invented Stage outcome.
+selected Stage to that private ID, redacts that exact value if provider output
+contains it, and streams plain-text output. The panel refreshes its choices
+every ten seconds only while open and retains at most the latest 500,000
+characters, visibly noting if earlier output was omitted. Empty, interrupted,
+or completed log output never changes Job Status or supplies an invented Stage
+outcome.
 
 Missing and unauthorized Jobs share the same `Job unavailable` screen so a Job
 identifier cannot reveal ownership. A structurally invalid Job identifier

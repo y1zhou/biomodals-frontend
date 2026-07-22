@@ -30,7 +30,7 @@ import {
   useCurrentUser,
   useExpireSession,
 } from "@/auth-state"
-import AdminJobLogs from "@/components/AdminJobLogs"
+import GromacsAdminJobLogs from "@/components/AdminJobLogs"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -529,7 +529,7 @@ export default function JobDetailPage() {
           </div>
 
           {currentUser?.is_admin && isActiveJob(job.state) ? (
-            <AdminJobLogs jobId={job.job_id} />
+            <GromacsAdminJobLogs jobId={job.job_id} />
           ) : null}
         </section>
       </main>

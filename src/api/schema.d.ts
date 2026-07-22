@@ -465,7 +465,7 @@ export interface components {
              */
             readonly job_id: string;
             /** Targets */
-            readonly targets?: readonly components["schemas"]["AdminJobLogTargetView"][];
+            readonly targets: readonly components["schemas"]["AdminJobLogTargetView"][];
         };
         /**
          * AdminJobLogTargetUnavailableResponse

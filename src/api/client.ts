@@ -85,25 +85,31 @@ async function responseBody(response: Response) {
   return response.json().catch(() => undefined)
 }
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestResponse(
+  path: string,
+  init?: RequestInit,
+  accept = "application/json"
+) {
   const response = await fetch(path, {
     credentials: "same-origin",
     ...init,
     headers: {
-      Accept: "application/json",
+      Accept: accept,
       ...init?.headers,
     },
   })
-  const body = await responseBody(response)
-
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      body,
+      await responseBody(response),
       response.headers.get("X-Request-ID")
     )
   }
-  return body as T
+  return response
+}
+
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await responseBody(await requestResponse(path, init))) as T
 }
 
 export function readCookie(cookieHeader: string, name: string) {
@@ -261,21 +267,13 @@ export async function streamAdminJobLogs(
   onChunk: (chunk: string) => void
 ) {
   const parameters = new URLSearchParams({ stage: stageCode })
-  const response = await fetch(
+  const response = await requestResponse(
     `/api/v1/admin/jobs/${encodeURIComponent(jobId)}/logs?${parameters}`,
     {
-      credentials: "same-origin",
-      headers: { Accept: "text/plain" },
       signal,
-    }
+    },
+    "text/plain"
   )
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      await responseBody(response),
-      response.headers.get("X-Request-ID")
-    )
-  }
   if (!response.body) throw new Error("The API returned an empty log stream")
 
   const reader = response.body.getReader()
