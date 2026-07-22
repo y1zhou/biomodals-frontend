@@ -12,6 +12,10 @@ export interface AnsiLogSegment {
   text: string
 }
 
+export interface StyledModalLogLine extends ModalLogLine {
+  segments: readonly AnsiLogSegment[]
+}
+
 const MODAL_TIMESTAMP_PREFIX =
   /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2}))\s(.*)$/
 
@@ -61,6 +65,27 @@ export function modalLogLines(text: string): ModalLogLine[] {
       ? { timestamp: timestamped[1] ?? null, message: timestamped[2] ?? "" }
       : { timestamp: null, message: line }
   })
+}
+
+export function styledModalLogLines(text: string): StyledModalLogLine[] {
+  const lines = modalLogLines(text)
+  const segmentsByLine: AnsiLogSegment[][] = lines.map(() => [])
+  let lineIndex = 0
+
+  for (const segment of ansiLogSegments(
+    lines.map((line) => line.message).join("\n")
+  )) {
+    const parts = segment.text.split("\n")
+    for (const [partIndex, part] of parts.entries()) {
+      if (part) segmentsByLine[lineIndex]?.push({ ...segment, text: part })
+      if (partIndex < parts.length - 1) lineIndex += 1
+    }
+  }
+
+  return lines.map((line, index) => ({
+    ...line,
+    segments: segmentsByLine[index] ?? [],
+  }))
 }
 
 function safeFilenamePart(value: string) {

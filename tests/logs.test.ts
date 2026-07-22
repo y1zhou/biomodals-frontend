@@ -5,6 +5,7 @@ import {
   firstModalLogTimestamp,
   logDownloadFilename,
   modalLogLines,
+  styledModalLogLines,
 } from "@/logs"
 
 describe("administrator stage logs", () => {
@@ -47,6 +48,40 @@ describe("administrator stage logs", () => {
         decorations: [],
         foreground: null,
         text: " plain",
+      },
+    ])
+  })
+
+  test("preserves ANSI styling across timestamped log lines", () => {
+    expect(
+      styledModalLogLines(
+        "2026-07-22 14:05:33+08:00 \u001b[31mfirst line\n" +
+          "2026-07-22 14:05:34+08:00 second line\u001b[0m\n"
+      )
+    ).toEqual([
+      {
+        timestamp: "2026-07-22 14:05:33+08:00",
+        message: "\u001b[31mfirst line",
+        segments: [
+          {
+            background: null,
+            decorations: [],
+            foreground: "rgb(187 0 0)",
+            text: "first line",
+          },
+        ],
+      },
+      {
+        timestamp: "2026-07-22 14:05:34+08:00",
+        message: "second line\u001b[0m",
+        segments: [
+          {
+            background: null,
+            decorations: [],
+            foreground: "rgb(187 0 0)",
+            text: "second line",
+          },
+        ],
       },
     ])
   })

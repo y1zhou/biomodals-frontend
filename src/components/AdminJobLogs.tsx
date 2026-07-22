@@ -21,10 +21,9 @@ import { useExpireSession } from "@/auth-state"
 import { Button } from "@/components/ui/button"
 import { copyText } from "@/lib/clipboard"
 import {
-  ansiLogSegments,
   firstModalLogTimestamp,
   logDownloadFilename,
-  modalLogLines,
+  styledModalLogLines,
   type AnsiLogSegment,
 } from "@/logs"
 const LIVE_LOG_CHARACTERS = 500_000
@@ -247,13 +246,7 @@ function StageLogViewer({
   const text = target.mode === "historical"
     ? historicalText
     : concatenateLogs([historicalText, liveBuffer.text])
-  const renderedLines = useMemo(
-    () => modalLogLines(text).map((line) => ({
-      ...line,
-      segments: ansiLogSegments(line.message),
-    })),
-    [text]
-  )
+  const renderedLines = useMemo(() => styledModalLogLines(text), [text])
   const firstLiveTimestamp = firstModalLogTimestamp(liveBuffer.text)
   const firstLiveTimestampMs = timestampMilliseconds(firstLiveTimestamp)
   const liveMayHaveEarlier = target.mode === "live" && liveHistoryUntil === null && (

@@ -386,8 +386,10 @@ new stream output while paging backward.
 
 Provider timestamps use compact sans-serif text beside monospace messages.
 ANSI SGR colors and decorations are parsed into structured React spans instead
-of provider-generated HTML. Copy and Download keep the raw loaded text, clearly
-say when older windows are not yet loaded, and name downloads
+of provider-generated HTML. Parsing remains continuous across line boundaries,
+so a style remains active until the provider emits its reset sequence. Copy and
+Download keep the raw loaded text, clearly say when older windows are not yet
+loaded, and name downloads
 `<current-timestamp>_<tool>_<stage>.log`. A failed provider stream displays
 short diagnostic guidance; a live viewer also retains text already received.
 Empty, interrupted, or completed log output never changes Job Status or supplies
