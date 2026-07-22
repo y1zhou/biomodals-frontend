@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 
-import { expect, test } from "@playwright/test"
+import { expect, test, type Locator } from "@playwright/test"
 
 const PASSWORD = "correct horse battery staple"
 const PDB = Buffer.from(
@@ -24,6 +24,28 @@ async function browserStats() {
   return JSON.parse(
     await readFile(path.join(root, "stats.json"), "utf8")
   ) as BrowserStats
+}
+
+async function tableRowGeometry(button: Locator) {
+  return button.evaluate((element) => {
+    const row = element.closest("tr")
+    if (!row) throw new Error("Stage button is not inside a table row")
+    return {
+      height: row.getBoundingClientRect().height,
+      cells: Array.from(row.cells).map((cell) => {
+        const style = getComputedStyle(cell)
+        return {
+          width: cell.getBoundingClientRect().width,
+          fontSize: style.fontSize,
+          lineHeight: style.lineHeight,
+          paddingTop: style.paddingTop,
+          paddingRight: style.paddingRight,
+          paddingBottom: style.paddingBottom,
+          paddingLeft: style.paddingLeft,
+        }
+      }),
+    }
+  })
 }
 
 test("MVP password, jobs, download, cancellation, and sign-out", async ({
@@ -103,8 +125,14 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     name: "Logs for Prepare simulation",
   })
   await expect(prepareLogs).toHaveCount(0)
+  const collapsedGeometry = await tableRowGeometry(prepareStage)
   await prepareStage.click()
+  await expect(prepareLogs).toBeVisible()
+  const loadingGeometry = await tableRowGeometry(prepareStage)
+  expect(loadingGeometry).toEqual(collapsedGeometry)
   await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
+  const loadedGeometry = await tableRowGeometry(prepareStage)
+  expect(loadedGeometry).toEqual(collapsedGeometry)
   await expect(prepareLogs.getByText("Streaming logs")).toBeVisible()
   await prepareLogs.getByRole("button", { name: "Copy logs" }).click()
   await expect(prepareLogs.getByRole("button", { name: "Copied" })).toBeVisible()

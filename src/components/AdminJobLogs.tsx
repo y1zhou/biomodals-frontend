@@ -222,7 +222,7 @@ export default function GromacsStageLogs({
   return (
     <section
       aria-label={`Logs for ${stageLabel}`}
-      className="rounded-lg border bg-background p-4"
+      className="min-w-0 rounded-lg border bg-background p-4"
       id={`stage-logs-${stageCode}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">

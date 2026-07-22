@@ -384,8 +384,15 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent className="px-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[58rem] text-left text-sm">
+                <table className="w-full min-w-[58rem] table-fixed text-left text-sm">
                   <caption className="sr-only">GROMACS execution stages</caption>
+                  <colgroup>
+                    <col className="w-[24%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[18%]" />
+                  </colgroup>
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
                     <tr>
                       <th className="px-6 py-3 font-medium" scope="col">
@@ -514,7 +521,10 @@ export default function JobDetailPage() {
                           </tr>
                           {logsExpanded ? (
                             <tr>
-                              <td className="bg-muted/20 px-6 py-4" colSpan={5}>
+                              <td
+                                className="max-w-0 bg-muted/20 px-6 py-4"
+                                colSpan={5}
+                              >
                                 <GromacsStageLogs
                                   jobId={job.job_id}
                                   stageCode={stage.code}
