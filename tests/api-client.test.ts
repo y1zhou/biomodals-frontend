@@ -116,4 +116,25 @@ describe("Administrator Job logs", () => {
     expect(requestSignal).toBe(controller.signal)
     expect(chunks.join("")).toBe("step α\n")
   })
+
+  test("reports a provider stream that fails after it starts", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(new Error("Modal log connection failed"))
+          },
+        }),
+        { headers: { "Content-Type": "text/plain" } }
+      )) as typeof fetch
+
+    await expect(
+      streamAdminJobLogs(
+        "job/one",
+        "prepare_simulation",
+        new AbortController().signal,
+        () => undefined
+      )
+    ).rejects.toThrow("Modal log connection failed")
+  })
 })

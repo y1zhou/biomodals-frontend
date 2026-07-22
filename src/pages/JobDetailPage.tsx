@@ -10,7 +10,7 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react"
-import { Fragment, useCallback, useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
 import {
@@ -31,9 +31,7 @@ import {
   useCurrentUser,
   useExpireSession,
 } from "@/auth-state"
-import GromacsStageLogs, {
-  type StageLogSnapshot,
-} from "@/components/AdminJobLogs"
+import GromacsStageLogs from "@/components/AdminJobLogs"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -99,18 +97,6 @@ export default function JobDetailPage() {
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [copied, setCopied] = useState(false)
   const [expandedLogStage, setExpandedLogStage] = useState<string | null>(null)
-  const [historicalLogs, setHistoricalLogs] = useState<
-    Record<string, StageLogSnapshot>
-  >({})
-  const rememberHistoricalLog = useCallback(
-    (stageCode: string, snapshot: StageLogSnapshot) => {
-      const cacheKey = `${jobId}:${stageCode}`
-      setHistoricalLogs((current) =>
-        current[cacheKey] ? current : { ...current, [cacheKey]: snapshot }
-      )
-    },
-    [jobId]
-  )
   const currentUserQuery = useCurrentUser()
   const visibility = useDocumentVisibility()
   const jobQuery = useQuery({
@@ -530,12 +516,7 @@ export default function JobDetailPage() {
                             <tr>
                               <td className="bg-muted/20 px-6 py-4" colSpan={5}>
                                 <GromacsStageLogs
-                                  historicalLog={
-                                    historicalLogs[`${job.job_id}:${stage.code}`]
-                                  }
                                   jobId={job.job_id}
-                                  onHistoricalLogLoaded={rememberHistoricalLog}
-                                  stageIsActive={active}
                                   stageCode={stage.code}
                                   stageLabel={stage.label}
                                 />

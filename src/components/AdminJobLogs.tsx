@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Check, Clipboard, Download, LoaderCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -12,30 +12,30 @@ import { useExpireSession } from "@/auth-state"
 import { Button } from "@/components/ui/button"
 import { copyText } from "@/lib/clipboard"
 import { logDownloadFilename, modalLogLines } from "@/logs"
+import { gromacsTool } from "@/tools"
 
 const MAX_LOG_CHARACTERS = 500_000
 
-export interface StageLogSnapshot {
+interface LogBuffer {
   text: string
   truncated: boolean
 }
 
+interface StageLogSnapshot extends LogBuffer {
+  functionName: string
+}
+
 interface GromacsStageLogsProps {
-  historicalLog?: StageLogSnapshot
   jobId: string
-  onHistoricalLogLoaded: (
-    stageCode: string,
-    snapshot: StageLogSnapshot
-  ) => void
-  stageIsActive: boolean
   stageCode: string
   stageLabel: string
 }
 
-function appendLogChunk(
-  current: StageLogSnapshot,
-  chunk: string
-): StageLogSnapshot {
+function historicalLogKey(jobId: string, stageCode: string) {
+  return ["admin", "jobs", jobId, "logs", stageCode, "historical"] as const
+}
+
+function appendLogChunk(current: LogBuffer, chunk: string): LogBuffer {
   const combined = current.text + chunk
   if (combined.length <= MAX_LOG_CHARACTERS) {
     return { text: combined, truncated: current.truncated }
@@ -44,6 +44,19 @@ function appendLogChunk(
     text: combined.slice(-MAX_LOG_CHARACTERS),
     truncated: true,
   }
+}
+
+async function fetchHistoricalLog(
+  jobId: string,
+  stageCode: string,
+  functionName: string,
+  signal: AbortSignal
+): Promise<StageLogSnapshot> {
+  let buffer: LogBuffer = { text: "", truncated: false }
+  await streamAdminJobLogs(jobId, stageCode, signal, (chunk) => {
+    buffer = appendLogChunk(buffer, chunk)
+  })
+  return { ...buffer, functionName }
 }
 
 function streamFailureMessage(error: unknown) {
@@ -72,18 +85,18 @@ function downloadLog(text: string, filename: string) {
 }
 
 export default function GromacsStageLogs({
-  historicalLog,
   jobId,
-  onHistoricalLogLoaded,
-  stageIsActive,
   stageCode,
   stageLabel,
 }: GromacsStageLogsProps) {
-  const [streamState, setStreamState] = useState<
+  const queryClient = useQueryClient()
+  const logKey = historicalLogKey(jobId, stageCode)
+  const cachedHistoricalLog = queryClient.getQueryData<StageLogSnapshot>(logKey)
+  const [liveState, setLiveState] = useState<
     "idle" | "connecting" | "streaming" | "ended" | "error"
   >("idle")
-  const [streamError, setStreamError] = useState<unknown>(null)
-  const [buffer, setBuffer] = useState<StageLogSnapshot>({
+  const [liveError, setLiveError] = useState<unknown>(null)
+  const [liveBuffer, setLiveBuffer] = useState<LogBuffer>({
     text: "",
     truncated: false,
   })
@@ -93,8 +106,10 @@ export default function GromacsStageLogs({
   const targetsQuery = useQuery({
     queryKey: ["admin", "jobs", jobId, "log-targets"],
     queryFn: ({ signal }) => inspectAdminJobLogTargets(jobId, signal),
+    enabled: !cachedHistoricalLog,
     retry: 1,
     refetchInterval(query) {
+      if (cachedHistoricalLog) return false
       const target = query.state.data?.targets.find(
         (candidate) => candidate.stage_code === stageCode
       )
@@ -105,16 +120,44 @@ export default function GromacsStageLogs({
   const targetCandidate = targetsQuery.data?.targets.find(
     (candidate) => candidate.stage_code === stageCode
   )
-  const expectedMode = stageIsActive ? "live" : "historical"
-  const target = targetCandidate?.mode === expectedMode
+  const target = !cachedHistoricalLog &&
+    targetsQuery.isFetchedAfterMount &&
+    !targetsQuery.isError
     ? targetCandidate
     : undefined
-  const targetMode = target?.mode
-  const awaitingFreshTarget = Boolean(
-    targetCandidate && !target && targetsQuery.isFetching
+  const historicalQuery = useQuery({
+    queryKey: logKey,
+    queryFn: ({ signal }) => {
+      if (!target || target.mode !== "historical") {
+        throw new Error("Historical log target is unavailable")
+      }
+      return fetchHistoricalLog(
+        jobId,
+        stageCode,
+        target.function_name,
+        signal
+      )
+    },
+    enabled: target?.mode === "historical",
+    gcTime: Infinity,
+    retry: 1,
+    staleTime: Infinity,
+  })
+  const historicalLog = historicalQuery.data ?? cachedHistoricalLog
+  const targetMode = historicalLog ? "historical" : target?.mode
+  const buffer = historicalLog ?? (
+    targetMode === "live" ? liveBuffer : { text: "", truncated: false }
   )
-  useExpireSession(targetsQuery.error)
-  useExpireSession(streamError)
+  const functionName = historicalLog?.functionName ?? target?.function_name
+  const logError = historicalQuery.error ?? liveError
+  const awaitingFreshTarget = Boolean(
+    !historicalLog &&
+    !targetsQuery.isError &&
+    !targetsQuery.isFetchedAfterMount
+  )
+  useExpireSession(historicalLog ? null : targetsQuery.error)
+  useExpireSession(historicalQuery.error)
+  useExpireSession(liveError)
 
   useEffect(() => {
     return () => {
@@ -123,70 +166,58 @@ export default function GromacsStageLogs({
   }, [])
 
   useEffect(() => {
-    if (!targetMode) {
-      setStreamState("idle")
-      return
-    }
-    if (targetMode === "historical" && historicalLog) {
-      setBuffer(historicalLog)
-      setStreamError(null)
-      setStreamState("ended")
+    if (targetMode !== "live") {
+      setLiveState("idle")
       return
     }
     const controller = new AbortController()
-    let fetched = { text: "", truncated: false }
-    setBuffer({ text: "", truncated: false })
-    setStreamError(null)
-    setStreamState("connecting")
+    let streamed: LogBuffer = { text: "", truncated: false }
+    setLiveBuffer(streamed)
+    setLiveError(null)
+    setLiveState("connecting")
     void streamAdminJobLogs(jobId, stageCode, controller.signal, (chunk) => {
-      fetched = appendLogChunk(fetched, chunk)
-      setStreamState("streaming")
-      setBuffer(fetched)
+      streamed = appendLogChunk(streamed, chunk)
+      setLiveState("streaming")
+      setLiveBuffer(streamed)
     })
       .then(() => {
-        if (controller.signal.aborted) return
-        setStreamState("ended")
-        if (targetMode === "historical") {
-          onHistoricalLogLoaded(stageCode, fetched)
-        }
+        if (!controller.signal.aborted) setLiveState("ended")
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
-        setStreamError(error)
-        setStreamState("error")
+        setLiveError(error)
+        setLiveState("error")
       })
     return () => controller.abort()
-  }, [
-    historicalLog,
-    jobId,
-    onHistoricalLogLoaded,
-    stageCode,
-    targetMode,
-  ])
+  }, [jobId, stageCode, targetMode])
 
   useEffect(() => {
     if (output.current) output.current.scrollTop = output.current.scrollHeight
   }, [buffer.text])
 
   const statusLabel = targetMode === "historical"
-    ? streamState === "connecting" || streamState === "streaming"
-      ? "Fetching logs…"
-      : streamState === "ended"
+    ? historicalQuery.isError
+      ? "Log fetch failed"
+      : historicalLog
         ? "Fetched logs"
-        : streamState === "error"
-          ? "Log fetch failed"
-          : "Waiting"
-    : streamState === "connecting"
+        : "Fetching logs…"
+    : liveState === "connecting"
       ? "Connecting…"
-      : streamState === "streaming"
+      : liveState === "streaming"
         ? "Streaming logs"
-        : streamState === "ended"
+        : liveState === "ended"
           ? "Stream ended"
-          : streamState === "error"
+          : liveState === "error"
             ? "Log stream stopped"
             : "Waiting"
   const lines = buffer.text ? modalLogLines(buffer.text) : []
-  const noLogs = streamState === "ended" && !buffer.text.trim()
+  const logsEnded = targetMode === "historical"
+    ? historicalQuery.isSuccess
+    : liveState === "ended"
+  const logsLoading = targetMode === "historical"
+    ? historicalQuery.isFetching
+    : liveState === "connecting"
+  const noLogs = logsEnded && !buffer.text.trim()
 
   return (
     <section
@@ -197,10 +228,10 @@ export default function GromacsStageLogs({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium">{statusLabel}</p>
-          {target ? (
+          {functionName ? (
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {target.function_name}
-              {target.state === "state_unknown" ? " · status unknown" : ""}
+              {functionName}
+              {target?.state === "state_unknown" ? " · status unknown" : ""}
             </p>
           ) : null}
         </div>
@@ -232,7 +263,7 @@ export default function GromacsStageLogs({
             onClick={() =>
               downloadLog(
                 buffer.text,
-                logDownloadFilename(new Date(), "gromacs", stageCode)
+                logDownloadFilename(new Date(), gromacsTool.slug, stageCode)
               )
             }
             size="sm"
@@ -244,19 +275,19 @@ export default function GromacsStageLogs({
         </div>
       </div>
 
-      {targetsQuery.isPending || awaitingFreshTarget ? (
+      {awaitingFreshTarget ? (
         <div className="mt-4 flex min-h-40 items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm text-slate-300">
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
           Finding this Modal Function Call…
         </div>
       ) : null}
-      {targetsQuery.isError ? (
+      {!historicalLog && targetsQuery.isError ? (
         <p className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
           Logs could not be fetched from Modal. Check the connection and try again.
         </p>
       ) : null}
-      {!targetsQuery.isPending &&
-      !awaitingFreshTarget &&
+      {!historicalLog &&
+      targetsQuery.isFetchedAfterMount &&
       !targetsQuery.isError &&
       !target ? (
         <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-950" role="status">
@@ -264,7 +295,7 @@ export default function GromacsStageLogs({
         </p>
       ) : null}
 
-      {target ? (
+      {targetMode ? (
         <div
           className="mt-4 max-h-80 min-h-40 overflow-auto rounded-lg bg-slate-950 p-4 text-xs leading-5 text-slate-100"
           ref={output}
@@ -287,7 +318,7 @@ export default function GromacsStageLogs({
             ))
           ) : (
             <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-slate-300">
-              {streamState === "connecting" ? (
+              {logsLoading ? (
                 <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
               ) : null}
               {noLogs
@@ -305,9 +336,9 @@ export default function GromacsStageLogs({
           Earlier output was omitted from this browser view and download.
         </p>
       ) : null}
-      {streamError ? (
+      {logError ? (
         <p className="mt-3 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-          {streamFailureMessage(streamError)}
+          {streamFailureMessage(logError)}
         </p>
       ) : null}
     </section>
