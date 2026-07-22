@@ -121,6 +121,13 @@ entries may overlap. It is not a Modal call graph, provider log, or source of
 raw provider identifiers.
 _Avoid_: Job Status, audit log, Modal call graph
 
+**Job Logs**:
+Live provider output for one active Job Stage, available only to an
+Administrator as fallible diagnostics. Job Logs do not determine Job Status,
+Progress, Stage History, Cancellation, or Result validity, and the browser never
+receives the provider call identifier used to filter them.
+_Avoid_: Job History, Stage History, audit log, Progress
+
 **Stage Outcome**:
 How a started Job Stage ended: completed, failed, or cancelled. It remains
 absent while that Stage is active, state-unknown, or blocked.

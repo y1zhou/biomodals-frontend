@@ -232,8 +232,10 @@ A failed Job exposes its Job Error through typed `error_code` and display-safe
 `error_message` fields in `JobView`; those fields are absent for every other
 state. The frontend derives a useful next action from the code and shows the
 Job identifier for support. An unknown code receives generic failure copy. Raw
-Modal exceptions, logs, stack traces, paths, and environment details stay on
-the backend, and the API does not prescribe a UI action.
+Modal exceptions, stack traces, paths, environment details, and provider call
+IDs never enter owner-facing Job responses. A separate Administrator-only
+diagnostic may stream logs for an active Stage without making those logs Job
+state or prescribing an owner action.
 
 The current Job Error codes are:
 

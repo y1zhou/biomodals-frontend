@@ -25,7 +25,12 @@ import {
   type Job,
 } from "@/api/client"
 import { adminStorageKey } from "@/admin"
-import { useExpireSession } from "@/auth-state"
+import {
+  authenticatedPrincipal,
+  useCurrentUser,
+  useExpireSession,
+} from "@/auth-state"
+import AdminJobLogs from "@/components/AdminJobLogs"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -34,6 +39,7 @@ import {
   formatTimestamp,
   formatRelativeTimestamp,
   gromacsStageTimeline,
+  isActiveJob,
   isProgressingJob,
   isPollableJob,
   isJobNotCancellableError,
@@ -90,6 +96,7 @@ export default function JobDetailPage() {
   const queryClient = useQueryClient()
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [copied, setCopied] = useState(false)
+  const currentUserQuery = useCurrentUser()
   const visibility = useDocumentVisibility()
   const jobQuery = useQuery({
     queryKey: jobKey(jobId),
@@ -187,6 +194,7 @@ export default function JobDetailPage() {
   }
 
   const job = jobQuery.data
+  const currentUser = authenticatedPrincipal(currentUserQuery.data)
   const presentation = jobPresentation[job.state]
   const canCancel = job.state === "queued" || job.state === "running"
   const canDownload = job.state === "succeeded" || job.state === "partial"
@@ -519,6 +527,10 @@ export default function JobDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          {currentUser?.is_admin && isActiveJob(job.state) ? (
+            <AdminJobLogs jobId={job.job_id} />
+          ) : null}
         </section>
       </main>
 

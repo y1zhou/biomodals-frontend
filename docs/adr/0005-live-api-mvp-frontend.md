@@ -356,6 +356,22 @@ overlap the two equilibration analyses. Prepare result starts only after all
 three analyses complete. These dependencies do not change the table's fixed
 display order; several rows may show the running Job Status at once.
 
+For an enabled Administrator, Active Job detail adds a `Logs` box below the
+ordinary timing and support cards. It is collapsed by default and makes no
+request until opened. The box lists every currently loggable Stage; when
+parallel Stages are active, a native selector names each Stage and Running
+Function. Selecting another Stage aborts the earlier stream and starts the new
+one. Collapsing the box or leaving the page aborts the connection. Ordinary
+Users never render the box.
+
+The target API exposes safe Stage codes, Running Function names, operation
+state, and start times, but no Modal Function Call ID. The backend resolves the
+selected Stage to that private ID and streams plain-text provider output. The
+panel refreshes its choices every ten seconds only while open and retains at
+most the latest 500,000 characters, visibly noting if earlier output was
+omitted. Empty, interrupted, or completed log output never changes Job Status
+or supplies an invented Stage outcome.
+
 Missing and unauthorized Jobs share the same `Job unavailable` screen so a Job
 identifier cannot reveal ownership. A structurally invalid Job identifier
 returns API `422` but uses that same screen in the SPA. The screen links to My
@@ -435,8 +451,9 @@ operation as well as required CSRF headers, request and response bodies, Job
 states and conditional fields, per-operation frontend-handled error codes,
 relevant response headers, and binary and byte-range Result downloads. It also
 contains `active_stages`, the `blocked` and `state_unknown` Job fields, and the
-Admin Modal preflight, unknown-state resolution, and Storage contracts. Backend
-contract tests assert these details rather than checking only that paths exist.
+Admin Modal preflight, unknown-state resolution, Storage, and Administrator Job
+log contracts. Backend contract tests assert these details rather than checking
+only that paths exist.
 
 A live `api:check` compares the OpenAPI document with the generated TypeScript
 contract. The generated file is never edited manually. Backend changes check

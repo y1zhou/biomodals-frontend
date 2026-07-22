@@ -9,6 +9,8 @@ export type Principal = components["schemas"]["PrincipalView"]
 export type SetPasswordInput = components["schemas"]["SetPasswordRequest"]
 export type AdminUser = components["schemas"]["AdminUserView"]
 export type AdminUserPage = components["schemas"]["AdminUserPageView"]
+export type AdminJobLogTarget = components["schemas"]["AdminJobLogTargetView"]
+export type AdminJobLogTargets = components["schemas"]["AdminJobLogTargetsView"]
 export type CreateAdminUserInput = components["schemas"]["CreateAdminUserRequest"]
 export type CreatedAdminUser = components["schemas"]["CreatedAdminUserView"]
 export type UpdateAdminUserInput = components["schemas"]["UpdateAdminUserRequest"]
@@ -243,6 +245,53 @@ export function createAdminPasswordLink(userId: string) {
 
 export function inspectAdminModal(signal?: AbortSignal) {
   return requestJson<AdminModal>("/api/v1/admin/modal", { signal })
+}
+
+export function inspectAdminJobLogTargets(jobId: string, signal?: AbortSignal) {
+  return requestJson<AdminJobLogTargets>(
+    `/api/v1/admin/jobs/${encodeURIComponent(jobId)}/log-targets`,
+    { signal }
+  )
+}
+
+export async function streamAdminJobLogs(
+  jobId: string,
+  stageCode: string,
+  signal: AbortSignal,
+  onChunk: (chunk: string) => void
+) {
+  const parameters = new URLSearchParams({ stage: stageCode })
+  const response = await fetch(
+    `/api/v1/admin/jobs/${encodeURIComponent(jobId)}/logs?${parameters}`,
+    {
+      credentials: "same-origin",
+      headers: { Accept: "text/plain" },
+      signal,
+    }
+  )
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await responseBody(response),
+      response.headers.get("X-Request-ID")
+    )
+  }
+  if (!response.body) throw new Error("The API returned an empty log stream")
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      const chunk = decoder.decode(value, { stream: true })
+      if (chunk) onChunk(chunk)
+    }
+    const finalChunk = decoder.decode()
+    if (finalChunk) onChunk(finalChunk)
+  } finally {
+    reader.releaseLock()
+  }
 }
 
 export function markAdminStateUnknownJobFailed(jobId: string) {

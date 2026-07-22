@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
-import { listAdminUsers, listJobs } from "../src/api/client"
+import {
+  inspectAdminJobLogTargets,
+  listAdminUsers,
+  listJobs,
+  streamAdminJobLogs,
+} from "../src/api/client"
 
 const originalFetch = globalThis.fetch
 
@@ -45,5 +50,67 @@ describe("cursor collections", () => {
     const users = await listAdminUsers()
 
     expect(users.map((user) => user.user_id)).toEqual(["first-user"])
+  })
+})
+
+describe("Administrator Job logs", () => {
+  test("loads safe stage selectors without a provider call ID", async () => {
+    let requested = ""
+    globalThis.fetch = (async (input) => {
+      requested = String(input)
+      return jsonResponse({
+        job_id: "job/one",
+        targets: [
+          {
+            stage_code: "run_production",
+            function_name: "production_run_gpu",
+            state: "running",
+            started_at: "2026-07-22T00:00:00Z",
+          },
+        ],
+      })
+    }) as typeof fetch
+
+    const result = await inspectAdminJobLogTargets("job/one")
+
+    expect(requested).toBe("/api/v1/admin/jobs/job%2Fone/log-targets")
+    expect(result.targets?.[0]?.stage_code).toBe("run_production")
+    expect(result).not.toHaveProperty("modal_call_id")
+  })
+
+  test("decodes a streamed response and passes the abort signal through", async () => {
+    const encoder = new TextEncoder()
+    const encoded = encoder.encode("step α\n")
+    let requested = ""
+    let requestSignal: AbortSignal | null = null
+    globalThis.fetch = (async (input, init) => {
+      requested = String(input)
+      requestSignal = init?.signal as AbortSignal
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoded.slice(0, encoded.length - 2))
+            controller.enqueue(encoded.slice(encoded.length - 2))
+            controller.close()
+          },
+        }),
+        { headers: { "Content-Type": "text/plain" } }
+      )
+    }) as typeof fetch
+    const controller = new AbortController()
+    const chunks: string[] = []
+
+    await streamAdminJobLogs(
+      "job/one",
+      "analyze nvt",
+      controller.signal,
+      (chunk) => chunks.push(chunk)
+    )
+
+    expect(requested).toBe(
+      "/api/v1/admin/jobs/job%2Fone/logs?stage=analyze+nvt"
+    )
+    expect(requestSignal).toBe(controller.signal)
+    expect(chunks.join("")).toBe("step α\n")
   })
 })

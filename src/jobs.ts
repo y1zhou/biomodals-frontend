@@ -132,6 +132,10 @@ const gromacsStageDefinitions: readonly {
   { code: "prepare_result", label: "Prepare result" },
 ]
 
+export function gromacsStageLabel(code: string) {
+  return gromacsStageDefinitions.find((stage) => stage.code === code)?.label ?? code
+}
+
 export function gromacsStageTimeline(job: Job) {
   const activeStages = new Map(
     (job.active_stages ?? (job.stage ? [job.stage] : [])).map((stage) => [
