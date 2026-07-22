@@ -776,15 +776,12 @@ export interface components {
          * @description Safe execution stage timing without a provider call identifier.
          */
         readonly JobStageView: {
-            /**
-             * Code
-             * @enum {string}
-             */
-            readonly code: "prepare_simulation" | "analyze_nvt" | "analyze_npt" | "run_production" | "analyze_production" | "prepare_result";
+            /** Code */
+            readonly code: string;
             /** Ended At */
             readonly ended_at?: string | null;
             /** Function Name */
-            readonly function_name?: ("prepare_tpr_cpu" | "prepare_tpr_gpu" | "collect_traj_stats" | "production_run_cpu" | "production_run_gpu") | null;
+            readonly function_name?: string | null;
             /** Outcome */
             readonly outcome?: ("completed" | "failed" | "cancelled") | null;
             /**
@@ -1193,7 +1190,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1288,7 +1285,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1392,7 +1389,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminJobStateConflictResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1511,7 +1508,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminSettingConflictResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1588,7 +1585,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1668,7 +1665,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminMutationForbiddenResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1770,7 +1767,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1876,7 +1873,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["AdminUserAlreadyExistsResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -1995,7 +1992,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["LastActiveAdminResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2099,7 +2096,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["InactiveUserResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2182,7 +2179,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["OriginErrorResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2273,7 +2270,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2339,7 +2336,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2411,7 +2408,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["OriginErrorResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2531,7 +2528,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["SubmissionConflictResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2597,7 +2594,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["HealthView"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2666,7 +2663,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2745,7 +2742,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2849,7 +2846,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobNotCancellableResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2956,7 +2953,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ResultDownloadConflictResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -3093,7 +3090,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ResultPrepareConflictResponse"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -3159,7 +3156,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["HealthView"];
                 };
             };
-            /** @description Content Too Large */
+            /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
