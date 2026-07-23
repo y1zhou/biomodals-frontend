@@ -10,6 +10,7 @@ const PDB = Buffer.from(
 
 interface BrowserStats {
   password_link: string
+  secondary_password_link: string
   preflight_versions: number[]
   submit_calls: number
   submit_versions: number[]
@@ -49,6 +50,7 @@ async function tableRowGeometry(button: Locator) {
 }
 
 test("MVP password, jobs, download, cancellation, and sign-out", async ({
+  browser,
   context,
   page,
 }) => {
@@ -67,6 +69,18 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await page.getByLabel("Confirm password").fill(PASSWORD)
   await page.getByRole("button", { name: "Set password" }).click()
   await expect(page).toHaveURL(`${origin}/`)
+
+  const secondaryContext = await browser.newContext()
+  const secondaryPage = await secondaryContext.newPage()
+  await expect
+    .poll(async () => (await browserStats()).secondary_password_link)
+    .not.toBe("")
+  await secondaryPage.goto((await browserStats()).secondary_password_link)
+  await secondaryPage.getByLabel("New password").fill(PASSWORD)
+  await secondaryPage.getByLabel("Confirm password").fill(PASSWORD)
+  await secondaryPage.getByRole("button", { name: "Set password" }).click()
+  await expect(secondaryPage).toHaveURL(`${origin}/`)
+  await secondaryContext.close()
 
   await page.getByRole("button", { name: "Open user menu" }).click()
   await page.getByRole("menuitem", { name: "Sign out" }).click()
@@ -730,6 +744,23 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
 
   await page.getByRole("button", { name: "Open user menu" }).click()
   await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()
+  await page.keyboard.press("Escape")
+
+  await page.goto("/jobs")
+  await expect(page.getByText("Browser success workflow", { exact: true })).toBeVisible()
+  await context.clearCookies()
+  await page.getByRole("button", { name: "Refresh" }).click()
+  const reauthentication = page.getByRole("dialog", { name: "Sign in again" })
+  await expect(reauthentication).toBeVisible()
+  await reauthentication.getByLabel("Email").fill("browser-user@example.com")
+  await reauthentication.getByLabel("Password").fill(PASSWORD)
+  await reauthentication.getByRole("button", { name: "Sign in and return" }).click()
+  await expect(reauthentication).not.toBeVisible()
+  await expect(page.getByRole("heading", { name: "No jobs yet" })).toBeVisible()
+  await expect(page.getByText("Browser success workflow", { exact: true })).toHaveCount(0)
+
+  await page.getByRole("button", { name: "Open user menu" }).click()
+  await expect(page.getByText("Browser Regular User", { exact: true })).toBeVisible()
   await page.getByRole("menuitem", { name: "Sign out" }).click()
   await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible()
 })
