@@ -27,6 +27,7 @@ function job(jobId: string, state: Job["state"], createdAt: string): Job {
     job_id: jobId,
     workload: "gromacs",
     display_name: `Job ${jobId}`,
+    can_view_logs: false,
     state,
     created_at: createdAt,
     updated_at: createdAt,

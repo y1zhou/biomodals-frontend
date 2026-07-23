@@ -91,6 +91,9 @@ export function modalToolSettingLabels(
   if (Object.hasOwn(input, "active_job_limit")) {
     labels.push("Active job limit")
   }
+  if (Object.hasOwn(input, "job_logs_visible_to_owner")) {
+    labels.push("Job log access")
+  }
   return labels
 }
 
@@ -131,7 +134,8 @@ export function changedModalToolSettings(
   tool: AdminModalTool,
   modalAppName: string,
   modalAppVersion: string,
-  activeJobLimit: string
+  activeJobLimit: string,
+  jobLogsVisibleToOwner: boolean
 ): UpdateAdminModalToolInput {
   const normalizedAppName = modalAppName.trim()
   const normalizedVersion = positiveInteger(modalAppVersion)
@@ -149,6 +153,9 @@ export function changedModalToolSettings(
     tool.active_job_limit.editable &&
     normalizedLimit !== tool.active_job_limit.value
       ? { active_job_limit: normalizedLimit }
+      : {}),
+    ...(jobLogsVisibleToOwner !== tool.job_logs_visible_to_owner.value
+      ? { job_logs_visible_to_owner: jobLogsVisibleToOwner }
       : {}),
   }
 }

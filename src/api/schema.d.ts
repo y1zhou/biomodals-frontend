@@ -4,40 +4,6 @@
  */
 
 export interface paths {
-    readonly "/api/v1/admin/jobs/{job_id}/log-targets": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
-        };
-        /** Job Log Targets */
-        readonly get: operations["job_log_targets_api_v1_admin_jobs__job_id__log_targets_get"];
-        readonly put?: never;
-        readonly post?: never;
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
-    };
-    readonly "/api/v1/admin/jobs/{job_id}/logs": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
-        };
-        /** Stream Job Logs */
-        readonly get: operations["stream_job_logs_api_v1_admin_jobs__job_id__logs_get"];
-        readonly put?: never;
-        readonly post?: never;
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
-    };
     readonly "/api/v1/admin/modal": {
         readonly parameters: {
             readonly query?: never;
@@ -362,6 +328,40 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/jobs/{job_id}/log-targets": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Job Log Targets */
+        readonly get: operations["job_log_targets_api_v1_jobs__job_id__log_targets_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/jobs/{job_id}/logs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Stream Job Logs */
+        readonly get: operations["stream_job_logs_api_v1_jobs__job_id__logs_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/jobs/{job_id}/prepare-download": {
         readonly parameters: {
             readonly query?: never;
@@ -442,85 +442,6 @@ export interface components {
             readonly detail: string;
         };
         /**
-         * AdminJobLogsUnavailableResponse
-         * @description The workload cannot start a provider log stream.
-         */
-        readonly AdminJobLogsUnavailableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_logs_unavailable";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * AdminJobLogTargetsView
-         * @description Safe selectors for a Job's currently inspectable provider calls.
-         */
-        readonly AdminJobLogTargetsView: {
-            /**
-             * Job Id
-             * Format: uuid
-             */
-            readonly job_id: string;
-            /** Targets */
-            readonly targets: readonly components["schemas"]["AdminJobLogTargetView"][];
-        };
-        /**
-         * AdminJobLogTargetUnavailableResponse
-         * @description The selected stage does not identify a retained provider call.
-         */
-        readonly AdminJobLogTargetUnavailableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_log_target_unavailable";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * AdminJobLogTargetView
-         * @description One provider operation whose logs an Administrator may inspect.
-         */
-        readonly AdminJobLogTargetView: {
-            /** Ended At */
-            readonly ended_at: string | null;
-            /** Function Name */
-            readonly function_name: string;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            readonly mode: "live" | "historical";
-            /** Stage Code */
-            readonly stage_code: string;
-            /**
-             * Started At
-             * Format: date-time
-             */
-            readonly started_at: string;
-            /**
-             * State
-             * @enum {string}
-             */
-            readonly state: "running" | "state_unknown" | "completed" | "failed" | "cancelled";
-        };
-        /**
-         * AdminJobLogWindowInvalidResponse
-         * @description The requested historical window is incomplete or too large.
-         */
-        readonly AdminJobLogWindowInvalidResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_log_window_invalid";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
          * AdminJobStateConflictResponse
          * @description A reviewed Job no longer has unknown remote state.
          */
@@ -553,6 +474,7 @@ export interface components {
             readonly active_jobs: number;
             /** Display Name */
             readonly display_name: string;
+            readonly job_logs_visible_to_owner: components["schemas"]["BooleanSettingView"];
             readonly modal_app_name: components["schemas"]["TextSettingView"];
             readonly modal_app_version: components["schemas"]["IntegerSettingView"];
             /** Workload */
@@ -766,6 +688,21 @@ export interface components {
             readonly simulation_time_ns: number;
         };
         /**
+         * BooleanSettingView
+         * @description One effective boolean setting and its controlling source.
+         */
+        readonly BooleanSettingView: {
+            /** Editable */
+            readonly editable: boolean;
+            /**
+             * Source
+             * @enum {string}
+             */
+            readonly source: "process_environment" | "database" | "configuration_file" | "default";
+            /** Value */
+            readonly value: boolean;
+        };
+        /**
          * ComputeUnavailableResponse
          * @description Remote compute could not accept the durable Job.
          */
@@ -862,6 +799,98 @@ export interface components {
             readonly value: number;
         };
         /**
+         * JobLogsForbiddenResponse
+         * @description The authenticated Job owner may not inspect this Tool's logs.
+         */
+        readonly JobLogsForbiddenResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_logs_forbidden";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * JobLogsUnavailableResponse
+         * @description The workload cannot start a provider log stream.
+         */
+        readonly JobLogsUnavailableResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_logs_unavailable";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * JobLogTargetsView
+         * @description Safe selectors for a Job's currently inspectable provider calls.
+         */
+        readonly JobLogTargetsView: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            readonly job_id: string;
+            /** Targets */
+            readonly targets: readonly components["schemas"]["JobLogTargetView"][];
+        };
+        /**
+         * JobLogTargetUnavailableResponse
+         * @description The selected stage does not identify a retained provider call.
+         */
+        readonly JobLogTargetUnavailableResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_log_target_unavailable";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * JobLogTargetView
+         * @description One provider operation whose logs the caller may inspect.
+         */
+        readonly JobLogTargetView: {
+            /** Ended At */
+            readonly ended_at: string | null;
+            /** Function Name */
+            readonly function_name: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            readonly mode: "live" | "historical";
+            /** Stage Code */
+            readonly stage_code: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            readonly started_at: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            readonly state: "running" | "state_unknown" | "completed" | "failed" | "cancelled";
+        };
+        /**
+         * JobLogWindowInvalidResponse
+         * @description The requested historical window is incomplete or too large.
+         */
+        readonly JobLogWindowInvalidResponse: {
+            /**
+             * Code
+             * @constant
+             */
+            readonly code: "job_log_window_invalid";
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
          * JobNotCancellableResponse
          * @description Cancellation raced with a state that no longer accepts it.
          */
@@ -943,6 +972,11 @@ export interface components {
              * @description Time recoverable finalization first became blocked.
              */
             readonly blocked_at?: string | null;
+            /**
+             * Can View Logs
+             * @description Whether the authenticated caller may inspect retained provider logs for started remote stages of this Job.
+             */
+            readonly can_view_logs: boolean;
             /**
              * Cancel Requested At
              * @description Time cancellation was requested, when applicable.
@@ -1256,6 +1290,11 @@ export interface components {
              */
             readonly active_job_limit?: number | null;
             /**
+             * Job Logs Visible To Owner
+             * @description Whether authenticated Job owners may inspect provider logs. Administrators always retain access. Omit to keep unchanged; null restores the Tool default.
+             */
+            readonly job_logs_visible_to_owner?: boolean | null;
+            /**
              * Modal App Name
              * @description Omit to keep unchanged; null restores the configured default.
              */
@@ -1308,233 +1347,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    readonly job_log_targets_api_v1_admin_jobs__job_id__log_targets_get: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly job_id: string;
-            };
-            readonly cookie?: never;
-        };
-        readonly requestBody?: never;
-        readonly responses: {
-            /** @description Successful Response */
-            readonly 200: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AdminJobLogTargetsView"];
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Request Entity Too Large */
-            readonly 413: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            readonly 422: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Internal Server Error */
-            readonly 500: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    readonly stream_job_logs_api_v1_admin_jobs__job_id__logs_get: {
-        readonly parameters: {
-            readonly query: {
-                readonly since?: string | null;
-                readonly stage: string;
-                readonly until?: string | null;
-            };
-            readonly header?: never;
-            readonly path: {
-                readonly job_id: string;
-            };
-            readonly cookie?: never;
-        };
-        readonly requestBody?: never;
-        readonly responses: {
-            /** @description Logs for the selected remote stage */
-            readonly 200: {
-                headers: {
-                    /** @description Disables storage and response transformation for logs. */
-                    readonly "Cache-Control"?: string;
-                    /** @description Requests that compatible reverse proxies stream immediately. */
-                    readonly "X-Accel-Buffering"?: "no";
-                    /** @description Whether the response is a live stream or historical window. */
-                    readonly "X-BioModals-Log-Mode"?: "live" | "historical";
-                    /** @description Inclusive beginning of a selected historical window. */
-                    readonly "X-BioModals-Log-Since"?: string;
-                    /** @description Exclusive end of a selected historical window. */
-                    readonly "X-BioModals-Log-Until"?: string;
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "text/plain": string;
-                };
-            };
-            /** @description Bad Request */
-            readonly 400: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AdminJobLogWindowInvalidResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AdminForbiddenResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Conflict */
-            readonly 409: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AdminJobLogTargetUnavailableResponse"];
-                };
-            };
-            /** @description Request Entity Too Large */
-            readonly 413: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            readonly 422: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Internal Server Error */
-            readonly 500: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Service Unavailable */
-            readonly 503: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AdminJobLogsUnavailableResponse"];
-                };
-            };
-        };
-    };
     readonly modal_configuration_api_v1_admin_modal_get: {
         readonly parameters: {
             readonly query?: never;
@@ -3422,6 +3234,233 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ResultStorageUnavailableResponse"];
+                };
+            };
+        };
+    };
+    readonly job_log_targets_api_v1_jobs__job_id__log_targets_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobLogTargetsView"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobLogsForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly stream_job_logs_api_v1_jobs__job_id__logs_get: {
+        readonly parameters: {
+            readonly query: {
+                readonly since?: string | null;
+                readonly stage: string;
+                readonly until?: string | null;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Logs for the selected remote stage */
+            readonly 200: {
+                headers: {
+                    /** @description Disables storage and response transformation for logs. */
+                    readonly "Cache-Control"?: string;
+                    /** @description Requests that compatible reverse proxies stream immediately. */
+                    readonly "X-Accel-Buffering"?: "no";
+                    /** @description Whether the response is a live stream or historical window. */
+                    readonly "X-BioModals-Log-Mode"?: "live" | "historical";
+                    /** @description Inclusive beginning of a selected historical window. */
+                    readonly "X-BioModals-Log-Since"?: string;
+                    /** @description Exclusive end of a selected historical window. */
+                    readonly "X-BioModals-Log-Until"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "text/plain": string;
+                };
+            };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobLogWindowInvalidResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            readonly 401: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            readonly 403: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobLogsForbiddenResponse"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobLogTargetUnavailableResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobLogsUnavailableResponse"];
                 };
             };
         };

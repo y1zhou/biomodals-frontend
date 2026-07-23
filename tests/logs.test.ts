@@ -8,7 +8,7 @@ import {
   styledModalLogLines,
 } from "@/logs"
 
-describe("administrator stage logs", () => {
+describe("stage logs", () => {
   test("separates Modal timestamps from monospace log messages", () => {
     expect(
       modalLogLines(

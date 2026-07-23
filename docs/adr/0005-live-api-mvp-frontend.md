@@ -356,11 +356,17 @@ overlap the two equilibration analyses. Prepare result starts only after all
 three analyses complete. These dependencies do not change the table's fixed
 display order; several rows may show the running Job Status at once.
 
-For an enabled Administrator, each started remote row in the Execution stages
+Each Job response includes the backend-computed `can_view_logs` capability. An
+enabled Administrator always receives access. A Job owner receives access only
+when that Tool's live policy permits owner-visible logs; no other User may read
+the Job or its logs. The frontend neither infers nor grants this permission.
+
+When `can_view_logs` is true, each started remote row in the Execution stages
 table can expand an inline log viewer. Rows are collapsed by default and only
 one is expanded at a time. Selecting another row aborts an earlier live stream;
-collapsing the row or leaving the page also aborts it. Ordinary Users see no log
-interactivity or explanatory Administrator copy.
+collapsing the row or leaving the page also aborts it. When the capability is
+false, the page shows the ordinary stage table without log interactivity or
+log-access copy.
 
 The target API exposes safe Stage codes, Running Function names, operation
 state, live-or-historical mode, start time, and nullable end time, but no Modal
@@ -379,7 +385,7 @@ pages without contacting Modal. A full page refresh clears that cache.
 
 The viewer refreshes target metadata every ten seconds only for a live target.
 It has a bounded-height viewport, opens at the newest terminal window, and
-prepends older windows when the Administrator scrolls to the top while
+prepends older windows when the viewer scrolls to the top while
 preserving the viewport position. Active streams retain a 500,000-character
 tail until older history is requested; the viewer then pins that tail and keeps
 new stream output while paging backward.

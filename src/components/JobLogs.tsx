@@ -12,10 +12,10 @@ import {
 import {
   apiErrorCode,
   apiRequestId,
-  inspectAdminJobLogTargets,
-  streamAdminJobLogs,
-  type AdminJobLogTarget,
-  type AdminJobLogWindow,
+  inspectJobLogTargets,
+  streamJobLogs,
+  type JobLogTarget,
+  type JobLogWindow,
 } from "@/api/client"
 import { useExpireSession } from "@/auth-state"
 import { Button } from "@/components/ui/button"
@@ -35,11 +35,11 @@ interface LogBuffer {
   truncated: boolean
 }
 
-interface HistoricalLogPage extends AdminJobLogWindow {
+interface HistoricalLogPage extends JobLogWindow {
   text: string
 }
 
-interface AdminStageLogsProps {
+interface StageLogsProps {
   jobId: string
   stageCode: string
   stageLabel: string
@@ -49,7 +49,7 @@ interface AdminStageLogsProps {
 interface StageLogViewerProps {
   jobId: string
   stageCode: string
-  target: AdminJobLogTarget
+  target: JobLogTarget
   toolSlug: string
 }
 
@@ -80,7 +80,7 @@ function concatenateLogs(parts: readonly string[]) {
   }, "")
 }
 
-function pageBefore(until: number, lowerBound: number): AdminJobLogWindow {
+function pageBefore(until: number, lowerBound: number): JobLogWindow {
   const boundedUntil = Math.max(until, lowerBound + 1)
   return {
     since: new Date(
@@ -99,11 +99,11 @@ function timestampMilliseconds(value: string | null) {
 async function fetchHistoricalPage(
   jobId: string,
   stageCode: string,
-  window: AdminJobLogWindow,
+  window: JobLogWindow,
   signal: AbortSignal
 ): Promise<HistoricalLogPage> {
   let text = ""
-  await streamAdminJobLogs(
+  await streamJobLogs(
     jobId,
     stageCode,
     signal,
@@ -116,6 +116,9 @@ async function fetchHistoricalPage(
 }
 
 function streamFailureMessage(error: unknown) {
+  if (apiErrorCode(error) === "job_logs_forbidden") {
+    return "Log access for this Tool is now restricted to administrators. Refresh the Job page."
+  }
   if (apiErrorCode(error) === "job_log_target_unavailable") {
     return "Logs are not available for this stage. Modal may no longer retain this Function Call."
   }
@@ -288,7 +291,7 @@ function StageLogViewer({
     setLiveBuffer(streamed)
     setLiveError(null)
     setLiveState("connecting")
-    void streamAdminJobLogs(jobId, stageCode, controller.signal, (chunk) => {
+    void streamJobLogs(jobId, stageCode, controller.signal, (chunk) => {
       streamed = appendLogChunk(streamed, chunk, retainAllLive.current)
       setLiveState("streaming")
       setLiveBuffer(streamed)
@@ -526,15 +529,15 @@ function StageLogViewer({
   )
 }
 
-export default function AdminStageLogs({
+export default function StageLogs({
   jobId,
   stageCode,
   stageLabel,
   toolSlug,
-}: AdminStageLogsProps) {
+}: StageLogsProps) {
   const targetsQuery = useQuery({
-    queryKey: ["admin", "jobs", jobId, "log-targets"],
-    queryFn: ({ signal }) => inspectAdminJobLogTargets(jobId, signal),
+    queryKey: ["jobs", jobId, "log-targets"],
+    queryFn: ({ signal }) => inspectJobLogTargets(jobId, signal),
     retry: 1,
     refetchInterval(query) {
       const target = query.state.data?.targets.find(
@@ -565,7 +568,7 @@ export default function AdminStageLogs({
         </div>
       ) : targetsQuery.isError ? (
         <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-          Logs could not be fetched from Modal. Check the connection and try again.
+          {streamFailureMessage(targetsQuery.error)}
         </p>
       ) : !target ? (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950" role="status">

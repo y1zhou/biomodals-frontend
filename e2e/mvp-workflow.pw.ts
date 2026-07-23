@@ -118,7 +118,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   if (!completedJobId) throw new Error("Completed Job ID is missing")
   await expect(page.locator("details", { hasText: "Logs" })).toHaveCount(0)
   await expect(
-    page.getByText("Administrators can click a started remote stage to view its Modal logs.")
+    page.getByText("Click a started remote stage to view its logs.")
   ).toBeVisible()
   const prepareStage = page.getByRole("button", { name: /Prepare simulation/ })
   const prepareLogs = page.getByRole("region", {
@@ -207,8 +207,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
 
   const historicalEnd = Date.now() - 60_000
   const historicalStart = historicalEnd - 20 * 60_000
-  const targetsRoute = `**/api/v1/admin/jobs/${completedJobId}/log-targets`
-  const logsRoute = `**/api/v1/admin/jobs/${completedJobId}/logs?*`
+  const targetsRoute = `**/api/v1/jobs/${completedJobId}/log-targets`
+  const logsRoute = `**/api/v1/jobs/${completedJobId}/logs?*`
   await page.route(targetsRoute, async (route) => {
     const response = await route.fetch()
     const body = await response.json() as {
@@ -404,11 +404,11 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await page.goto("/admin/modal")
   await expect(page.getByText("Default from the configuration file.")).toHaveCount(0)
   const toolsTable = page.getByRole("table")
-  expect(
-    await toolsTable.evaluate(
-      (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
-    )
-  ).toBe(true)
+  const toolsTableWidth = await toolsTable.evaluate((table) => ({
+    client: table.parentElement?.clientWidth ?? 0,
+    scroll: table.scrollWidth,
+  }))
+  expect(toolsTableWidth.scroll).toBeLessThanOrEqual(toolsTableWidth.client)
   await expect(
     toolsTable.getByRole("columnheader", { name: "Modal deployment version" })
   ).toHaveCSS("white-space", "nowrap")
@@ -435,6 +435,22 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     }).evaluate((input) => input.getBoundingClientRect().width)
   ).toBeLessThan(190)
 
+  const saveToolSettings = page.getByRole("button", {
+    name: "Save Modal settings for GROMACS MD simulation",
+  })
+  const jobLogAccess = page.getByRole("checkbox", {
+    name: "Allow Job owners to view logs for GROMACS MD simulation",
+  })
+  await expect(jobLogAccess).toBeChecked()
+  await page.getByText("Job owners", { exact: true }).click()
+  await expect(jobLogAccess).not.toBeChecked()
+  await saveToolSettings.click()
+  await expect(saveToolSettings).toBeDisabled()
+  await page.getByRole("button", {
+    name: "Restore Job log access for GROMACS MD simulation to its default",
+  }).click()
+  await expect(jobLogAccess).toBeChecked()
+
   const toolUpdateRoute = "**/api/v1/admin/modal/tools/gromacs"
   await page.route(toolUpdateRoute, async (route) => {
     await route.fulfill({
@@ -449,9 +465,6 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await page.getByRole("spinbutton", {
     name: "Modal deployment version for GROMACS MD simulation",
   }).fill("999999")
-  const saveToolSettings = page.getByRole("button", {
-    name: "Save Modal settings for GROMACS MD simulation",
-  })
   await saveToolSettings.click()
   const toolError = page.getByRole("alert", {
     name: "Could not save GROMACS MD simulation settings",

@@ -26,12 +26,8 @@ import {
   type Job,
 } from "@/api/client"
 import { adminStorageKey } from "@/admin"
-import {
-  authenticatedPrincipal,
-  useCurrentUser,
-  useExpireSession,
-} from "@/auth-state"
-import AdminStageLogs from "@/components/AdminJobLogs"
+import { useExpireSession } from "@/auth-state"
+import StageLogs from "@/components/JobLogs"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -97,7 +93,6 @@ export default function JobDetailPage() {
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [copied, setCopied] = useState(false)
   const [expandedLogStage, setExpandedLogStage] = useState<string | null>(null)
-  const currentUserQuery = useCurrentUser()
   const visibility = useDocumentVisibility()
   const jobQuery = useQuery({
     queryKey: jobKey(jobId),
@@ -195,7 +190,6 @@ export default function JobDetailPage() {
   }
 
   const job = jobQuery.data
-  const currentUser = authenticatedPrincipal(currentUserQuery.data)
   const presentation = jobPresentation[job.state]
   const canCancel = job.state === "queued" || job.state === "running"
   const canDownload = job.state === "succeeded" || job.state === "partial"
@@ -380,8 +374,8 @@ export default function JobDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Highlighted rows are the active stages last reported by BioModals.
                 Timestamps show when BioModals recorded each transition.
-                {currentUser?.is_admin
-                  ? " Administrators can click a started remote stage to view its Modal logs."
+                {job.can_view_logs
+                  ? " Click a started remote stage to view its logs."
                   : null}
               </p>
             </CardHeader>
@@ -419,7 +413,7 @@ export default function JobDetailPage() {
                     {stages.map((stage, index) => {
                       const active = stage.state === "active"
                       const canInspectLogs = Boolean(
-                        currentUser?.is_admin &&
+                        job.can_view_logs &&
                         stage.functionName &&
                         stage.startedAt
                       )
@@ -528,7 +522,7 @@ export default function JobDetailPage() {
                                 className="max-w-0 bg-muted/20 px-6 py-4"
                                 colSpan={5}
                               >
-                                <AdminStageLogs
+                                <StageLogs
                                   jobId={job.job_id}
                                   stageCode={stage.code}
                                   stageLabel={stage.label}

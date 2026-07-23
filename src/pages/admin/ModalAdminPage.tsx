@@ -303,6 +303,74 @@ function RuntimeSettingInput({
   )
 }
 
+function JobLogAccessSetting({
+  onChange,
+  onRestoreOverride,
+  pending,
+  setting,
+  toolName,
+  value,
+}: {
+  onChange: (value: boolean) => void
+  onRestoreOverride: () => void
+  pending: boolean
+  setting: AdminModalTool["job_logs_visible_to_owner"]
+  toolName: string
+  value: boolean
+}) {
+  const inputId = useId()
+  const canRestore = setting.source === "database" || value !== setting.value
+  const restoreDescription = `Restore Job log access for ${toolName} to its default`
+
+  return (
+    <div className="mx-auto inline-flex items-stretch rounded-lg border bg-background shadow-xs">
+      <label
+        className={cn(
+          "flex min-w-24 cursor-pointer items-center justify-center gap-2 px-2 py-1.5",
+          pending && "cursor-not-allowed opacity-60"
+        )}
+        htmlFor={inputId}
+      >
+        <input
+          aria-label={`Allow Job owners to view logs for ${toolName}`}
+          checked={value}
+          className="peer sr-only"
+          disabled={pending}
+          id={inputId}
+          onChange={(event) => onChange(event.target.checked)}
+          type="checkbox"
+        />
+        <span className="relative h-5 w-9 shrink-0 rounded-full bg-muted-foreground/30 transition-colors after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-background after:shadow-sm after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2" />
+        <span className="text-xs font-medium">
+          {value ? "Job owners" : "Admins only"}
+        </span>
+      </label>
+      <Button
+        aria-label={restoreDescription}
+        className="rounded-l-none border-y-0 border-r-0"
+        disabled={pending || !canRestore}
+        onClick={() => {
+          if (setting.source === "database") {
+            onRestoreOverride()
+          } else {
+            onChange(setting.value)
+          }
+        }}
+        size="icon"
+        title={restoreDescription}
+        type="button"
+        variant="outline"
+      >
+        {pending ? (
+          <LoaderCircle aria-hidden="true" className="animate-spin" />
+        ) : (
+          <RotateCcw aria-hidden="true" />
+        )}
+      </Button>
+    </div>
+  )
+}
+
 function ToolSettingErrorPopover({
   anchor,
   error,
@@ -386,9 +454,13 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const [appName, setAppName] = useState(tool.modal_app_name.value)
   const [appVersion, setAppVersion] = useState(String(tool.modal_app_version.value))
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
+  const [jobLogsVisibleToOwner, setJobLogsVisibleToOwner] = useState(
+    tool.job_logs_visible_to_owner.value
+  )
   const [appDirty, setAppDirty] = useState(false)
   const [versionDirty, setVersionDirty] = useState(false)
   const [limitDirty, setLimitDirty] = useState(false)
+  const [jobLogAccessDirty, setJobLogAccessDirty] = useState(false)
 
   function mutationOptions() {
     return {
@@ -411,6 +483,10 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           setActiveJobLimit(String(result.active_job_limit.value))
           setLimitDirty(false)
         }
+        if (Object.hasOwn(input, "job_logs_visible_to_owner")) {
+          setJobLogsVisibleToOwner(result.job_logs_visible_to_owner.value)
+          setJobLogAccessDirty(false)
+        }
         void queryClient.invalidateQueries({ queryKey: adminModalKey })
       },
     }
@@ -419,14 +495,17 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const appUpdate = useMutation(mutationOptions())
   const versionUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
+  const jobLogAccessUpdate = useMutation(mutationOptions())
   const resetMutationErrors = () => {
     if (!appUpdate.isPending) appUpdate.reset()
     if (!versionUpdate.isPending) versionUpdate.reset()
     if (!limitUpdate.isPending) limitUpdate.reset()
+    if (!jobLogAccessUpdate.isPending) jobLogAccessUpdate.reset()
   }
   useExpireSession(appUpdate.error)
   useExpireSession(versionUpdate.error)
   useExpireSession(limitUpdate.error)
+  useExpireSession(jobLogAccessUpdate.error)
 
   const mutationIncludes = (
     mutation: typeof appUpdate,
@@ -437,21 +516,33 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const appPending =
     mutationIncludes(appUpdate, "modal_app_name") ||
     mutationIncludes(versionUpdate, "modal_app_name") ||
-    mutationIncludes(limitUpdate, "modal_app_name")
+    mutationIncludes(limitUpdate, "modal_app_name") ||
+    mutationIncludes(jobLogAccessUpdate, "modal_app_name")
   const versionPending =
     mutationIncludes(appUpdate, "modal_app_version") ||
     mutationIncludes(versionUpdate, "modal_app_version") ||
-    mutationIncludes(limitUpdate, "modal_app_version")
+    mutationIncludes(limitUpdate, "modal_app_version") ||
+    mutationIncludes(jobLogAccessUpdate, "modal_app_version")
   const limitPending =
     mutationIncludes(appUpdate, "active_job_limit") ||
     mutationIncludes(versionUpdate, "active_job_limit") ||
-    mutationIncludes(limitUpdate, "active_job_limit")
+    mutationIncludes(limitUpdate, "active_job_limit") ||
+    mutationIncludes(jobLogAccessUpdate, "active_job_limit")
+  const jobLogAccessPending =
+    mutationIncludes(appUpdate, "job_logs_visible_to_owner") ||
+    mutationIncludes(versionUpdate, "job_logs_visible_to_owner") ||
+    mutationIncludes(limitUpdate, "job_logs_visible_to_owner") ||
+    mutationIncludes(jobLogAccessUpdate, "job_logs_visible_to_owner")
   const mutationPending =
-    appUpdate.isPending || versionUpdate.isPending || limitUpdate.isPending
+    appUpdate.isPending ||
+    versionUpdate.isPending ||
+    limitUpdate.isPending ||
+    jobLogAccessUpdate.isPending
   const failedMutation = latestModalToolFailure([
     appUpdate,
     versionUpdate,
     limitUpdate,
+    jobLogAccessUpdate,
   ])
   const mutationError = failedMutation?.error ?? null
   const failedFields = modalToolSettingLabels(failedMutation?.variables)
@@ -465,12 +556,22 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   useEffect(() => {
     if (!limitDirty) setActiveJobLimit(String(tool.active_job_limit.value))
   }, [limitDirty, tool.active_job_limit.source, tool.active_job_limit.value])
+  useEffect(() => {
+    if (!jobLogAccessDirty) {
+      setJobLogsVisibleToOwner(tool.job_logs_visible_to_owner.value)
+    }
+  }, [
+    jobLogAccessDirty,
+    tool.job_logs_visible_to_owner.source,
+    tool.job_logs_visible_to_owner.value,
+  ])
 
   const changedSettings = changedModalToolSettings(
     tool,
     appName,
     appVersion,
-    activeJobLimit
+    activeJobLimit,
+    jobLogsVisibleToOwner
   )
   const normalizedAppName = appName.trim()
   const normalizedVersion = positiveInteger(appVersion)
@@ -502,7 +603,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           />
         </div>
       </td>
-      <td className="px-6 py-4 text-center align-center">
+      <td className="px-2 py-4 text-center align-center">
         <div className="mx-auto max-w-28">
           <RuntimeSettingInput
             aria-label={`Modal deployment version for ${displayName}`}
@@ -525,8 +626,27 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           />
         </div>
       </td>
-      <td className="py-4 pr-3 pl-6 text-center align-center">
-        <div className="mx-auto flex min-w-60 items-start justify-center gap-2 whitespace-nowrap">
+      <td className="px-2 py-4 text-center align-center">
+        <JobLogAccessSetting
+          onChange={(value) => {
+            resetMutationErrors()
+            setJobLogsVisibleToOwner(value)
+            setJobLogAccessDirty(
+              value !== tool.job_logs_visible_to_owner.value
+            )
+          }}
+          onRestoreOverride={() => {
+            resetMutationErrors()
+            jobLogAccessUpdate.mutate({ job_logs_visible_to_owner: null })
+          }}
+          pending={jobLogAccessPending}
+          setting={tool.job_logs_visible_to_owner}
+          toolName={displayName}
+          value={jobLogsVisibleToOwner}
+        />
+      </td>
+      <td className="py-4 pr-3 pl-3 text-center align-center">
+        <div className="mx-auto flex min-w-40 items-start justify-center gap-2 whitespace-nowrap">
           <span
             className={cn(
               "flex h-8 shrink-0 items-center text-sm tabular-nums",
@@ -535,7 +655,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           >
             {tool.active_jobs} /
           </span>
-          <div className="w-24 shrink-0 whitespace-normal">
+          <div className="w-20 shrink-0 whitespace-normal">
             <RuntimeSettingInput
               aria-label={`Active job limit for ${displayName}`}
               label={`active job limit for ${displayName}`}
@@ -880,21 +1000,25 @@ export default function ModalAdminPage() {
           Tools
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-full min-w-[56rem] table-fixed border-collapse text-center">
+          <table className="w-[calc(100%_-_1px)] min-w-[56rem] table-fixed border-collapse text-center">
             <colgroup>
-              <col className="w-[29%]" />
-              <col className="w-[20%]" />
-              <col className="w-[20%]" />
-              <col className="w-[31%]" />
+              <col className="w-[23%]" />
+              <col className="w-[16%]" />
+              <col className="w-[22%]" />
+              <col className="w-[17%]" />
+              <col className="w-[22%]" />
             </colgroup>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-3 font-medium" scope="col">Tool</th>
                 <th className="px-3 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="whitespace-nowrap px-6 py-3 font-medium" scope="col">
+                <th className="whitespace-nowrap px-2 py-3 font-medium" scope="col">
                   Modal deployment version
                 </th>
-                <th className="whitespace-nowrap py-3 pr-3 pl-6 font-medium" scope="col">
+                <th className="whitespace-nowrap px-2 py-3 font-medium" scope="col">
+                  Job log access
+                </th>
+                <th className="whitespace-nowrap py-3 pr-3 pl-3 font-medium" scope="col">
                   Active jobs / active job limit
                 </th>
               </tr>

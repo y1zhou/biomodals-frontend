@@ -122,12 +122,13 @@ raw provider identifiers.
 _Avoid_: Job Status, audit log, Modal call graph
 
 **Job Logs**:
-Provider output for one started remote Job Stage, available only to an
-Administrator as fallible diagnostics. Active Stage output is streamed;
-terminal Stage output is fetched as retained history. Job Logs do not determine
-Job Status, Progress, Stage History, Cancellation, or Result validity, and the
-browser never receives the provider call identifier used to filter them. The
-backend also redacts that exact identifier if it appears in provider output.
+Provider output for one started remote Job Stage, available to Administrators
+and, when the Tool policy permits it, the authenticated Job owner. Active Stage
+output is streamed; terminal Stage output is fetched as retained history. Job
+Logs do not determine Job Status, Progress, Stage History, Cancellation, or
+Result validity, and the browser never receives the provider call identifier
+used to filter them. The backend also redacts that exact identifier if it
+appears in provider output.
 _Avoid_: Job History, Stage History, audit log, Progress
 
 **Stage Outcome**:

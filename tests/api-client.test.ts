@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import {
-  inspectAdminJobLogTargets,
+  inspectJobLogTargets,
   listAdminUsers,
   listJobs,
-  streamAdminJobLogs,
+  streamJobLogs,
 } from "../src/api/client"
 
 const originalFetch = globalThis.fetch
@@ -53,7 +53,7 @@ describe("cursor collections", () => {
   })
 })
 
-describe("Administrator Job logs", () => {
+describe("authorized Job logs", () => {
   test("loads safe stage selectors without a provider call ID", async () => {
     let requested = ""
     globalThis.fetch = (async (input) => {
@@ -73,9 +73,9 @@ describe("Administrator Job logs", () => {
       })
     }) as typeof fetch
 
-    const result = await inspectAdminJobLogTargets("job/one")
+    const result = await inspectJobLogTargets("job/one")
 
-    expect(requested).toBe("/api/v1/admin/jobs/job%2Fone/log-targets")
+    expect(requested).toBe("/api/v1/jobs/job%2Fone/log-targets")
     expect(result.targets?.[0]?.stage_code).toBe("run_production")
     expect(result.targets?.[0]?.mode).toBe("live")
     expect(result).not.toHaveProperty("modal_call_id")
@@ -103,7 +103,7 @@ describe("Administrator Job logs", () => {
     const controller = new AbortController()
     const chunks: string[] = []
 
-    await streamAdminJobLogs(
+    await streamJobLogs(
       "job/one",
       "analyze nvt",
       controller.signal,
@@ -111,7 +111,7 @@ describe("Administrator Job logs", () => {
     )
 
     expect(requested).toBe(
-      "/api/v1/admin/jobs/job%2Fone/logs?stage=analyze+nvt"
+      "/api/v1/jobs/job%2Fone/logs?stage=analyze+nvt"
     )
     expect(requestSignal).toBe(controller.signal)
     expect(chunks.join("")).toBe("step α\n")
@@ -129,7 +129,7 @@ describe("Administrator Job logs", () => {
       )) as typeof fetch
 
     await expect(
-      streamAdminJobLogs(
+      streamJobLogs(
         "job/one",
         "prepare_simulation",
         new AbortController().signal,
@@ -148,7 +148,7 @@ describe("Administrator Job logs", () => {
     }) as typeof fetch
     const chunks: string[] = []
 
-    await streamAdminJobLogs(
+    await streamJobLogs(
       "job/one",
       "prepare simulation",
       new AbortController().signal,
@@ -160,7 +160,7 @@ describe("Administrator Job logs", () => {
     )
 
     expect(requested).toBe(
-      "/api/v1/admin/jobs/job%2Fone/logs?stage=prepare+simulation&since=2026-07-22T00%3A00%3A00.000Z&until=2026-07-22T00%3A10%3A00.000Z"
+      "/api/v1/jobs/job%2Fone/logs?stage=prepare+simulation&since=2026-07-22T00%3A00%3A00.000Z&until=2026-07-22T00%3A10%3A00.000Z"
     )
     expect(chunks.join("")).toBe("windowed output\n")
   })

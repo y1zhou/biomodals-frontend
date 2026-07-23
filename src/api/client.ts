@@ -9,8 +9,8 @@ export type Principal = components["schemas"]["PrincipalView"]
 export type SetPasswordInput = components["schemas"]["SetPasswordRequest"]
 export type AdminUser = components["schemas"]["AdminUserView"]
 export type AdminUserPage = components["schemas"]["AdminUserPageView"]
-export type AdminJobLogTarget = components["schemas"]["AdminJobLogTargetView"]
-export type AdminJobLogTargets = components["schemas"]["AdminJobLogTargetsView"]
+export type JobLogTarget = components["schemas"]["JobLogTargetView"]
+export type JobLogTargets = components["schemas"]["JobLogTargetsView"]
 export type CreateAdminUserInput = components["schemas"]["CreateAdminUserRequest"]
 export type CreatedAdminUser = components["schemas"]["CreatedAdminUserView"]
 export type UpdateAdminUserInput = components["schemas"]["UpdateAdminUserRequest"]
@@ -26,7 +26,7 @@ export type UpdateAdminModalToolInput =
 export type AdminStorage = components["schemas"]["AdminStorageView"]
 export type AdminCacheCleanup = components["schemas"]["AdminCacheCleanupView"]
 
-export interface AdminJobLogWindow {
+export interface JobLogWindow {
   since: string
   until: string
 }
@@ -258,19 +258,19 @@ export function inspectAdminModal(signal?: AbortSignal) {
   return requestJson<AdminModal>("/api/v1/admin/modal", { signal })
 }
 
-export function inspectAdminJobLogTargets(jobId: string, signal?: AbortSignal) {
-  return requestJson<AdminJobLogTargets>(
-    `/api/v1/admin/jobs/${encodeURIComponent(jobId)}/log-targets`,
+export function inspectJobLogTargets(jobId: string, signal?: AbortSignal) {
+  return requestJson<JobLogTargets>(
+    `/api/v1/jobs/${encodeURIComponent(jobId)}/log-targets`,
     { signal }
   )
 }
 
-export async function streamAdminJobLogs(
+export async function streamJobLogs(
   jobId: string,
   stageCode: string,
   signal: AbortSignal,
   onChunk: (chunk: string) => void,
-  window?: AdminJobLogWindow
+  window?: JobLogWindow
 ) {
   const parameters = new URLSearchParams({ stage: stageCode })
   if (window) {
@@ -278,7 +278,7 @@ export async function streamAdminJobLogs(
     parameters.set("until", window.until)
   }
   const response = await requestResponse(
-    `/api/v1/admin/jobs/${encodeURIComponent(jobId)}/logs?${parameters}`,
+    `/api/v1/jobs/${encodeURIComponent(jobId)}/logs?${parameters}`,
     {
       signal,
     },

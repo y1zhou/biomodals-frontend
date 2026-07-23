@@ -151,9 +151,14 @@ Clearing the Result Cache never deletes a Job or its authoritative remote Modal
 Volume data. A later User download restores or reconstructs the Result locally
 without rerunning scientific compute.
 
-The Tools section is a four-column table containing the user-facing Tool name,
+The Tools section is a five-column table containing the user-facing Tool name,
 editable deployed Modal app name, editable exact positive deployment version,
-and a combined Active Jobs / Tool Active Job Limit field. The API property is
+Job Log access, and a combined Active Jobs / Tool Active Job Limit field. Job
+Log access is an affirmative toggle between `Job owners` and `Admins only`.
+Administrators always retain access; enabling it grants access only to the
+authenticated owner of that Job, never another User or an anonymous browser.
+GROMACS defaults to Job-owner access. New Tools default to Administrator-only
+logs until their provider output has been reviewed. The API property is
 `active_jobs`; it counts exactly the `queued`, `running`, `finalizing`,
 `cancel_requested`, and `state_unknown` states consumed by admission limits,
 while `blocked` and terminal Jobs are excluded. The backend's fixed workload
@@ -175,6 +180,8 @@ inside every editable setting removes that field's Administrator override and
 reveals its configured-file or built-in default. Restore controls and
 provenance are field-specific: changing or restoring a Tool Active Job Limit
 does not turn its deployed Modal app name into an Administrator setting.
+The Job Log toggle participates in the same row-wide Save action, and its
+adjacent restore control removes only its database override.
 
 The MVP does not add ETags, setting revisions, or concurrent-edit conflict
 dialogs. Changed-field PATCH requests avoid overwriting unrelated settings;
@@ -262,6 +269,11 @@ SQLite-backed Administrator Runtime Settings still apply immediately. The
 Admin API displays values loaded by the running process; it does not reparse
 disk and present an edited but inactive value.
 
+Job-owner log access has no process or configuration-file override. Its
+effective precedence is the per-Tool database value over the safe Tool-owned
+default, so future Tools remain Administrator-only unless their code or an
+Administrator explicitly opts owners in.
+
 For the Admin PATCH contract, omission means unchanged and an explicit JSON
 `null` means remove that one database override. The interface does not render
 the built-in default or Administrator source as a badge. It uses the in-field
@@ -288,13 +300,21 @@ admission. Submission, later deployed-Function lookups, and Volume access use
 that snapshot, so existing Jobs remain attached to the environment, app, and
 version under which they were accepted.
 
+Job-owner log access is an authorization policy rather than provider identity,
+so it is evaluated for each new log request and is not included in the Modal
+Configuration Snapshot. Changing the toggle affects existing Jobs without
+changing their scientific execution or retained Stage History. An already-open
+HTTP stream may continue until it naturally closes; later target or stream
+requests enforce the current policy.
+
 Backend startup applies the same read-only preflight to effective
 process/file-controlled Modal settings before accepting traffic.
 
 The OpenAPI document includes the Administrator flag, all Admin operations,
-setting provenance, and editable state. Generated TypeScript remains the only
-frontend API schema; the frontend does not maintain a parallel hand-written
-contract.
+setting provenance and editable state, the per-Tool Job Log policy, the
+caller-specific `can_view_logs` capability, and the owner-and-Administrator log
+routes. Generated TypeScript remains the only frontend API schema; the frontend
+does not maintain a parallel hand-written contract.
 
 ## Pre-release persistence reset
 

@@ -25,11 +25,13 @@ describe("Admin settings", () => {
         modal_app_name: "Missing app",
         modal_app_version: 404,
         active_job_limit: 2,
+        job_logs_visible_to_owner: false,
       })
     ).toEqual([
       "Deployed Modal app name",
       "Modal deployment version",
       "Active job limit",
+      "Job log access",
     ])
   })
 
@@ -85,6 +87,11 @@ describe("Admin settings", () => {
         source: "default" as const,
         editable: true,
       },
+      job_logs_visible_to_owner: {
+        value: true,
+        source: "default" as const,
+        editable: true,
+      },
     }
     const environment = {
       service_token_id: "token-id",
@@ -100,24 +107,27 @@ describe("Admin settings", () => {
       },
     }
 
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "3")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "3", true)).toEqual({
       active_job_limit: 3,
     })
-    expect(changedModalToolSettings(tool, "Gromacs Test", "2", "2")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs Test", "2", "2", true)).toEqual({
       modal_app_name: "Gromacs Test",
     })
-    expect(changedModalToolSettings(tool, "Gromacs", "3", "2")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "3", "2", true)).toEqual({
       modal_app_version: 3,
     })
     expect(
       changedModalEnvironmentSettings(environment, "department-a", "10")
     ).toEqual({ modal_environment: "department-a" })
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "2")).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "", "2")).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "0", "2")).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "")).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "0")).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "", "2", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "0", "2", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "0", true)).toEqual({
       active_job_limit: 0,
+    })
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", false)).toEqual({
+      job_logs_visible_to_owner: false,
     })
     expect(
       changedModalEnvironmentSettings(environment, "production", "10")
@@ -202,6 +212,11 @@ describe("Admin settings", () => {
       active_jobs: 0,
       active_job_limit: {
         value: 2,
+        source: "default" as const,
+        editable: true,
+      },
+      job_logs_visible_to_owner: {
+        value: true,
         source: "default" as const,
         editable: true,
       },
