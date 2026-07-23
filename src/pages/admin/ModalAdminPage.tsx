@@ -574,11 +574,16 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const versionUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
   const jobLogAccessUpdate = useMutation(mutationOptions())
+  const toolUpdates = [
+    appUpdate,
+    versionUpdate,
+    limitUpdate,
+    jobLogAccessUpdate,
+  ]
   const resetMutationErrors = () => {
-    if (!appUpdate.isPending) appUpdate.reset()
-    if (!versionUpdate.isPending) versionUpdate.reset()
-    if (!limitUpdate.isPending) limitUpdate.reset()
-    if (!jobLogAccessUpdate.isPending) jobLogAccessUpdate.reset()
+    for (const update of toolUpdates) {
+      if (!update.isPending) update.reset()
+    }
   }
   useExpireSession(appUpdate.error)
   useExpireSession(versionUpdate.error)
@@ -591,37 +596,20 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   ) =>
     mutation.isPending &&
     Boolean(mutation.variables && Object.hasOwn(mutation.variables, field))
-  const appPending =
-    mutationIncludes(appUpdate, "modal_app_name") ||
-    mutationIncludes(versionUpdate, "modal_app_name") ||
-    mutationIncludes(limitUpdate, "modal_app_name") ||
-    mutationIncludes(jobLogAccessUpdate, "modal_app_name")
-  const versionPending =
-    mutationIncludes(appUpdate, "modal_app_version") ||
-    mutationIncludes(versionUpdate, "modal_app_version") ||
-    mutationIncludes(limitUpdate, "modal_app_version") ||
-    mutationIncludes(jobLogAccessUpdate, "modal_app_version")
-  const limitPending =
-    mutationIncludes(appUpdate, "active_job_limit") ||
-    mutationIncludes(versionUpdate, "active_job_limit") ||
-    mutationIncludes(limitUpdate, "active_job_limit") ||
-    mutationIncludes(jobLogAccessUpdate, "active_job_limit")
-  const jobLogAccessPending =
-    mutationIncludes(appUpdate, "job_logs_visible_to_owner") ||
-    mutationIncludes(versionUpdate, "job_logs_visible_to_owner") ||
-    mutationIncludes(limitUpdate, "job_logs_visible_to_owner") ||
-    mutationIncludes(jobLogAccessUpdate, "job_logs_visible_to_owner")
-  const mutationPending =
-    appUpdate.isPending ||
-    versionUpdate.isPending ||
-    limitUpdate.isPending ||
-    jobLogAccessUpdate.isPending
-  const failedMutation = latestModalToolFailure([
-    appUpdate,
-    versionUpdate,
-    limitUpdate,
-    jobLogAccessUpdate,
-  ])
+  const appPending = toolUpdates.some((update) =>
+    mutationIncludes(update, "modal_app_name")
+  )
+  const versionPending = toolUpdates.some((update) =>
+    mutationIncludes(update, "modal_app_version")
+  )
+  const limitPending = toolUpdates.some((update) =>
+    mutationIncludes(update, "active_job_limit")
+  )
+  const jobLogAccessPending = toolUpdates.some((update) =>
+    mutationIncludes(update, "job_logs_visible_to_owner")
+  )
+  const mutationPending = toolUpdates.some((update) => update.isPending)
+  const failedMutation = latestModalToolFailure(toolUpdates)
   const mutationError = failedMutation?.error ?? null
   const failedFields = modalToolSettingLabels(failedMutation?.variables)
 
