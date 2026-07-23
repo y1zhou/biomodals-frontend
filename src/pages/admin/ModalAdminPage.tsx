@@ -239,6 +239,59 @@ function SourceNote({
   return note ? <span className="mt-1 text-xs text-muted-foreground">{note}</span> : null
 }
 
+function SettingRestoreButton({
+  className,
+  description,
+  disabled,
+  onRestore,
+  pending,
+}: {
+  className?: string
+  description: string
+  disabled: boolean
+  onRestore: () => void
+  pending: boolean
+}) {
+  const [spinning, setSpinning] = useState(false)
+  const spinTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (spinTimer.current !== null) window.clearTimeout(spinTimer.current)
+    }
+  }, [])
+
+  return (
+    <Button
+      aria-label={description}
+      className={className}
+      disabled={disabled}
+      onClick={() => {
+        if (spinTimer.current !== null) window.clearTimeout(spinTimer.current)
+        setSpinning(true)
+        spinTimer.current = window.setTimeout(() => setSpinning(false), 450)
+        onRestore()
+      }}
+      size="icon"
+      title={description}
+      type="button"
+      variant="outline"
+    >
+      {pending ? (
+        <LoaderCircle aria-hidden="true" className="animate-spin" />
+      ) : (
+        <RotateCcw
+          aria-hidden="true"
+          className={cn(
+            spinning &&
+              "animate-[spin_450ms_ease-out_reverse] motion-reduce:animate-none"
+          )}
+        />
+      )}
+    </Button>
+  )
+}
+
 function RuntimeSettingInput({
   label,
   onChange,
@@ -274,28 +327,19 @@ function RuntimeSettingInput({
           value={value}
         />
         {setting.editable ? (
-          <Button
-            aria-label={restoreDescription}
+          <SettingRestoreButton
             className="rounded-l-none border-l-0"
+            description={restoreDescription}
             disabled={pending || !canRestore}
-            onClick={() => {
+            onRestore={() => {
               if (setting.source === "database") {
                 onRestoreOverride()
               } else {
                 onChange(String(setting.value))
               }
             }}
-            size="icon"
-            title={restoreDescription}
-            type="button"
-            variant="outline"
-          >
-            {pending ? (
-              <LoaderCircle aria-hidden="true" className="animate-spin" />
-            ) : (
-              <RotateCcw aria-hidden="true" />
-            )}
-          </Button>
+            pending={pending}
+          />
         ) : null}
       </div>
       <SourceNote
@@ -331,7 +375,7 @@ function JobLogAccessSetting({
       <Tooltip.Root>
         <Tooltip.Trigger
           className={cn(
-            "relative h-6 w-12 shrink-0 rounded-full text-xs transition-all outline-none hover:brightness-90 active:scale-[0.97] motion-reduce:active:scale-100",
+            "relative h-6 w-12 shrink-0 rounded-full text-xs transition-all duration-200 outline-none hover:brightness-90 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
             pending ? "cursor-not-allowed opacity-50" : "cursor-pointer",
             value ? "text-neutral-700" : "text-white"
           )}
@@ -351,7 +395,7 @@ function JobLogAccessSetting({
           <span
             aria-hidden="true"
             className={cn(
-              "absolute inset-0 rounded-full transition-colors peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-focus-visible:ring-offset-2",
+              "absolute inset-0 rounded-full transition-colors duration-200 peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-focus-visible:ring-offset-2 motion-reduce:transition-none",
               value ? "bg-neutral-300" : "bg-black"
             )}
             data-slot="job-log-access-track"
@@ -359,8 +403,8 @@ function JobLogAccessSetting({
           <span
             aria-hidden="true"
             className={cn(
-              "absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-[left,right]",
-              value ? "left-0.5" : "right-0.5"
+              "absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200 motion-reduce:transition-none",
+              value ? "translate-x-0" : "translate-x-6"
             )}
             data-slot="job-log-access-thumb"
           />
@@ -389,27 +433,18 @@ function JobLogAccessSetting({
           </Tooltip.Positioner>
         </Tooltip.Portal>
       </Tooltip.Root>
-      <Button
-        aria-label={restoreDescription}
+      <SettingRestoreButton
+        description={restoreDescription}
         disabled={pending || !canRestore}
-        onClick={() => {
+        onRestore={() => {
           if (setting.source === "database") {
             onRestoreOverride()
           } else {
             onChange(setting.value)
           }
         }}
-        size="icon"
-        title={restoreDescription}
-        type="button"
-        variant="outline"
-      >
-        {pending ? (
-          <LoaderCircle aria-hidden="true" className="animate-spin" />
-        ) : (
-          <RotateCcw aria-hidden="true" />
-        )}
-      </Button>
+        pending={pending}
+      />
     </div>
   )
 }

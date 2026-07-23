@@ -101,6 +101,37 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(page).toHaveURL(`${origin}/jobs?tool=gromacs`)
 
   await page.goto("/tools/gromacs/new")
+  await page.setViewportSize({ width: 1280, height: 400 })
+  const simulationTime = page.getByRole("spinbutton", {
+    name: "Simulation time (ns)",
+  })
+  await simulationTime.scrollIntoViewIfNeeded()
+  await page.getByLabel(/Display name/).focus()
+  await simulationTime.hover()
+  const unfocusedScrollY = await page.evaluate(() => window.scrollY)
+  await page.mouse.wheel(0, 200)
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(
+    unfocusedScrollY
+  )
+  await expect(simulationTime).toHaveValue("5")
+
+  await simulationTime.focus()
+  await simulationTime.hover()
+  const focusedScrollY = await page.evaluate(() => window.scrollY)
+  await page.mouse.wheel(0, -100)
+  await expect(simulationTime).toHaveValue("6")
+  expect(await page.evaluate(() => window.scrollY)).toBe(focusedScrollY)
+
+  await page.mouse.move(8, 8)
+  const outsideScrollY = await page.evaluate(() => window.scrollY)
+  await page.mouse.wheel(0, -200)
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(
+    outsideScrollY
+  )
+  await expect(simulationTime).toHaveValue("6")
+  await simulationTime.fill("5")
+  await page.setViewportSize({ width: 1280, height: 720 })
+
   await page.getByLabel("PDB file").setInputFiles({
     buffer: PDB,
     mimeType: "chemical/x-pdb",
@@ -157,6 +188,9 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     )
   ).toBe(true)
   await expect(page.getByRole("row", { name: /Prepare simulation/ })).toBeVisible()
+  const prepareResultRow = page.getByRole("row", { name: /Prepare result/ })
+  await expect(prepareResultRow).toContainText("N/A")
+  await expect(prepareResultRow).not.toContainText("Not applicable")
   await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(4)
   await page.getByRole("button", { name: "Refresh" }).click()
   for (const stage of ["Analyze NVT", "Analyze NPT", "Run production"]) {
@@ -309,6 +343,46 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await page.getByRole("option", { name: "All tools" }).click()
   await expect(page).toHaveURL(`${origin}/jobs`)
 
+  await page.getByRole("button", {
+    name: "Filter jobs by creation date",
+  }).click()
+  const datePicker = page.getByRole("button", {
+    name: "Choose creation date",
+  })
+  await datePicker.click()
+  const datePickerPopup = page.getByRole("dialog", {
+    name: "Choose creation date calendar",
+  })
+  await expect(datePickerPopup).toBeVisible()
+  const [dateTriggerRadius, datePopupRadius] = await Promise.all([
+    datePicker.evaluate((element) => getComputedStyle(element).borderRadius),
+    datePickerPopup.evaluate((element) => getComputedStyle(element).borderRadius),
+  ])
+  expect(datePopupRadius).toBe(dateTriggerRadius)
+  await expect(
+    datePickerPopup.getByRole("button", { name: "Previous month" })
+  ).toBeVisible()
+  const monthYearPicker = datePickerPopup.getByRole("button", {
+    name: "Choose month and year",
+  })
+  await monthYearPicker.click()
+  await datePickerPopup.getByRole("spinbutton", { name: "Jump to year" }).fill(
+    "2012"
+  )
+  await datePickerPopup
+    .getByRole("group", { name: "Choose a month" })
+    .getByRole("button", { name: "Jan", exact: true })
+    .click()
+  await expect(monthYearPicker).toContainText("January 2012")
+  await datePickerPopup
+    .locator('[data-slot="calendar-day"][data-current-month="true"]')
+    .first()
+    .click()
+  await expect(page).toHaveURL(/created=\d{4}-\d{2}-\d{2}/)
+  await datePicker.click()
+  await datePickerPopup.getByRole("button", { name: "Clear" }).click()
+  await expect(page).toHaveURL(`${origin}/jobs`)
+
   await page.goto("/admin/users")
   await page.setViewportSize({ width: 1024, height: 768 })
   const usersTable = page.getByRole("table")
@@ -459,12 +533,25 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       cells.every((cell) => getComputedStyle(cell).textAlign === "center")
     )
   ).toBe(true)
+  const modalAppName = page.getByRole("textbox", {
+    name: "Modal app name for GROMACS MD simulation",
+    exact: true,
+  })
   expect(
-    await page.getByRole("textbox", {
-      name: "Modal app name for GROMACS MD simulation",
-      exact: true,
-    }).evaluate((input) => input.getBoundingClientRect().width)
+    await modalAppName.evaluate((input) => input.getBoundingClientRect().width)
   ).toBeLessThan(190)
+  const configuredAppName = await modalAppName.inputValue()
+  await modalAppName.fill(`${configuredAppName}-temporary`)
+  const restoreAppName = page.getByRole("button", {
+    name: "Restore Modal app name for GROMACS MD simulation to its configured default",
+  })
+  await restoreAppName.click()
+  await expect(modalAppName).toHaveValue(configuredAppName)
+  expect(
+    await restoreAppName
+      .locator("svg")
+      .evaluate((icon) => getComputedStyle(icon).animationDirection)
+  ).toBe("reverse")
 
   const saveToolSettings = page.getByRole("button", {
     name: "Save Modal settings for GROMACS MD simulation",
@@ -496,7 +583,15 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const jobLogAccessTrack = jobLogAccessToggle.locator(
     '[data-slot="job-log-access-track"]'
   )
+  const jobLogAccessThumb = jobLogAccessToggle.locator(
+    '[data-slot="job-log-access-thumb"]'
+  )
   await expect(jobLogAccess).toBeChecked()
+  expect(
+    await jobLogAccessThumb.evaluate(
+      (element) => getComputedStyle(element).transitionProperty
+    )
+  ).toContain("transform")
   await expect(page.getByRole("tooltip")).toHaveCount(0)
   await jobLogAccessToggle.hover()
   await expect(page.getByRole("tooltip")).toHaveText("Job owners")
@@ -504,9 +599,9 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     "background-color",
     "rgb(0, 0, 0)"
   )
-  const ownerThumbX = await jobLogAccessToggle.locator(
-    '[data-slot="job-log-access-thumb"]'
-  ).evaluate((element) => element.getBoundingClientRect().x)
+  const ownerThumbX = await jobLogAccessThumb.evaluate(
+    (element) => element.getBoundingClientRect().x
+  )
   const ownerIconX = await jobLogAccessToggle.locator(
     '[data-slot="job-log-access-icon"]'
   ).evaluate((element) => element.getBoundingClientRect().x)
@@ -519,9 +614,9 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     "background-color",
     "rgb(0, 0, 0)"
   )
-  const adminThumbX = await jobLogAccessToggle.locator(
-    '[data-slot="job-log-access-thumb"]'
-  ).evaluate((element) => element.getBoundingClientRect().x)
+  const adminThumbX = await jobLogAccessThumb.evaluate(
+    (element) => element.getBoundingClientRect().x
+  )
   const adminIconX = await jobLogAccessToggle.locator(
     '[data-slot="job-log-access-icon"]'
   ).evaluate((element) => element.getBoundingClientRect().x)

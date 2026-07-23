@@ -191,6 +191,9 @@ provenance are field-specific: changing or restoring a Tool Active Job Limit
 does not turn its deployed Modal app name into an Administrator setting.
 The Job Log toggle participates in the same row-wide Save action, and its
 adjacent restore control removes only its database override.
+Toggle tracks and thumbs transition smoothly between states. Restore controls
+rotate their counter-clockwise arrow counter-clockwise when activated, while
+still replacing it with the ordinary pending spinner for a server mutation.
 
 The MVP does not add ETags, setting revisions, or concurrent-edit conflict
 dialogs. Changed-field PATCH requests avoid overwriting unrelated settings;
