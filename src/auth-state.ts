@@ -39,12 +39,36 @@ export function useExpireSession(error: unknown) {
         currentUserKey,
         REAUTHENTICATION_REQUIRED
       )
+    } else if (requiresAdminRefresh(error)) {
+      discardCachedAdminAccess(queryClient)
     }
   }, [error, queryClient])
 }
 
 export function requiresReauthentication(error: unknown) {
   return error instanceof ApiError && (error.status === 401 || apiErrorCode(error) === "csrf_invalid")
+}
+
+export function requiresAdminRefresh(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    error.status === 403 &&
+    apiErrorCode(error) === "admin_required"
+  )
+}
+
+export function discardCachedAdminAccess(queryClient: QueryClient) {
+  const current = authenticatedPrincipal(
+    queryClient.getQueryData<CurrentUserState>(currentUserKey)
+  )
+  if (current?.is_admin) {
+    queryClient.setQueryData<CurrentUserState>(currentUserKey, {
+      ...current,
+      is_admin: false,
+    } as Principal)
+  }
+  queryClient.removeQueries({ queryKey: ["admin"] })
+  void queryClient.invalidateQueries({ queryKey: currentUserKey })
 }
 
 export function isReauthenticationRequired(

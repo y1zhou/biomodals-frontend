@@ -8,13 +8,16 @@ import {
   csrfToken,
   MissingCsrfError,
   readCookie,
+  type Principal,
 } from "../src/api/client"
 import {
   REAUTHENTICATION_REQUIRED,
   currentUserKey,
+  discardCachedAdminAccess,
   installAuthenticatedPrincipal,
   isReauthenticationRequired,
   passwordSetupLocation,
+  requiresAdminRefresh,
   requiresReauthentication,
   safeReturnTo,
 } from "../src/auth-state"
@@ -41,6 +44,22 @@ describe("authenticated principal cache", () => {
 
     expect(queryClient.getQueryData(currentUserKey)).toEqual(bob)
     expect(queryClient.getQueryData(["jobs"])).toBeUndefined()
+    expect(queryClient.getQueryData(["admin", "users"])).toBeUndefined()
+  })
+
+  test("discards privileged state when the API reports administrator demotion", () => {
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(currentUserKey, {
+      display_name: "Alice",
+      email: "alice@example.com",
+      is_admin: true,
+      user_id: "00000000-0000-4000-8000-000000000001",
+    })
+    queryClient.setQueryData(["admin", "users"], [{ email: "private@example.com" }])
+
+    discardCachedAdminAccess(queryClient)
+
+    expect(queryClient.getQueryData<Principal>(currentUserKey)?.is_admin).toBeFalse()
     expect(queryClient.getQueryData(["admin", "users"])).toBeUndefined()
   })
 })
@@ -102,6 +121,25 @@ describe("coded API errors", () => {
     expect(requiresReauthentication(new ApiError(401))).toBeTrue()
     expect(requiresReauthentication(new ApiError(403, { code: "csrf_invalid", detail: "Stale" }))).toBeTrue()
     expect(requiresReauthentication(new ApiError(403, { code: "origin_not_allowed", detail: "Origin" }))).toBeFalse()
+  })
+
+  test("refreshes the principal when administrator access is rejected", () => {
+    expect(
+      requiresAdminRefresh(
+        new ApiError(403, {
+          code: "admin_required",
+          detail: "Administrator access is required",
+        })
+      )
+    ).toBeTrue()
+    expect(
+      requiresAdminRefresh(
+        new ApiError(403, {
+          code: "origin_not_allowed",
+          detail: "Origin",
+        })
+      )
+    ).toBeFalse()
   })
 
   test("represents an invalid session without retaining the cached User", () => {
