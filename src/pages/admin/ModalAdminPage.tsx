@@ -1,3 +1,4 @@
+import { Popover } from "@base-ui/react/popover"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
@@ -6,9 +7,11 @@ import {
   LoaderCircle,
   RotateCcw,
   Save,
+  X,
 } from "lucide-react"
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type ComponentProps,
@@ -21,6 +24,7 @@ import {
   changedModalToolSettings,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
+  modalToolSettingLabels,
   nonnegativeInteger,
   positiveInteger,
   settingSourceNote,
@@ -298,8 +302,86 @@ function RuntimeSettingInput({
   )
 }
 
+function ToolSettingErrorPopover({
+  anchor,
+  error,
+  fields,
+  onDismiss,
+  toolName,
+}: {
+  anchor: HTMLButtonElement | null
+  error: unknown
+  fields: readonly string[]
+  onDismiss: () => void
+  toolName: string
+}) {
+  const titleId = useId()
+  const attemptedFields = fields.length ? fields : ["Tool settings"]
+
+  return (
+    <Popover.Root
+      onOpenChange={(open) => {
+        if (!open) onDismiss()
+      }}
+      open
+    >
+      <Popover.Portal>
+        <Popover.Positioner
+          align="end"
+          anchor={anchor}
+          className="z-50"
+          collisionPadding={12}
+          side="top"
+          sideOffset={8}
+        >
+          <Popover.Popup
+            aria-labelledby={titleId}
+            className="relative w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-destructive/30 bg-popover p-4 pr-10 text-left text-popover-foreground shadow-lg outline-none data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
+            initialFocus={false}
+            role="alert"
+          >
+            <Popover.Title
+              className="flex items-start gap-2 text-sm font-semibold"
+              id={titleId}
+            >
+              <AlertTriangle
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-destructive"
+              />
+              Could not save {toolName} settings
+            </Popover.Title>
+            <p className="mt-2 text-xs font-medium text-muted-foreground">
+              {attemptedFields.length === 1 ? "Field not saved" : "Fields not saved"}
+            </p>
+            <ul className="mt-1 space-y-0.5 text-sm font-medium">
+              {attemptedFields.map((field) => <li key={field}>{field}</li>)}
+            </ul>
+            <p className="mt-3 text-sm leading-5 text-destructive">
+              {errorMessage(error)}
+            </p>
+            <Popover.Close
+              render={(
+                <Button
+                  aria-label={`Dismiss ${toolName} settings error`}
+                  className="absolute top-2 right-2"
+                  size="icon-xs"
+                  type="button"
+                  variant="ghost"
+                />
+              )}
+            >
+              <X aria-hidden="true" />
+            </Popover.Close>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  )
+}
+
 function ToolRow({ tool }: { tool: AdminModalTool }) {
   const queryClient = useQueryClient()
+  const [saveButton, setSaveButton] = useState<HTMLButtonElement | null>(null)
   const [appName, setAppName] = useState(tool.modal_app_name.value)
   const [appVersion, setAppVersion] = useState(String(tool.modal_app_version.value))
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
@@ -366,7 +448,15 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
     mutationIncludes(limitUpdate, "active_job_limit")
   const mutationPending =
     appUpdate.isPending || versionUpdate.isPending || limitUpdate.isPending
-  const mutationError = appUpdate.error ?? versionUpdate.error ?? limitUpdate.error
+  const failedMutation = appUpdate.error
+    ? appUpdate
+    : versionUpdate.error
+      ? versionUpdate
+      : limitUpdate.error
+        ? limitUpdate
+        : null
+  const mutationError = failedMutation?.error ?? null
+  const failedFields = modalToolSettingLabels(failedMutation?.variables)
 
   useEffect(() => {
     if (!appDirty) setAppName(tool.modal_app_name.value)
@@ -474,34 +564,40 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               </p>
             ) : null}
           </div>
-          <Button
-            aria-label={`Save Modal settings for ${displayName}`}
-            disabled={
-              mutationPending ||
-              !hasChanges ||
-              normalizedLimit === null ||
-              (tool.modal_app_version.editable && normalizedVersion === null) ||
-              (tool.modal_app_name.editable && !normalizedAppName)
-            }
-            onClick={() => {
-              appUpdate.mutate(changedSettings)
-            }}
-            size="icon"
-            variant="outline"
-          >
-            {mutationPending ? (
-              <LoaderCircle aria-hidden="true" className="animate-spin" />
-            ) : (
-              <Save aria-hidden="true" />
-            )}
-          </Button>
+          <div className="shrink-0">
+            {mutationError ? (
+              <ToolSettingErrorPopover
+                anchor={saveButton}
+                error={mutationError}
+                fields={failedFields}
+                onDismiss={resetMutationErrors}
+                toolName={displayName}
+              />
+            ) : null}
+            <Button
+              aria-label={`Save Modal settings for ${displayName}`}
+              disabled={
+                mutationPending ||
+                !hasChanges ||
+                normalizedLimit === null ||
+                (tool.modal_app_version.editable && normalizedVersion === null) ||
+                (tool.modal_app_name.editable && !normalizedAppName)
+              }
+              onClick={() => {
+                appUpdate.mutate(changedSettings)
+              }}
+              ref={setSaveButton}
+              size="icon"
+              variant="outline"
+            >
+              {mutationPending ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : (
+                <Save aria-hidden="true" />
+              )}
+            </Button>
+          </div>
         </div>
-        {mutationError ? (
-          <p className="mt-2 flex items-center justify-center gap-2 text-sm text-destructive" role="alert">
-            <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-            {errorMessage(mutationError)}
-          </p>
-        ) : null}
       </td>
     </tr>
   )

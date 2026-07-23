@@ -198,6 +198,12 @@ Only the fields participating in the preflight display a spinner and disabled
 save/restore controls while validation is pending. Other field provenance and
 pending state remain unchanged.
 
+A failed Tool save opens a field-aware error popover above that row's Save
+button. It lists every field included in the attempted update and retains the
+backend's safe diagnostic detail, so a combined App-name/version update does
+not guess which value Modal rejected. The popover has a top-right close button
+and also clears when the Administrator edits or retries the row.
+
 The Tool Active Job Limit counts Active Jobs for one workload across all Users.
 The Global Active Job Limit counts Active Jobs across all Users and Tools.
 State-unknown Jobs consume both limits until Administrator resolution; blocked

@@ -380,6 +380,27 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   }).click()
   await expect(displayName).toHaveValue("Browser Admin Renamed")
 
+  const modalInspectRoute = "**/api/v1/admin/modal"
+  await page.route(modalInspectRoute, async (route) => {
+    const response = await route.fetch()
+    const document = await response.json()
+    document.tools = document.tools.map((tool: {
+      workload: string
+      modal_app_version: Record<string, unknown>
+    }) =>
+      tool.workload === "gromacs"
+        ? {
+            ...tool,
+            modal_app_version: {
+              ...tool.modal_app_version,
+              editable: true,
+              source: "default",
+            },
+          }
+        : tool
+    )
+    await route.fulfill({ json: document, response })
+  })
   await page.goto("/admin/modal")
   await expect(page.getByText("Default from the configuration file.")).toHaveCount(0)
   const toolsTable = page.getByRole("table")
@@ -413,6 +434,48 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       exact: true,
     }).evaluate((input) => input.getBoundingClientRect().width)
   ).toBeLessThan(190)
+
+  const toolUpdateRoute = "**/api/v1/admin/modal/tools/gromacs"
+  await page.route(toolUpdateRoute, async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        code: "modal_preflight_failed",
+        detail: "Modal could not resolve the requested deployment.",
+      }),
+      contentType: "application/json",
+      status: 400,
+    })
+  })
+  await page.getByRole("spinbutton", {
+    name: "Modal deployment version for GROMACS MD simulation",
+  }).fill("999999")
+  const saveToolSettings = page.getByRole("button", {
+    name: "Save Modal settings for GROMACS MD simulation",
+  })
+  await saveToolSettings.click()
+  const toolError = page.getByRole("alert", {
+    name: "Could not save GROMACS MD simulation settings",
+  })
+  await expect(toolError).toBeVisible()
+  await expect(toolError).toContainText("Modal deployment version")
+  await expect(toolError).toContainText(
+    "Modal could not resolve the requested deployment."
+  )
+  const [errorBox, saveBox] = await Promise.all([
+    toolError.boundingBox(),
+    saveToolSettings.boundingBox(),
+  ])
+  expect(errorBox).not.toBeNull()
+  expect(saveBox).not.toBeNull()
+  expect((errorBox?.y ?? 0) + (errorBox?.height ?? 0)).toBeLessThanOrEqual(
+    saveBox?.y ?? 0
+  )
+  await toolError.getByRole("button", {
+    name: "Dismiss GROMACS MD simulation settings error",
+  }).click()
+  await expect(toolError).toHaveCount(0)
+  await page.unroute(toolUpdateRoute)
+  await page.unroute(modalInspectRoute)
 
   await page.getByRole("button", { name: "Open user menu" }).click()
   await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()
