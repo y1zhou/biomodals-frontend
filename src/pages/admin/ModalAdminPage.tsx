@@ -22,6 +22,7 @@ import {
   adminModalKey,
   changedModalEnvironmentSettings,
   changedModalToolSettings,
+  latestModalToolFailure,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
   modalToolSettingLabels,
@@ -419,10 +420,9 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const versionUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
   const resetMutationErrors = () => {
-    if (appUpdate.isPending || versionUpdate.isPending || limitUpdate.isPending) return
-    appUpdate.reset()
-    versionUpdate.reset()
-    limitUpdate.reset()
+    if (!appUpdate.isPending) appUpdate.reset()
+    if (!versionUpdate.isPending) versionUpdate.reset()
+    if (!limitUpdate.isPending) limitUpdate.reset()
   }
   useExpireSession(appUpdate.error)
   useExpireSession(versionUpdate.error)
@@ -448,13 +448,11 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
     mutationIncludes(limitUpdate, "active_job_limit")
   const mutationPending =
     appUpdate.isPending || versionUpdate.isPending || limitUpdate.isPending
-  const failedMutation = appUpdate.error
-    ? appUpdate
-    : versionUpdate.error
-      ? versionUpdate
-      : limitUpdate.error
-        ? limitUpdate
-        : null
+  const failedMutation = latestModalToolFailure([
+    appUpdate,
+    versionUpdate,
+    limitUpdate,
+  ])
   const mutationError = failedMutation?.error ?? null
   const failedFields = modalToolSettingLabels(failedMutation?.variables)
 
