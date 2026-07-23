@@ -3083,7 +3083,10 @@ export interface operations {
     readonly download_job_api_v1_jobs__job_id__download_get: {
         readonly parameters: {
             readonly query?: never;
-            readonly header?: never;
+            readonly header?: {
+                /** @description Optional single byte range for a prepared Result archive. */
+                readonly Range?: string | null;
+            };
             readonly path: {
                 readonly job_id: string;
             };
