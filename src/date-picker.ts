@@ -7,6 +7,7 @@ export interface CalendarDay {
   currentMonth: boolean
   day: number
   month: number
+  selectable: boolean
   value: string
   year: number
 }
@@ -36,6 +37,7 @@ export function parseDateValue(value: string): DateParts | null {
     month: Number(match[2]) - 1,
     year: Number(match[1]),
   }
+  if (parts.year < 1) return null
   const date = localDate(parts)
   return date.getFullYear() === parts.year &&
     date.getMonth() === parts.month &&
@@ -54,9 +56,33 @@ export function calendarMonth(value: string, today = new Date()): CalendarMonth 
 export function shiftCalendarMonth(
   month: CalendarMonth,
   offset: number
-): CalendarMonth {
+): CalendarMonth | null {
   const shifted = localDate({ day: 1, month: month.month + offset, year: month.year })
-  return { month: shifted.getMonth(), year: shifted.getFullYear() }
+  const nextMonth = { month: shifted.getMonth(), year: shifted.getFullYear() }
+  return nextMonth.year >= 1 && nextMonth.year <= 9999 ? nextMonth : null
+}
+
+export function calendarFocusValue(
+  month: CalendarMonth,
+  ...preferredValues: string[]
+) {
+  for (const value of preferredValues) {
+    const date = parseDateValue(value)
+    if (date?.month === month.month && date.year === month.year) return value
+  }
+  return dateValue({ day: 1, ...month })
+}
+
+export function shiftDateValue(value: string, offset: number): string | null {
+  const date = parseDateValue(value)
+  if (!date || !Number.isInteger(offset)) return null
+  const shifted = localDate({ ...date, day: date.day + offset })
+  const parts = {
+    day: shifted.getDate(),
+    month: shifted.getMonth(),
+    year: shifted.getFullYear(),
+  }
+  return parts.year >= 1 && parts.year <= 9999 ? dateValue(parts) : null
 }
 
 export function calendarDays(month: CalendarMonth): CalendarDay[] {
@@ -76,6 +102,7 @@ export function calendarDays(month: CalendarMonth): CalendarDay[] {
     return {
       ...parts,
       currentMonth: parts.month === month.month && parts.year === month.year,
+      selectable: parts.year >= 1 && parts.year <= 9999,
       value: dateValue(parts),
     }
   })

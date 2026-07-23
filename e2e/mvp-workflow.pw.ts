@@ -387,14 +387,62 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     .getByRole("button", { name: "Jan", exact: true })
     .click()
   await expect(monthYearPicker).toContainText("January 2012")
-  await datePickerPopup
-    .locator('[data-slot="calendar-day"][data-current-month="true"]')
-    .first()
-    .click()
+  const januaryFirst = datePickerPopup.locator('[data-date="2012-01-01"]')
+  await expect(januaryFirst).toBeFocused()
+  await expect(
+    datePickerPopup.locator('[data-slot="calendar-day"][tabindex="0"]')
+  ).toHaveCount(1)
+  await page.keyboard.press("ArrowLeft")
+  await expect(
+    datePickerPopup.locator('[data-date="2011-12-31"]')
+  ).toBeFocused()
+  await expect(monthYearPicker).toContainText("December 2011")
+  await page.keyboard.press("ArrowRight")
+  await expect(januaryFirst).toBeFocused()
+  await expect(monthYearPicker).toContainText("January 2012")
+  await page.keyboard.press("ArrowDown")
+  const januaryEighth = datePickerPopup.locator('[data-date="2012-01-08"]')
+  await expect(januaryEighth).toBeFocused()
+  await januaryEighth.click()
   await expect(page).toHaveURL(/created=\d{4}-\d{2}-\d{2}/)
   await datePicker.click()
   await datePickerPopup.getByRole("button", { name: "Clear" }).click()
   await expect(page).toHaveURL(`${origin}/jobs`)
+
+  await datePicker.click()
+  await monthYearPicker.click()
+  await datePickerPopup.getByRole("spinbutton", { name: "Jump to year" }).fill(
+    "1"
+  )
+  await datePickerPopup
+    .getByRole("group", { name: "Choose a month" })
+    .getByRole("button", { name: "Jan", exact: true })
+    .click()
+  const firstSupportedDate = datePickerPopup.locator(
+    '[data-date="0001-01-01"]'
+  )
+  await expect(firstSupportedDate).toBeFocused()
+  await expect(
+    datePickerPopup.getByRole("button", { name: "Previous month" })
+  ).toBeDisabled()
+  await expect(
+    datePickerPopup.locator('[data-selectable="false"]').first()
+  ).toBeDisabled()
+  await page.keyboard.press("ArrowLeft")
+  await expect(firstSupportedDate).toBeFocused()
+
+  await monthYearPicker.click()
+  await datePickerPopup.getByRole("spinbutton", { name: "Jump to year" }).fill(
+    "9999"
+  )
+  await datePickerPopup
+    .getByRole("group", { name: "Choose a month" })
+    .getByRole("button", { name: "Dec", exact: true })
+    .click()
+  await expect(
+    datePickerPopup.getByRole("button", { name: "Next month" })
+  ).toBeDisabled()
+  await page.keyboard.press("Escape")
 
   await page.goto("/admin/users")
   await page.setViewportSize({ width: 1024, height: 768 })

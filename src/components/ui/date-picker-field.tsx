@@ -1,16 +1,26 @@
 import { Popover } from "@base-ui/react/popover"
 import { CalendarDays as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
-import { useId, useMemo, useState } from "react"
+import {
+  type KeyboardEvent,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
+  type CalendarMonth,
   calendarDays,
+  calendarFocusValue,
   calendarMonth,
   dateFromParts,
   dateValue,
   parseDateValue,
   shiftCalendarMonth,
+  shiftDateValue,
 } from "@/date-picker"
 import { cn } from "@/lib/utils"
 
@@ -48,47 +58,95 @@ function DatePickerField({
   value,
 }: DatePickerFieldProps) {
   const jumpYearId = useId()
-  const [open, setOpen] = useState(false)
-  const [visibleMonth, setVisibleMonth] = useState(() => calendarMonth(value))
-  const [jumpOpen, setJumpOpen] = useState(false)
-  const [jumpYear, setJumpYear] = useState(() =>
-    String(calendarMonth(value).year)
-  )
-  const days = useMemo(() => calendarDays(visibleMonth), [visibleMonth])
-  const selected = parseDateValue(value)
-  const selectedLabel = selected
-    ? selectedDateFormatter.format(dateFromParts(selected))
-    : "Any date"
   const today = new Date()
   const todayValue = dateValue({
     day: today.getDate(),
     month: today.getMonth(),
     year: today.getFullYear(),
   })
+  const [open, setOpen] = useState(false)
+  const [visibleMonth, setVisibleMonth] = useState(() => calendarMonth(value))
+  const [focusedDayValue, setFocusedDayValue] = useState(() =>
+    calendarFocusValue(calendarMonth(value), value, todayValue)
+  )
+  const [jumpOpen, setJumpOpen] = useState(false)
+  const [jumpYear, setJumpYear] = useState(() =>
+    String(calendarMonth(value).year)
+  )
+  const calendarGrid = useRef<HTMLDivElement>(null)
+  const pendingDayFocus = useRef<string | null>(null)
+  const days = useMemo(() => calendarDays(visibleMonth), [visibleMonth])
+  const selected = parseDateValue(value)
+  const selectedLabel = selected
+    ? selectedDateFormatter.format(dateFromParts(selected))
+    : "Any date"
   const monthLabel = monthFormatter.format(
     dateFromParts({ day: 1, ...visibleMonth })
   )
+  const previousMonth = shiftCalendarMonth(visibleMonth, -1)
+  const nextMonth = shiftCalendarMonth(visibleMonth, 1)
   const parsedJumpYear = Number(jumpYear)
   const validJumpYear =
     Number.isInteger(parsedJumpYear) &&
     parsedJumpYear >= 1 &&
     parsedJumpYear <= 9999
 
+  useLayoutEffect(() => {
+    const nextValue = pendingDayFocus.current
+    if (!nextValue || jumpOpen) return
+    const nextButton = calendarGrid.current?.querySelector<HTMLButtonElement>(
+      `[data-date="${nextValue}"]`
+    )
+    if (!nextButton) return
+    pendingDayFocus.current = null
+    nextButton.focus()
+  }, [days, focusedDayValue, jumpOpen])
+
   function chooseDate(nextValue: string) {
     onValueChange(nextValue)
     setOpen(false)
   }
 
-  function moveMonth(offset: number) {
-    const nextMonth = shiftCalendarMonth(visibleMonth, offset)
-    setVisibleMonth(nextMonth)
-    setJumpYear(String(nextMonth.year))
+  function moveMonth(month: CalendarMonth | null) {
+    if (!month) return
+    setVisibleMonth(month)
+    setFocusedDayValue(calendarFocusValue(month, value, todayValue))
+    setJumpYear(String(month.year))
   }
 
   function chooseMonth(month: number) {
     if (!validJumpYear) return
-    setVisibleMonth({ month, year: parsedJumpYear })
+    const nextMonth = { month, year: parsedJumpYear }
+    const nextValue = calendarFocusValue(nextMonth, value, todayValue)
+    pendingDayFocus.current = nextValue
+    setVisibleMonth(nextMonth)
+    setFocusedDayValue(nextValue)
     setJumpOpen(false)
+  }
+
+  function moveDayFocus(currentValue: string, offset: number) {
+    const nextValue = shiftDateValue(currentValue, offset)
+    const nextDate = nextValue ? parseDateValue(nextValue) : null
+    if (!nextValue || !nextDate) return
+    pendingDayFocus.current = nextValue
+    setFocusedDayValue(nextValue)
+    setVisibleMonth({ month: nextDate.month, year: nextDate.year })
+    setJumpYear(String(nextDate.year))
+  }
+
+  function handleDayKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentValue: string
+  ) {
+    const offset = {
+      ArrowDown: 7,
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -7,
+    }[event.key]
+    if (offset === undefined) return
+    event.preventDefault()
+    moveDayFocus(currentValue, offset)
   }
 
   return (
@@ -97,8 +155,12 @@ function DatePickerField({
         if (nextOpen) {
           const nextMonth = calendarMonth(value)
           setVisibleMonth(nextMonth)
+          setFocusedDayValue(
+            calendarFocusValue(nextMonth, value, todayValue)
+          )
           setJumpYear(String(nextMonth.year))
         }
+        pendingDayFocus.current = null
         setJumpOpen(false)
         setOpen(nextOpen)
       }}
@@ -124,7 +186,8 @@ function DatePickerField({
             <div className="flex items-center justify-between gap-2">
               <Button
                 aria-label="Previous month"
-                onClick={() => moveMonth(-1)}
+                disabled={!previousMonth}
+                onClick={() => moveMonth(previousMonth)}
                 size="icon-sm"
                 type="button"
                 variant="ghost"
@@ -145,7 +208,8 @@ function DatePickerField({
               </button>
               <Button
                 aria-label="Next month"
-                onClick={() => moveMonth(1)}
+                disabled={!nextMonth}
+                onClick={() => moveMonth(nextMonth)}
                 size="icon-sm"
                 type="button"
                 variant="ghost"
@@ -217,30 +281,45 @@ function DatePickerField({
                     </span>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-1" ref={calendarGrid}>
                   {days.map((day) => {
                     const selectedDay = day.value === value
                     const todayDay = day.value === todayValue
                     return (
                       <button
+                        aria-hidden={!day.selectable || undefined}
                         aria-current={todayDay ? "date" : undefined}
-                        aria-label={fullDateFormatter.format(dateFromParts(day))}
-                        aria-pressed={selectedDay}
+                        aria-label={
+                          day.selectable
+                            ? fullDateFormatter.format(dateFromParts(day))
+                            : undefined
+                        }
+                        aria-pressed={day.selectable ? selectedDay : undefined}
                         className={cn(
-                          "grid size-8 place-items-center rounded-md text-xs tabular-nums outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                          "grid size-8 place-items-center rounded-md text-xs tabular-nums outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-0",
                           !day.currentMonth && "text-muted-foreground/60",
                           todayDay && !selectedDay && "ring-1 ring-ring/60",
                           selectedDay &&
                             "bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground"
                         )}
                         data-current-month={day.currentMonth}
+                        data-date={day.value}
+                        data-selectable={day.selectable}
                         data-slot="calendar-day"
                         data-today={todayDay || undefined}
+                        disabled={!day.selectable}
                         key={day.value}
                         onClick={() => chooseDate(day.value)}
+                        onFocus={() => setFocusedDayValue(day.value)}
+                        onKeyDown={(event) =>
+                          handleDayKeyDown(event, day.value)
+                        }
+                        tabIndex={
+                          day.selectable && day.value === focusedDayValue ? 0 : -1
+                        }
                         type="button"
                       >
-                        {day.day}
+                        {day.selectable ? day.day : null}
                       </button>
                     )
                   })}

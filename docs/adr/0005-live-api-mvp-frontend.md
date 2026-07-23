@@ -438,7 +438,12 @@ field-specific filter control from a filter icon, avoiding a permanently
 expanded second header row. Date filters use a rounded in-app calendar so their
 panel has the same visual treatment across supported browsers. Selecting the
 month-and-year heading reveals a direct year field and all 12 months for fast
-jumps across long date ranges.
+jumps across long date ranges. Choosing a month moves focus into that month's
+day grid instead of losing it when the month controls close. Exactly one day is
+in the grid's Tab sequence; the arrow keys move by one day horizontally or one
+week vertically, including across month and year boundaries. Navigation stops
+at the supported years `1` and `9999`; spillover cells outside that range are
+inert rather than presenting dates the filter cannot represent.
 
 Its primary creation action is the cross-Tool `New job` link to the Tool
 Catalog. Empty-state copy says `Start a new job`; neither action assumes that
