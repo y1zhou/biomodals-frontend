@@ -77,6 +77,23 @@ export function positiveInteger(value: string) {
   return parsed !== null && parsed >= 1 ? parsed : null
 }
 
+export function modalToolSettingLabels(
+  input: UpdateAdminModalToolInput | undefined
+) {
+  if (!input) return []
+  const labels: string[] = []
+  if (Object.hasOwn(input, "modal_app_name")) {
+    labels.push("Deployed Modal app name")
+  }
+  if (Object.hasOwn(input, "modal_app_version")) {
+    labels.push("Modal deployment version")
+  }
+  if (Object.hasOwn(input, "active_job_limit")) {
+    labels.push("Active job limit")
+  }
+  return labels
+}
+
 export function changedModalEnvironmentSettings(
   environment: AdminModalEnvironment,
   modalEnvironment: string,

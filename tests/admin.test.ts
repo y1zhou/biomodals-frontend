@@ -5,12 +5,33 @@ import {
   changedModalToolSettings,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
+  modalToolSettingLabels,
   settingSourceNote,
   sortAdminUsersByCreatedAt,
   upsertAdminUser,
 } from "../src/admin"
 
 describe("Admin settings", () => {
+  test("labels the Modal tool fields included in a failed save", () => {
+    expect(modalToolSettingLabels({ modal_app_name: "Missing app" })).toEqual([
+      "Deployed Modal app name",
+    ])
+    expect(modalToolSettingLabels({ modal_app_version: 404 })).toEqual([
+      "Modal deployment version",
+    ])
+    expect(
+      modalToolSettingLabels({
+        modal_app_name: "Missing app",
+        modal_app_version: 404,
+        active_job_limit: 2,
+      })
+    ).toEqual([
+      "Deployed Modal app name",
+      "Modal deployment version",
+      "Active job limit",
+    ])
+  })
+
   test("only explains configuration sources that need extra context", () => {
     expect(settingSourceNote("process_environment")).toBe(
       "Controlled by the process environment."
