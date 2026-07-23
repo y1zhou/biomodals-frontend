@@ -170,10 +170,11 @@ compact summary sits beside the form on wider screens. It contains:
 
 Simulation times above `100` nanoseconds show a non-blocking long-runtime
 notice without inventing an ETA, queue position, or compute cost.
-The simulation-time number field accepts wheel stepping only while it has
-focus and the pointer remains over it. In that case the wheel is reserved for
-the number step and does not move the page; otherwise the wheel scrolls the
-page without changing the value.
+Shared number fields accept wheel stepping only while the field has focus and
+the pointer remains over it. In that case the wheel is reserved for the number
+step and does not move the page; otherwise the wheel scrolls the page without
+changing the value. This applies to Simulation time and other numeric controls
+so a passing pointer never changes a value during ordinary page scrolling.
 
 The web interface and API accept exactly one `.pdb` Input up to `10 MiB`. The
 frontend validates the extension and size before Upload, while the API enforces
