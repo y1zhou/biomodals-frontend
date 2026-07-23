@@ -21,6 +21,7 @@ import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { SelectField } from "@/components/ui/select-field"
 import {
   filterAndSortJobs,
   emptyJobTableFilters,
@@ -116,8 +117,18 @@ function JobRow({
   )
 }
 
-const filterSelectClassName =
-  "h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+const toolFilterOptions = [
+  { label: "All tools", value: "" },
+  ...availableTools.map((tool) => ({ label: tool.name, value: tool.slug })),
+]
+
+const statusFilterOptions = [
+  { label: "All statuses", value: "" },
+  ...Object.entries(jobPresentation).map(([value, presentation]) => ({
+    label: presentation.label,
+    value,
+  })),
+]
 
 function SortableHeader({
   children,
@@ -337,17 +348,12 @@ export default function JobsPage() {
                   onSort={updateSort}
                   sort={sort}
                 >
-                  <select
+                  <SelectField
                     aria-label="Filter jobs by tool"
-                    className={filterSelectClassName}
-                    onChange={(event) => updateFilter("tool", event.target.value)}
+                    onValueChange={(value) => updateFilter("tool", value)}
+                    options={toolFilterOptions}
                     value={filters.tool}
-                  >
-                    <option value="">All tools</option>
-                    {availableTools.map((tool) => (
-                      <option key={tool.slug} value={tool.slug}>{tool.name}</option>
-                    ))}
-                  </select>
+                  />
                 </SortableHeader>
                 <SortableHeader
                   column="status"
@@ -357,17 +363,12 @@ export default function JobsPage() {
                   onSort={updateSort}
                   sort={sort}
                 >
-                  <select
+                  <SelectField
                     aria-label="Filter jobs by status"
-                    className={filterSelectClassName}
-                    onChange={(event) => updateFilter("status", event.target.value)}
+                    onValueChange={(value) => updateFilter("status", value)}
+                    options={statusFilterOptions}
                     value={filters.status}
-                  >
-                    <option value="">All statuses</option>
-                    {Object.entries(jobPresentation).map(([state, presentation]) => (
-                      <option key={state} value={state}>{presentation.label}</option>
-                    ))}
-                  </select>
+                  />
                 </SortableHeader>
                 <SortableHeader
                   column="created"

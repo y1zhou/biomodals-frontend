@@ -682,40 +682,40 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               </p>
             ) : null}
           </div>
-          <div className="shrink-0">
-            {mutationError ? (
-              <ToolSettingErrorPopover
-                anchor={saveButton}
-                error={mutationError}
-                fields={failedFields}
-                onDismiss={resetMutationErrors}
-                toolName={displayName}
-              />
-            ) : null}
-            <Button
-              aria-label={`Save Modal settings for ${displayName}`}
-              disabled={
-                mutationPending ||
-                !hasChanges ||
-                normalizedLimit === null ||
-                (tool.modal_app_version.editable && normalizedVersion === null) ||
-                (tool.modal_app_name.editable && !normalizedAppName)
-              }
-              onClick={() => {
-                appUpdate.mutate(changedSettings)
-              }}
-              ref={setSaveButton}
-              size="icon"
-              variant="outline"
-            >
-              {mutationPending ? (
-                <LoaderCircle aria-hidden="true" className="animate-spin" />
-              ) : (
-                <Save aria-hidden="true" />
-              )}
-            </Button>
-          </div>
         </div>
+      </td>
+      <td className="px-2 py-4 text-center align-middle">
+        {mutationError ? (
+          <ToolSettingErrorPopover
+            anchor={saveButton}
+            error={mutationError}
+            fields={failedFields}
+            onDismiss={resetMutationErrors}
+            toolName={displayName}
+          />
+        ) : null}
+        <Button
+          aria-label={`Save Modal settings for ${displayName}`}
+          disabled={
+            mutationPending ||
+            !hasChanges ||
+            normalizedLimit === null ||
+            (tool.modal_app_version.editable && normalizedVersion === null) ||
+            (tool.modal_app_name.editable && !normalizedAppName)
+          }
+          onClick={() => {
+            appUpdate.mutate(changedSettings)
+          }}
+          ref={setSaveButton}
+          size="icon"
+          variant="outline"
+        >
+          {mutationPending ? (
+            <LoaderCircle aria-hidden="true" className="animate-spin" />
+          ) : (
+            <Save aria-hidden="true" />
+          )}
+        </Button>
       </td>
     </tr>
   )
@@ -1002,11 +1002,12 @@ export default function ModalAdminPage() {
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
           <table className="w-[calc(100%_-_1px)] min-w-[56rem] table-fixed border-collapse text-center">
             <colgroup>
-              <col className="w-[23%]" />
+              <col className="w-[21%]" />
+              <col className="w-[15%]" />
+              <col className="w-[20%]" />
               <col className="w-[16%]" />
               <col className="w-[22%]" />
-              <col className="w-[17%]" />
-              <col className="w-[22%]" />
+              <col className="w-[6%]" />
             </colgroup>
             <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -1020,6 +1021,9 @@ export default function ModalAdminPage() {
                 </th>
                 <th className="whitespace-nowrap py-3 pr-3 pl-3 font-medium" scope="col">
                   Active jobs / active job limit
+                </th>
+                <th className="px-2 py-3" scope="col">
+                  <span className="sr-only">Save changes</span>
                 </th>
               </tr>
             </thead>

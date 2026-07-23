@@ -295,6 +295,20 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect.poll(async () => (await browserStats()).submit_calls).toBe(2)
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7, 7])
 
+  await page.goto("/jobs?tool=gromacs")
+  await page.getByRole("button", { name: "Filter jobs by tool (active)" }).click()
+  const toolFilter = page.getByRole("combobox", { name: "Filter jobs by tool" })
+  await toolFilter.click()
+  const selectPopup = page.locator('[data-slot="select-popup"]')
+  await expect(selectPopup).toBeVisible()
+  const [triggerRadius, popupRadius] = await Promise.all([
+    toolFilter.evaluate((element) => getComputedStyle(element).borderRadius),
+    selectPopup.evaluate((element) => getComputedStyle(element).borderRadius),
+  ])
+  expect(popupRadius).toBe(triggerRadius)
+  await page.getByRole("option", { name: "All tools" }).click()
+  await expect(page).toHaveURL(`${origin}/jobs`)
+
   await page.goto("/admin/users")
   await page.setViewportSize({ width: 1024, height: 768 })
   const usersTable = page.getByRole("table")
@@ -438,6 +452,23 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const saveToolSettings = page.getByRole("button", {
     name: "Save Modal settings for GROMACS MD simulation",
   })
+  const activeJobLimit = page.getByRole("spinbutton", {
+    name: "Active job limit for GROMACS MD simulation",
+  })
+  expect(await toolsTable.getByRole("columnheader").count()).toBe(6)
+  await expect(
+    toolsTable.getByRole("columnheader", { name: "Save changes" })
+  ).toBeVisible()
+  expect(
+    await saveToolSettings.evaluate(
+      (button) => (button.closest("td") as HTMLTableCellElement | null)?.cellIndex
+    )
+  ).toBe(5)
+  expect(
+    await activeJobLimit.evaluate(
+      (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
+    )
+  ).toBe(4)
   const jobLogAccess = page.getByRole("checkbox", {
     name: "Allow Job owners to view logs for GROMACS MD simulation",
   })
