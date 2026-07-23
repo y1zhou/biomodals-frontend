@@ -423,8 +423,25 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     scroll: table.scrollWidth,
   }))
   expect(toolsTableWidth.scroll).toBeLessThanOrEqual(toolsTableWidth.client)
+  const toolHeaderRows = toolsTable.locator("thead tr")
+  await expect(toolHeaderRows).toHaveCount(2)
   await expect(
-    toolsTable.getByRole("columnheader", { name: "Modal deployment version" })
+    toolsTable.getByRole("columnheader", { name: "Tool", exact: true })
+  ).toHaveAttribute("rowspan", "2")
+  await expect(
+    toolsTable.getByRole("columnheader", {
+      name: "Active jobs / active job limit",
+      exact: true,
+    })
+  ).toHaveAttribute("rowspan", "2")
+  await expect(
+    toolsTable.getByRole("columnheader", { name: "Modal", exact: true })
+  ).toHaveAttribute("colspan", "3")
+  await expect(
+    toolsTable.getByRole("columnheader", { name: "Save changes" })
+  ).toHaveAttribute("rowspan", "2")
+  await expect(
+    toolsTable.getByRole("columnheader", { name: "Deployment version" })
   ).toHaveCSS("white-space", "nowrap")
   await expect(
     toolsTable.getByRole("cell", {
@@ -455,7 +472,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const activeJobLimit = page.getByRole("spinbutton", {
     name: "Active job limit for GROMACS MD simulation",
   })
-  expect(await toolsTable.getByRole("columnheader").count()).toBe(6)
+  expect(await toolsTable.locator("colgroup col").count()).toBe(6)
+  expect(await toolsTable.getByRole("columnheader").count()).toBe(7)
   await expect(
     toolsTable.getByRole("columnheader", { name: "Save changes" })
   ).toBeVisible()
@@ -468,19 +486,40 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     await activeJobLimit.evaluate(
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
     )
-  ).toBe(4)
-  const jobLogAccess = page.getByRole("checkbox", {
+  ).toBe(1)
+  const jobLogAccess = page.getByRole("switch", {
     name: "Allow Job owners to view logs for GROMACS MD simulation",
   })
-  await expect(jobLogAccess).toBeChecked()
-  await page.getByText("Job owners", { exact: true }).click()
-  await expect(jobLogAccess).not.toBeChecked()
+  await expect(jobLogAccess).toHaveAttribute("aria-checked", "true")
+  await expect(page.getByRole("tooltip")).toHaveCount(0)
+  await jobLogAccess.hover()
+  await expect(page.getByRole("tooltip")).toHaveText("Job owners")
+  await expect(jobLogAccess).not.toHaveCSS("background-color", "rgb(0, 0, 0)")
+  const ownerThumbX = await jobLogAccess.locator(
+    '[data-slot="job-log-access-thumb"]'
+  ).evaluate((element) => element.getBoundingClientRect().x)
+  const ownerIconX = await jobLogAccess.locator(
+    '[data-slot="job-log-access-icon"]'
+  ).evaluate((element) => element.getBoundingClientRect().x)
+  expect(ownerThumbX).toBeLessThan(ownerIconX)
+  await jobLogAccess.click()
+  await expect(jobLogAccess).toHaveAttribute("aria-checked", "false")
+  await jobLogAccess.hover()
+  await expect(page.getByRole("tooltip")).toHaveText("Admins only")
+  await expect(jobLogAccess).toHaveCSS("background-color", "rgb(0, 0, 0)")
+  const adminThumbX = await jobLogAccess.locator(
+    '[data-slot="job-log-access-thumb"]'
+  ).evaluate((element) => element.getBoundingClientRect().x)
+  const adminIconX = await jobLogAccess.locator(
+    '[data-slot="job-log-access-icon"]'
+  ).evaluate((element) => element.getBoundingClientRect().x)
+  expect(adminThumbX).toBeGreaterThan(adminIconX)
   await saveToolSettings.click()
   await expect(saveToolSettings).toBeDisabled()
   await page.getByRole("button", {
     name: "Restore Job log access for GROMACS MD simulation to its default",
   }).click()
-  await expect(jobLogAccess).toBeChecked()
+  await expect(jobLogAccess).toHaveAttribute("aria-checked", "true")
 
   const toolUpdateRoute = "**/api/v1/admin/modal/tools/gromacs"
   await page.route(toolUpdateRoute, async (route) => {

@@ -1,9 +1,12 @@
 import { Popover } from "@base-ui/react/popover"
+import { Tooltip } from "@base-ui/react/tooltip"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
   Check,
   Copy,
+  Lock,
+  LockOpen,
   LoaderCircle,
   RotateCcw,
   Save,
@@ -318,36 +321,61 @@ function JobLogAccessSetting({
   toolName: string
   value: boolean
 }) {
-  const inputId = useId()
   const canRestore = setting.source === "database" || value !== setting.value
   const restoreDescription = `Restore Job log access for ${toolName} to its default`
+  const stateLabel = value ? "Job owners" : "Admins only"
 
   return (
-    <div className="mx-auto inline-flex items-stretch rounded-lg border bg-background shadow-xs">
-      <label
-        className={cn(
-          "flex min-w-24 cursor-pointer items-center justify-center gap-2 px-2 py-1.5",
-          pending && "cursor-not-allowed opacity-60"
-        )}
-        htmlFor={inputId}
-      >
-        <input
+    <div className="mx-auto inline-flex items-center gap-1.5">
+      <Tooltip.Root>
+        <Tooltip.Trigger
+          aria-checked={value}
           aria-label={`Allow Job owners to view logs for ${toolName}`}
-          checked={value}
-          className="peer sr-only"
+          className={cn(
+            "relative h-6 w-12 shrink-0 rounded-full text-xs transition-all outline-none hover:brightness-90 active:scale-[0.97] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100",
+            value ? "bg-neutral-300 text-neutral-700" : "bg-black text-white"
+          )}
+          closeOnClick={false}
           disabled={pending}
-          id={inputId}
-          onChange={(event) => onChange(event.target.checked)}
-          type="checkbox"
-        />
-        <span className="relative h-5 w-9 shrink-0 rounded-full bg-muted-foreground/30 transition-colors after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-background after:shadow-sm after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2" />
-        <span className="text-xs font-medium">
-          {value ? "Job owners" : "Admins only"}
-        </span>
-      </label>
+          onClick={() => onChange(!value)}
+          role="switch"
+          type="button"
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-[left,right]",
+              value ? "left-0.5" : "right-0.5"
+            )}
+            data-slot="job-log-access-thumb"
+          />
+          {value ? (
+            <LockOpen
+              aria-hidden="true"
+              className="absolute top-1.5 right-1.5 size-3"
+              data-slot="job-log-access-icon"
+            />
+          ) : (
+            <Lock
+              aria-hidden="true"
+              className="absolute top-1.5 left-1.5 size-3"
+              data-slot="job-log-access-icon"
+            />
+          )}
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Positioner className="z-50" side="top" sideOffset={7}>
+            <Tooltip.Popup
+              className="origin-[var(--transform-origin)] rounded-md bg-foreground px-2 py-1 text-xs font-medium text-background shadow-lg transition-[scale,opacity] duration-100 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0"
+              role="tooltip"
+            >
+              {stateLabel}
+            </Tooltip.Popup>
+          </Tooltip.Positioner>
+        </Tooltip.Portal>
+      </Tooltip.Root>
       <Button
         aria-label={restoreDescription}
-        className="rounded-l-none border-y-0 border-r-0"
         disabled={pending || !canRestore}
         onClick={() => {
           if (setting.source === "database") {
@@ -583,6 +611,45 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   return (
     <tr className="border-b last:border-0">
       <td className="px-3 py-4 text-center align-center text-sm font-medium">{displayName}</td>
+      <td className="py-4 pr-3 pl-3 text-center align-center">
+        <div className="mx-auto flex min-w-40 items-start justify-center gap-2 whitespace-nowrap">
+          <span
+            className={cn(
+              "flex h-8 shrink-0 items-center text-sm tabular-nums",
+              overLimit && "font-semibold text-amber-700"
+            )}
+          >
+            {tool.active_jobs} /
+          </span>
+          <div className="w-20 shrink-0 whitespace-normal">
+            <RuntimeSettingInput
+              aria-label={`Active job limit for ${displayName}`}
+              label={`active job limit for ${displayName}`}
+              min={0}
+              onChange={(value) => {
+                resetMutationErrors()
+                setActiveJobLimit(value)
+                setLimitDirty(
+                  nonnegativeInteger(value) !== tool.active_job_limit.value
+                )
+              }}
+              onRestoreOverride={() => {
+                resetMutationErrors()
+                limitUpdate.mutate({ active_job_limit: null })
+              }}
+              pending={limitPending}
+              setting={tool.active_job_limit}
+              type="number"
+              value={activeJobLimit}
+            />
+            {overLimit ? (
+              <p className="mt-1 text-xs font-medium text-amber-700">
+                Over limit; new jobs are blocked.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </td>
       <td className="px-3 py-4 text-center align-center">
         <div className="mx-auto max-w-48">
           <RuntimeSettingInput
@@ -644,45 +711,6 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           toolName={displayName}
           value={jobLogsVisibleToOwner}
         />
-      </td>
-      <td className="py-4 pr-3 pl-3 text-center align-center">
-        <div className="mx-auto flex min-w-40 items-start justify-center gap-2 whitespace-nowrap">
-          <span
-            className={cn(
-              "flex h-8 shrink-0 items-center text-sm tabular-nums",
-              overLimit && "font-semibold text-amber-700"
-            )}
-          >
-            {tool.active_jobs} /
-          </span>
-          <div className="w-20 shrink-0 whitespace-normal">
-            <RuntimeSettingInput
-              aria-label={`Active job limit for ${displayName}`}
-              label={`active job limit for ${displayName}`}
-              min={0}
-              onChange={(value) => {
-                resetMutationErrors()
-                setActiveJobLimit(value)
-                setLimitDirty(
-                  nonnegativeInteger(value) !== tool.active_job_limit.value
-                )
-              }}
-              onRestoreOverride={() => {
-                resetMutationErrors()
-                limitUpdate.mutate({ active_job_limit: null })
-              }}
-              pending={limitPending}
-              setting={tool.active_job_limit}
-              type="number"
-              value={activeJobLimit}
-            />
-            {overLimit ? (
-              <p className="mt-1 text-xs font-medium text-amber-700">
-                Over limit; new jobs are blocked.
-              </p>
-            ) : null}
-          </div>
-        </div>
       </td>
       <td className="px-2 py-4 text-center align-middle">
         {mutationError ? (
@@ -1000,39 +1028,58 @@ export default function ModalAdminPage() {
           Tools
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
-          <table className="w-[calc(100%_-_1px)] min-w-[56rem] table-fixed border-collapse text-center">
-            <colgroup>
-              <col className="w-[21%]" />
-              <col className="w-[15%]" />
-              <col className="w-[20%]" />
-              <col className="w-[16%]" />
-              <col className="w-[22%]" />
-              <col className="w-[6%]" />
-            </colgroup>
-            <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-3 py-3 font-medium" scope="col">Tool</th>
-                <th className="px-3 py-3 font-medium" scope="col">Deployed Modal app name</th>
-                <th className="whitespace-nowrap px-2 py-3 font-medium" scope="col">
-                  Modal deployment version
-                </th>
-                <th className="whitespace-nowrap px-2 py-3 font-medium" scope="col">
-                  Job log access
-                </th>
-                <th className="whitespace-nowrap py-3 pr-3 pl-3 font-medium" scope="col">
-                  Active jobs / active job limit
-                </th>
-                <th className="px-2 py-3" scope="col">
-                  <span className="sr-only">Save changes</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {modal.data.tools.map((tool) => (
-                <ToolRow key={tool.workload} tool={tool} />
-              ))}
-            </tbody>
-          </table>
+          <Tooltip.Provider closeDelay={100} delay={250}>
+            <table className="w-[calc(100%_-_1px)] min-w-[56rem] table-fixed border-collapse text-center">
+              <colgroup>
+                <col className="w-[21%]" />
+                <col className="w-[22%]" />
+                <col className="w-[18%]" />
+                <col className="w-[17%]" />
+                <col className="w-[16%]" />
+                <col className="w-[6%]" />
+              </colgroup>
+              <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-3 font-medium" rowSpan={2} scope="col">
+                    Tool
+                  </th>
+                  <th
+                    className="whitespace-nowrap px-3 py-3 font-medium"
+                    rowSpan={2}
+                    scope="col"
+                  >
+                    Active jobs / active job limit
+                  </th>
+                  <th
+                    className="border-b px-2 py-2 font-semibold text-foreground/80"
+                    colSpan={3}
+                    scope="colgroup"
+                  >
+                    Modal
+                  </th>
+                  <th className="px-2 py-3" rowSpan={2} scope="col">
+                    <span className="sr-only">Save changes</span>
+                  </th>
+                </tr>
+                <tr>
+                  <th className="px-3 py-2.5 font-medium" scope="col">
+                    Deployed app name
+                  </th>
+                  <th className="whitespace-nowrap px-2 py-2.5 font-medium" scope="col">
+                    Deployment version
+                  </th>
+                  <th className="whitespace-nowrap px-2 py-2.5 font-medium" scope="col">
+                    Job logs
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {modal.data.tools.map((tool) => (
+                  <ToolRow key={tool.workload} tool={tool} />
+                ))}
+              </tbody>
+            </table>
+          </Tooltip.Provider>
         </div>
       </section>
     </div>

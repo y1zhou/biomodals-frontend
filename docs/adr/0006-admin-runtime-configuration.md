@@ -151,13 +151,19 @@ Clearing the Result Cache never deletes a Job or its authoritative remote Modal
 Volume data. A later User download restores or reconstructs the Result locally
 without rerunning scientific compute.
 
-The Tools section is a six-column table containing the user-facing Tool name,
-editable deployed Modal app name, editable exact positive deployment version,
-Job Log access, a combined Active Jobs / Tool Active Job Limit field, and a
-visually unlabeled row-action column. The final column's accessible label and
-independent placement make clear that Save applies to every changed field in
-the row. Job Log access is an affirmative toggle between `Job owners` and
-`Admins only`.
+The Tools section is a six-column table whose first header row contains the
+user-facing Tool name, combined Active Jobs / Tool Active Job Limit, a `Modal`
+group spanning three columns, and a visually unlabeled row-action column. The
+second header row labels the grouped deployed app name, exact positive
+deployment version, and Job Logs columns. The final column's accessible label
+and independent placement make clear that Save applies to every changed field
+in the row.
+
+Job Log access uses an icon-only switch. `Admins only` is a black track with a
+locked icon and the thumb on the right; `Job owners` is a gray track with an
+unlocked icon and the thumb on the left. The current state text appears on
+pointer hover and keyboard focus rather than occupying table width, while the
+control retains a stable accessible name and switch state.
 Administrators always retain access; enabling it grants access only to the
 authenticated owner of that Job, never another User or an anonymous browser.
 GROMACS defaults to Job-owner access. New Tools default to Administrator-only
