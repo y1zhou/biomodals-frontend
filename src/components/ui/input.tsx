@@ -28,6 +28,8 @@ function Input({ className, ref, type, ...props }: React.ComponentProps<"input">
     const stepFocusedInput = (event: WheelEvent) => {
       if (
         event.deltaY === 0 ||
+        event.ctrlKey ||
+        event.metaKey ||
         input.ownerDocument.activeElement !== input ||
         input.disabled ||
         input.readOnly

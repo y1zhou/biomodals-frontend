@@ -233,11 +233,12 @@ A failed Job exposes its Job Error through typed `error_code` and display-safe
 state. The frontend derives a useful next action from the code and shows the
 Job identifier for support. An unknown code receives generic failure copy. Raw
 Modal exceptions, stack traces, paths, environment details, and provider call
-IDs never enter owner-facing Job responses. A separate Administrator-only
-diagnostic streams logs for an active Stage or fetches retained logs for a
-terminal Stage without making those logs Job state or prescribing an owner
-action. Its backend boundary redacts the selected provider call ID if the
-provider output itself contains it.
+IDs never enter Job responses. A separate authorization-gated diagnostic
+streams logs for an active Stage or fetches retained logs for a terminal Stage
+without making those logs Job state or prescribing an owner action.
+Administrators always have access; a Job owner has access only when that Tool's
+live policy permits owner-visible logs. The backend redacts the selected
+provider call ID if the provider output itself contains it.
 
 The current Job Error codes are:
 

@@ -660,8 +660,8 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
 
   return (
     <tr className="border-b last:border-0">
-      <td className="px-3 py-4 text-center align-center text-sm font-medium">{displayName}</td>
-      <td className="py-4 pr-3 pl-3 text-center align-center">
+      <td className="px-3 py-4 text-center align-middle text-sm font-medium">{displayName}</td>
+      <td className="py-4 pr-3 pl-3 text-center align-middle">
         <div className="mx-auto flex min-w-40 items-start justify-center gap-2 whitespace-nowrap">
           <span
             className={cn(
@@ -700,7 +700,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           </div>
         </div>
       </td>
-      <td className="px-3 py-4 text-center align-center">
+      <td className="px-3 py-4 text-center align-middle">
         <div className="mx-auto max-w-48">
           <RuntimeSettingInput
             aria-label={`Modal app name for ${displayName}`}
@@ -720,7 +720,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           />
         </div>
       </td>
-      <td className="px-2 py-4 text-center align-center">
+      <td className="px-2 py-4 text-center align-middle">
         <div className="mx-auto max-w-28">
           <RuntimeSettingInput
             aria-label={`Modal deployment version for ${displayName}`}
@@ -743,7 +743,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           />
         </div>
       </td>
-      <td className="px-2 py-4 text-center align-center">
+      <td className="px-2 py-4 text-center align-middle">
         <JobLogAccessSetting
           onChange={(value) => {
             resetMutationErrors()

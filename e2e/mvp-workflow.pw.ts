@@ -121,6 +121,19 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await page.mouse.wheel(0, -100)
   await expect(simulationTime).toHaveValue("6")
   expect(await page.evaluate(() => window.scrollY)).toBe(focusedScrollY)
+  expect(
+    await simulationTime.evaluate((input) =>
+      input.dispatchEvent(
+        new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaY: -100,
+        })
+      )
+    )
+  ).toBe(true)
+  await expect(simulationTime).toHaveValue("6")
 
   await page.mouse.move(8, 8)
   const outsideScrollY = await page.evaluate(() => window.scrollY)

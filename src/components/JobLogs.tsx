@@ -123,7 +123,7 @@ function streamFailureMessage(error: unknown) {
     return "Logs are not available for this stage. Modal may no longer retain this Function Call."
   }
   if (apiErrorCode(error) === "job_logs_unavailable") {
-    return "Logs could not be fetched from Modal. Check the Modal deployment and service credentials."
+    return "Logs could not be fetched from Modal. Try again; administrators can check the deployment and service credentials."
   }
   const supportId = apiRequestId(error)
   return `Logs could not be fetched from Modal.${supportId ? ` Support ID: ${supportId}.` : " Try again."}`
