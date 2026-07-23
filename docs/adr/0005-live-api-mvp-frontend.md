@@ -480,8 +480,8 @@ operation as well as required CSRF headers, request and response bodies, Job
 states and conditional fields, per-operation frontend-handled error codes,
 relevant response headers, and binary and byte-range Result downloads. It also
 contains `active_stages`, the `blocked` and `state_unknown` Job fields, and the
-Admin Modal preflight, unknown-state resolution, Storage, and Administrator Job
-log contracts. Backend contract tests assert these details rather than checking
+Admin Modal preflight, unknown-state resolution, Storage, and authorized Job log
+contracts. Backend contract tests assert these details rather than checking
 only that paths exist.
 
 A live `api:check` compares the OpenAPI document with the generated TypeScript

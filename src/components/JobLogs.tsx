@@ -213,7 +213,6 @@ function StageLogViewer({
   )
   const historyQuery = useInfiniteQuery({
     queryKey: [
-      "admin",
       "jobs",
       jobId,
       "logs",
