@@ -7,6 +7,7 @@ import {
   UserRound,
   Wrench,
 } from "lucide-react"
+import { Fragment, useRef } from "react"
 import { Link, Outlet, ScrollRestoration, useNavigate } from "react-router"
 
 import {
@@ -76,6 +77,10 @@ export default function AppShell() {
   useExpireSession(logoutReauthenticationError)
   const reauthenticationRequired = isReauthenticationRequired(user.data)
   const currentUser = authenticatedPrincipal(user.data)
+  // Preserve local form state for same-User reauthentication, but remount every
+  // protected observer before a different User can see the previous cache.
+  const outletPrincipal = useRef("anonymous")
+  if (currentUser) outletPrincipal.current = currentUser.user_id
 
   return (
     <div className="min-h-svh">
@@ -162,7 +167,9 @@ export default function AppShell() {
           </nav>
         </div>
       </header>
-      <Outlet />
+      <Fragment key={outletPrincipal.current}>
+        <Outlet />
+      </Fragment>
       <ReauthenticationDialog
         description="Your session is no longer usable. This page will stay in place while you sign in again; retry your action afterward."
         onCancel={() => {
