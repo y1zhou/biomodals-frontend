@@ -487,30 +487,42 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
     )
   ).toBe(1)
-  const jobLogAccess = page.getByRole("switch", {
+  const jobLogAccess = page.getByRole("checkbox", {
     name: "Allow Job owners to view logs for GROMACS MD simulation",
   })
-  await expect(jobLogAccess).toHaveAttribute("aria-checked", "true")
+  const jobLogAccessToggle = page.locator(
+    '[data-slot="job-log-access-toggle"]'
+  )
+  const jobLogAccessTrack = jobLogAccessToggle.locator(
+    '[data-slot="job-log-access-track"]'
+  )
+  await expect(jobLogAccess).toBeChecked()
   await expect(page.getByRole("tooltip")).toHaveCount(0)
-  await jobLogAccess.hover()
+  await jobLogAccessToggle.hover()
   await expect(page.getByRole("tooltip")).toHaveText("Job owners")
-  await expect(jobLogAccess).not.toHaveCSS("background-color", "rgb(0, 0, 0)")
-  const ownerThumbX = await jobLogAccess.locator(
+  await expect(jobLogAccessTrack).not.toHaveCSS(
+    "background-color",
+    "rgb(0, 0, 0)"
+  )
+  const ownerThumbX = await jobLogAccessToggle.locator(
     '[data-slot="job-log-access-thumb"]'
   ).evaluate((element) => element.getBoundingClientRect().x)
-  const ownerIconX = await jobLogAccess.locator(
+  const ownerIconX = await jobLogAccessToggle.locator(
     '[data-slot="job-log-access-icon"]'
   ).evaluate((element) => element.getBoundingClientRect().x)
   expect(ownerThumbX).toBeLessThan(ownerIconX)
-  await jobLogAccess.click()
-  await expect(jobLogAccess).toHaveAttribute("aria-checked", "false")
-  await jobLogAccess.hover()
+  await jobLogAccessToggle.click()
+  await expect(jobLogAccess).not.toBeChecked()
+  await jobLogAccessToggle.hover()
   await expect(page.getByRole("tooltip")).toHaveText("Admins only")
-  await expect(jobLogAccess).toHaveCSS("background-color", "rgb(0, 0, 0)")
-  const adminThumbX = await jobLogAccess.locator(
+  await expect(jobLogAccessTrack).toHaveCSS(
+    "background-color",
+    "rgb(0, 0, 0)"
+  )
+  const adminThumbX = await jobLogAccessToggle.locator(
     '[data-slot="job-log-access-thumb"]'
   ).evaluate((element) => element.getBoundingClientRect().x)
-  const adminIconX = await jobLogAccess.locator(
+  const adminIconX = await jobLogAccessToggle.locator(
     '[data-slot="job-log-access-icon"]'
   ).evaluate((element) => element.getBoundingClientRect().x)
   expect(adminThumbX).toBeGreaterThan(adminIconX)
@@ -519,7 +531,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await page.getByRole("button", {
     name: "Restore Job log access for GROMACS MD simulation to its default",
   }).click()
-  await expect(jobLogAccess).toHaveAttribute("aria-checked", "true")
+  await expect(jobLogAccess).toBeChecked()
 
   const toolUpdateRoute = "**/api/v1/admin/modal/tools/gromacs"
   await page.route(toolUpdateRoute, async (route) => {

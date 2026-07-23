@@ -321,6 +321,7 @@ function JobLogAccessSetting({
   toolName: string
   value: boolean
 }) {
+  const inputId = useId()
   const canRestore = setting.source === "database" || value !== setting.value
   const restoreDescription = `Restore Job log access for ${toolName} to its default`
   const stateLabel = value ? "Job owners" : "Admins only"
@@ -329,18 +330,32 @@ function JobLogAccessSetting({
     <div className="mx-auto inline-flex items-center gap-1.5">
       <Tooltip.Root>
         <Tooltip.Trigger
-          aria-checked={value}
-          aria-label={`Allow Job owners to view logs for ${toolName}`}
           className={cn(
-            "relative h-6 w-12 shrink-0 rounded-full text-xs transition-all outline-none hover:brightness-90 active:scale-[0.97] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100",
-            value ? "bg-neutral-300 text-neutral-700" : "bg-black text-white"
+            "relative h-6 w-12 shrink-0 rounded-full text-xs transition-all outline-none hover:brightness-90 active:scale-[0.97] motion-reduce:active:scale-100",
+            pending ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+            value ? "text-neutral-700" : "text-white"
           )}
           closeOnClick={false}
-          disabled={pending}
-          onClick={() => onChange(!value)}
-          role="switch"
-          type="button"
+          data-slot="job-log-access-toggle"
+          render={<label htmlFor={inputId} />}
         >
+          <input
+            aria-label={`Allow Job owners to view logs for ${toolName}`}
+            checked={value}
+            className="peer sr-only"
+            disabled={pending}
+            id={inputId}
+            onChange={(event) => onChange(event.target.checked)}
+            type="checkbox"
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              "absolute inset-0 rounded-full transition-colors peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-focus-visible:ring-offset-2",
+              value ? "bg-neutral-300" : "bg-black"
+            )}
+            data-slot="job-log-access-track"
+          />
           <span
             aria-hidden="true"
             className={cn(
