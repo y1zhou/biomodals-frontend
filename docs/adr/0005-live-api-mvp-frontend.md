@@ -170,6 +170,10 @@ compact summary sits beside the form on wider screens. It contains:
 
 Simulation times above `100` nanoseconds show a non-blocking long-runtime
 notice without inventing an ETA, queue position, or compute cost.
+The simulation-time number field accepts wheel stepping only while it has
+focus and the pointer remains over it. In that case the wheel is reserved for
+the number step and does not move the page; otherwise the wheel scrolls the
+page without changing the value.
 
 The web interface and API accept exactly one `.pdb` Input up to `10 MiB`. The
 frontend validates the extension and size before Upload, while the API enforces
@@ -345,7 +349,8 @@ stale because the API does not provide a heartbeat contract.
 The rows are Prepare simulation (`prepare_tpr_cpu|gpu`), Analyze NVT
 (`collect_traj_stats`), Analyze NPT (`collect_traj_stats`), Run production
 (`production_run_cpu|gpu`), Analyze production (`collect_traj_stats`), and
-Prepare result (local service work, with no Running Function). The interface
+Prepare result (local service work, whose Running Function is shown as `N/A`).
+The interface
 does not split preparation, minimization, NVT, or NPT execution out of the
 Prepare simulation row because they occur inside one deployed Function. It
 also does not expose nested App implementation calls as API stages.
@@ -427,8 +432,12 @@ choices, and created and updated times use local calendar dates. It shows the
 display name, catalog-derived Tool name, state, creation time, and last update;
 the Job name is a real link to its Tool-scoped detail route. Narrow layouts
 preserve every column through horizontal scrolling and retain table semantics.
-Each column header keeps sorting directly available and opens its native filter
-control from a filter icon, avoiding a permanently expanded second header row.
+Each column header keeps sorting directly available and opens a compact
+field-specific filter control from a filter icon, avoiding a permanently
+expanded second header row. Date filters use a rounded in-app calendar so their
+panel has the same visual treatment across supported browsers. Selecting the
+month-and-year heading reveals a direct year field and all 12 months for fast
+jumps across long date ranges.
 
 Its primary creation action is the cross-Tool `New job` link to the Tool
 Catalog. Empty-state copy says `Start a new job`; neither action assumes that

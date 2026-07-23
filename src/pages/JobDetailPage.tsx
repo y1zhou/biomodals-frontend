@@ -497,14 +497,12 @@ export default function JobDetailPage() {
                               {statusLabel}
                             </td>
                             <td className="px-6 py-4">
-                              {stage.functionName ? (
+                              {stage.code === "prepare_result" ? (
+                                <span className="text-muted-foreground">N/A</span>
+                              ) : stage.functionName ? (
                                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
                                   {stage.functionName}
                                 </code>
-                              ) : stage.code === "prepare_result" && stage.startedAt ? (
-                                <span className="text-muted-foreground">
-                                  Not applicable (API service)
-                                </span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}

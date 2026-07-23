@@ -3,9 +3,57 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
+  if (typeof ref === "function") {
+    ref(value)
+  } else if (ref) {
+    ref.current = value
+  }
+}
+
+function Input({ className, ref, type, ...props }: React.ComponentProps<"input">) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const setInputRef = React.useCallback(
+    (input: HTMLInputElement | null) => {
+      inputRef.current = input
+      assignRef(ref, input)
+    },
+    [ref]
+  )
+
+  React.useEffect(() => {
+    const input = inputRef.current
+    if (type !== "number" || !input) return
+
+    const stepFocusedInput = (event: WheelEvent) => {
+      if (
+        event.deltaY === 0 ||
+        input.ownerDocument.activeElement !== input ||
+        input.disabled ||
+        input.readOnly
+      ) {
+        return
+      }
+      event.preventDefault()
+      const previousValue = input.value
+      try {
+        if (event.deltaY < 0) input.stepUp()
+        else input.stepDown()
+      } catch {
+        return
+      }
+      if (input.value !== previousValue) {
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+    }
+
+    input.addEventListener("wheel", stepFocusedInput, { passive: false })
+    return () => input.removeEventListener("wheel", stepFocusedInput)
+  }, [type])
+
   return (
     <InputPrimitive
+      ref={setInputRef}
       type={type}
       data-slot="input"
       className={cn(

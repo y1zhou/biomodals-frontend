@@ -20,6 +20,7 @@ import { useExpireSession } from "@/auth-state"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { DatePickerField } from "@/components/ui/date-picker-field"
 import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select-field"
 import {
@@ -378,10 +379,9 @@ export default function JobsPage() {
                   onSort={updateSort}
                   sort={sort}
                 >
-                  <Input
-                    aria-label="Filter jobs by creation date"
-                    onChange={(event) => updateFilter("created", event.target.value)}
-                    type="date"
+                  <DatePickerField
+                    aria-label="Choose creation date"
+                    onValueChange={(value) => updateFilter("created", value)}
                     value={filters.created}
                   />
                 </SortableHeader>
@@ -393,10 +393,9 @@ export default function JobsPage() {
                   onSort={updateSort}
                   sort={sort}
                 >
-                  <Input
-                    aria-label="Filter jobs by update date"
-                    onChange={(event) => updateFilter("updated", event.target.value)}
-                    type="date"
+                  <DatePickerField
+                    aria-label="Choose update date"
+                    onValueChange={(value) => updateFilter("updated", value)}
                     value={filters.updated}
                   />
                 </SortableHeader>
