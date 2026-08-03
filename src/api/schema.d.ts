@@ -947,7 +947,7 @@ export interface components {
         };
         /**
          * JobState
-         * @description Durable provider-neutral job states.
+         * @description Browser-facing state projected from execution and result delivery.
          * @enum {string}
          */
         readonly JobState: "queued" | "running" | "finalizing" | "cancel_requested" | "state_unknown" | "blocked" | "succeeded" | "partial" | "failed" | "cancelled";
@@ -956,7 +956,7 @@ export interface components {
          * @description Safe reason that remote execution can no longer be confirmed.
          * @enum {string}
          */
-        readonly JobStateUnknownReason: "submission_outcome_unknown" | "cancellation_outcome_unknown";
+        readonly JobStateUnknownReason: "submission_outcome_unknown" | "provider_outcome_unknown" | "cancellation_outcome_unknown";
         /**
          * JobView
          * @description Provider-neutral job details returned to a submitter.
