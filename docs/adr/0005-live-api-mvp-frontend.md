@@ -327,12 +327,15 @@ After 15 minutes the status panel shows "Cancellation is taking longer than
 expected" without changing the status or claiming that remote execution has
 stopped. A fully published Result still wins a Cancellation race.
 
-If submission may have reached Modal without a durably recorded call identity,
-or Cancellation status expires without a recoverable final Result, the backend
-returns `state_unknown`. The status panel explains that Administrator review is
-required, shows `state_unknown_at`, and notes that the Job continues consuming
-an Active Job slot. It has no spinner or owner action. The latest known active
-Stages remain visible without invented outcomes.
+If Submission, an attached provider call, or Cancellation has an inconclusive
+outcome, the backend returns `state_unknown`. The fixed reason is
+`submission_outcome_unknown`, `provider_outcome_unknown`, or
+`cancellation_outcome_unknown`.
+
+The status panel explains that Administrator review is required, shows
+`state_unknown_at`, and notes that the Job continues consuming an Active Job
+slot. It has no spinner or owner action. The latest known active Stages remain
+visible without invented outcomes.
 
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.

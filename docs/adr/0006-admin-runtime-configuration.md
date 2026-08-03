@@ -111,11 +111,15 @@ another User's Jobs.
 
 A separate `Jobs with unknown remote status` table is the narrow operational
 exception. It exposes only Job ID, workload display name, Job display name,
-safe run name, fixed ambiguity reason, and `state_unknown_at` so an
-Administrator can locate the remote work in Modal. The Administrator must stop
-remote work in Modal first when necessary. A red `Mark failed` action requires
-confirmation, records terminal `failed/compute_failed`, and releases Active Job
-Limits; it does not contact Modal and cannot be undone from the Admin panel.
+safe run name, `state_unknown_at`, and one fixed ambiguity reason:
+`submission_outcome_unknown`, `provider_outcome_unknown`, or
+`cancellation_outcome_unknown`. This lets an Administrator locate the work in
+Modal without exposing private Job data.
+
+The Administrator must stop remote work in Modal first when necessary. A red
+`Mark failed` action requires confirmation, records terminal
+`failed/compute_failed`, and releases Active Job Limits. It does not contact
+Modal and cannot be undone from the Admin panel.
 
 ## Storage administration
 
@@ -228,9 +232,9 @@ The Global Active Job Limit counts Active Jobs across all Users and Tools.
 State-unknown Jobs consume both limits until Administrator resolution; blocked
 Jobs consume neither limit. Admission reads the User limit and database-backed
 Runtime Settings, checks User, Tool, and Global counts, and writes the Job
-snapshot within the same SQLite write transaction. Reusing an idempotency key still returns the
-original Job after rechecking that the User remains enabled but before applying
-current limits.
+snapshot within the same SQLite write transaction. Reusing an idempotency key
+still returns the original Job after rechecking that the User remains enabled
+but before applying current limits.
 
 These policies reject excess Submissions with
 `409 active_job_limit_reached`. They are admission controls, not Capacity

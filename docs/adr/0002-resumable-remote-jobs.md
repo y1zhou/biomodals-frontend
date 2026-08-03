@@ -60,18 +60,21 @@ An owner-visible blocked Job supplies generic recovery copy, `blocked_at`, and
 to terminal failed Jobs. Raw provider details and Blocking Categories are not
 part of owner-visible Job detail.
 
-`state_unknown` means remote work may still exist but BioModals no longer has a
-durable Function Call identity or status sufficient for safe automatic
-reconciliation. It is entered immediately when a direct submission outcome is
-explicitly ambiguous, after an interrupted submission lease expires, or when
-Cancellation status expires and no verified final Result can be recovered. The
-backend never resubmits that operation automatically.
+`state_unknown` means remote work may still exist but BioModals cannot prove
+whether Submission, an attached provider call, or Cancellation reached a
+terminal outcome. The backend never submits replacement work automatically.
+
+The Administrator view exposes exactly one fixed reason:
+`submission_outcome_unknown`, `provider_outcome_unknown`, or
+`cancellation_outcome_unknown`. It never exposes a raw Modal exception or call
+identifier.
 
 A state-unknown Job consumes every applicable Active Job Limit and is excluded
 from interval polling and backend reconciliation. Job detail labels it
-`Status unknown`, exposes `state_unknown_at`, leaves manual Refresh and focus refetch
-available, and offers no Cancel, Download, or Start Again action. The latest
-recorded Stage remains visible without a spinner or invented terminal outcome.
+`Status unknown`, exposes `state_unknown_at`, leaves manual Refresh and focus
+refetch available, and offers no Cancel, Download, or Start Again action. The
+latest recorded Stage remains visible without a spinner or invented terminal
+outcome.
 An Administrator must inspect Modal, stop remote work there when necessary, and
 then use the Admin-only `Mark failed` action. That action does not contact Modal;
 it records safe terminal `failed/compute_failed` and releases capacity.

@@ -89,6 +89,11 @@ _Avoid_: Failed Job, stalled Job, queued Job
 A Job for which remote work may still exist but BioModals cannot safely confirm
 or reconcile it. It consumes Active Job Limits until an Administrator checks
 Modal and marks it failed. The UI label is Status unknown.
+
+The Administrator view identifies whether uncertainty came from Submission,
+an attached provider call, or Cancellation. The fixed reason codes are
+`submission_outcome_unknown`, `provider_outcome_unknown`, and
+`cancellation_outcome_unknown`.
 _Avoid_: Blocked Job, stalled Job, provider-unknown Job
 
 **Blocking Category**:

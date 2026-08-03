@@ -16,13 +16,15 @@ bun dev
 
 The Vite development server keeps its default port `5173` and listens on
 `0.0.0.0` so the MVP can be opened from another machine on the development
-network. `BIOMODALS_PUBLIC_URL` sets the
-allowed reverse-proxy hostname and the Origin forwarded to FastAPI;
-`BIOMODALS_API_PROXY_TARGET` sets the server-only API upstream, which defaults
-to `http://127.0.0.1:4144`. Vite proxies
-`/api/*`, `/docs`, `/redoc`, and `/openapi.json`; do not expose this development
-server to an untrusted network. Use the same `BIOMODALS_PUBLIC_URL` in the
-backend's configured `.env` file.
+network.
+
+`BIOMODALS_PUBLIC_URL` sets the allowed reverse-proxy hostname and the Origin
+forwarded to FastAPI. `BIOMODALS_API_PROXY_TARGET` sets the server-only API
+upstream, which defaults to `http://127.0.0.1:4144`.
+
+Vite proxies `/api/*`, `/docs`, `/redoc`, and `/openapi.json`. Do not expose
+this development server to an untrusted network. Use the same public URL in
+the backend's configured `.env` file.
 
 ## Production deployment
 
@@ -38,7 +40,9 @@ bun run build
 
 Before publishing, run the manually dispatched `Cross-repository checks`
 workflow with the full 40-character frontend and backend candidate commit
-hashes. It verifies the generated OpenAPI types and browser workflow against
+hashes.
+
+The workflow verifies generated OpenAPI types and the browser workflow against
 that immutable pair without contacting Modal.
 
 Publish the contents of `dist/` at `/srv/biomodals.example.com`. We recommend
@@ -60,10 +64,13 @@ biomodals.example.com {
 
 The `route` keeps API proxying ahead of the SPA fallback. Browser requests use
 relative `/api` URLs, so the build contains no production API hostname.
+
 Caddy configuration remains host-owned; this example does not modify the live
-Caddyfile. See the [production checklist](docs/deployment/production.md) and
-the backend's [deployment examples](https://github.com/y1zhou/biomodals/tree/main/deploy)
+Caddyfile. Review the [production checklist](docs/deployment/production.md)
 before publishing a release.
+
+The backend repository contains the corresponding
+[API deployment examples](https://github.com/y1zhou/biomodals/tree/main/deploy).
 
 ## Commands
 
@@ -71,6 +78,7 @@ before publishing a release.
 bun dev          # start Vite
 bun run lint     # run Oxlint
 bun run test     # run Bun unit tests
+bun run test:e2e # run the Playwright browser tests
 bun run build    # typecheck and build dist/
 bun run api:generate # regenerate types from the live local OpenAPI document
 bun run api:check    # fail when generated API types are stale
@@ -79,13 +87,17 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
-The MVP has a searchable typed Tool Catalog and one real Tool, `GROMACS MD
-simulation`. It includes administrator-provisioned account flows, a protected
-multipart Submission with upload progress and idempotency, durable Job detail,
-active-only polling, cancellation, a responsive My Jobs table, and direct
-Result downloads. Administrators can manage Users, admission limits, and live
-non-secret Modal configuration through protected Admin routes. API types in
-`src/api/schema.d.ts` are generated from the live FastAPI OpenAPI document.
+The MVP has one available Tool, `GROMACS MD simulation`, plus a muted
+`AlphaFold3 structure prediction` WIP placeholder. The Catalog is structured
+to add more typed Tools without making every Job a GROMACS simulation.
+
+The implemented path includes administrator-provisioned accounts, protected
+idempotent Submission, durable Job detail, active-only polling, cancellation,
+per-stage Job Logs, My Jobs filtering, and direct Result downloads.
+
+Administrators can manage Users, admission limits, live non-secret Modal
+configuration, unknown remote states, and the local Result cache. API types in
+`src/api/schema.d.ts` come from the live FastAPI OpenAPI document.
 
 To add another Tool, add its metadata to `src/tools.ts` and introduce a
 lazy-loaded internal route module. Keep Tool cards as real links and prefer
@@ -101,6 +113,7 @@ native browser controls for simple interactions such as file selection.
   layout used by engineering skills.
 
 Vite's preview server is for local verification, not production hosting.
+
 Whether `/docs` is exposed in production is a deployment-proxy decision
 outside this repository.
 `BIOMODALS_API_PROXY_TARGET` only configures Vite's local development proxy.
