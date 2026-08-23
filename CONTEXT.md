@@ -60,6 +60,13 @@ _Avoid_: Request, run
 The transfer of Input for a Submission before its Job is created.
 _Avoid_: Job Progress
 
+**Retained Validation**:
+An owner-private, short-lived server resource created after AlphaFold3 input
+passes native schema and Tool validation. Its identifier lets the confirmation
+page submit the exact bytes the server already validated without placing the
+document in `service.sqlite3` or uploading it twice.
+_Avoid_: Job, draft, database input record
+
 **Job**:
 A durable, owner-scoped record of one remote computation. It can outlive the
 browser session that created it and is successful only when its Result is ready.
@@ -88,12 +95,11 @@ _Avoid_: Failed Job, stalled Job, queued Job
 **State-unknown Job**:
 A Job for which remote work may still exist but BioModals cannot safely confirm
 or reconcile it. It consumes Active Job Limits until an Administrator checks
-Modal and marks it failed. The UI label is Status unknown.
+Modal and returns it to remote reconciliation. The UI label is Status unknown.
 
-The Administrator view identifies whether uncertainty came from Submission,
-an attached provider call, or Cancellation. The fixed reason codes are
-`submission_outcome_unknown`, `provider_outcome_unknown`, and
-`cancellation_outcome_unknown`.
+The Administrator view identifies whether uncertainty came from an ambiguous
+Submission or an unavailable exact deployment. The fixed reason codes are
+`submission_outcome_unknown` and `deployment_unavailable`.
 _Avoid_: Blocked Job, stalled Job, provider-unknown Job
 
 **Blocking Category**:
@@ -114,16 +120,16 @@ _Avoid_: Job Status, Modal call
 
 **Active Job Stages**:
 The complete set of started Job Stages whose outcomes are not yet known. They
-may overlap and finish in a different order from their display rows. The
-singular API `stage` field is only a compatibility summary.
+may overlap and finish in a different order from their display rows. The API
+returns all semantic stages in `JobView.stages`.
 _Avoid_: Current Stage, Modal call graph
 
 **Stage History**:
-The ordered started and finished times plus terminal outcomes that the backend
-retained while a Job moved through its workload-specific stages. Active,
-state-unknown, and blocked stages have no finish time or outcome. Concurrent
-entries may overlap. It is not a Modal call graph, provider log, or source of
-raw provider identifiers.
+The ordered started and finished times plus terminal outcomes projected from
+the Tool coordinator into workload-specific stages. Active, state-unknown, and
+blocked stages have no finish time or outcome. Concurrent entries may overlap.
+It is not a Modal call graph, provider log, or source of raw provider
+identifiers.
 _Avoid_: Job Status, audit log, Modal call graph
 
 **Job Logs**:
@@ -131,9 +137,8 @@ Provider output for one started remote Job Stage, available to Administrators
 and, when the Tool policy permits it, the authenticated Job owner. Active Stage
 output is streamed; terminal Stage output is fetched as retained history. Job
 Logs do not determine Job Status, Progress, Stage History, Cancellation, or
-Result validity, and the browser never receives the provider call identifier
-used to filter them. The backend also redacts that exact identifier if it
-appears in provider output.
+Result validity. The browser receives only an opaque log target selector, not
+the provider Function Call identifier used by the backend.
 _Avoid_: Job History, Stage History, audit log, Progress
 
 **Stage Outcome**:

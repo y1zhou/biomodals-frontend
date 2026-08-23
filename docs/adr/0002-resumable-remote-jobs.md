@@ -1,5 +1,11 @@
 # Model remote computation as resumable Jobs
 
+> Superseded for execution ownership, persistence, lifecycle projection, and
+> API fields by backend ADR 0007 and the backend API Tool service spec. The
+> deployed Tool coordinator is now the sole execution authority; the service
+> retains only a lean Job locator and bounded `JobView.stages` projection. This
+> document remains as history for the original frontend Job model.
+
 Remote computations can run for hours, so a Job is durable backend state rather
 than the lifetime of a browser request. A User can leave and later recover Jobs
 from a global My Jobs page or a stable Tool-scoped route at
@@ -88,16 +94,13 @@ not infer that the Job is stale, stalled, or failed. A long-running deployed
 Function may legitimately leave `updated_at` unchanged for hours, and the API
 does not provide a heartbeat contract.
 
-`JobView.active_stages` contains every workload-specific stage whose outcome is
-not yet known. For GROMACS each entry contains a stable stage code and, when a
-deployed Function is associated with that stage, its safe Function name. The
-singular `JobView.stage` remains a compatibility summary. `JobView.stage_history`
-retains the ordered started stages. Each entry has `started_at`, nullable
-`ended_at`, and a nullable outcome of `completed`, `failed`, or `cancelled`.
-Active, state-unknown, and blocked stages have no end or outcome. The detail
-page merges these entries into the fixed display order but never invents
-timestamps or outcomes. Modal call IDs, App names, Environments, and storage
-paths remain private.
+`JobView.stages` contains the ordered workload-specific semantic stages. Each
+entry has a stable code and label, optional safe active Function names, bounded
+Task counts, `started_at`, nullable `ended_at`, and a nullable outcome of
+`completed`, `failed`, or `cancelled`. Active, state-unknown, and blocked stages
+have no end or outcome. The detail page renders this projection without
+inventing timestamps or outcomes. Modal call IDs, App names, Environments, and
+storage paths remain private.
 
 The fixed GROMACS display order is `prepare_simulation`, `analyze_nvt`,
 `analyze_npt`, `run_production`, `analyze_production`, and `prepare_result`.

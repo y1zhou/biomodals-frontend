@@ -4,6 +4,11 @@ status: accepted
 
 # Add administrator-managed runtime configuration
 
+> Backend ADR 0007 and the backend API Tool service spec supersede the Job
+> execution-state and unknown-state action details in this ADR. The current
+> action returns a reviewed Job to remote reconciliation; it does not mark the
+> Job failed locally. Runtime setting and storage UI decisions remain current.
+
 BioModals adds an Administrator role and a protected Admin interface. An
 Administrator is an ordinary User with additional authorization; the backend,
 not the visibility of frontend navigation, enforces that authorization. The

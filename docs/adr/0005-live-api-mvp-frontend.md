@@ -4,6 +4,12 @@ status: accepted
 
 # Build the MVP frontend against the live API
 
+> The execution-ownership, Job-shape, unknown-state, and provider-log sections
+> below record the original GROMACS MVP. Backend ADR 0007,
+> the backend API Tool service spec, and the generated OpenAPI document supersede
+> those details. The Tool catalog, account, routing, and visual interaction
+> decisions remain current unless updated explicitly below.
+
 BioModals will build its first end-to-end remote Tool against the live FastAPI
 OpenAPI document. That document is the API source of truth, while the glossary
 and owning ADRs record the product and architecture decisions that shape it.
@@ -14,9 +20,9 @@ its backend contract tests, and the generated TypeScript contract agree.
 
 ## Tool and route structure
 
-The typed frontend Tool Catalog remains public and keeps its search interface,
-even though the MVP launches with one real Tool. The three placeholder Tools
-and all `Starter`, `Example`, and `Example route` labels are removed.
+The typed frontend Tool Catalog remains public and keeps its search interface.
+The three generic placeholder Tools and all `Starter`, `Example`, and `Example
+route` labels are removed.
 
 The first Tool has this catalog identity:
 
@@ -24,9 +30,10 @@ The first Tool has this catalog identity:
 - Slug and API workload: `gromacs`
 - Tags: `PDB`, `Molecular dynamics`, and `Protein structure`
 
-The Catalog also presents `AlphaFold3 structure prediction` as a muted `WIP`
-placeholder with `Protein structure` and `Structure prediction` tags. It has no
-route or Submission action until the backend registers that workload.
+The Catalog also presents the available `AlphaFold3 structure prediction` Tool
+with `Protein structure` and `Structure prediction` tags. It supports a guided
+protein, DNA, and RNA builder and native expert JSON through one retained
+server-validation and confirmation flow.
 
 The public Tool overview explains its PDB Input, simulation options,
 downloadable Result, and durable remote execution before presenting the
@@ -43,6 +50,9 @@ Routes have stable, separate purposes:
 - `/tools/gromacs` is the public Tool overview.
 - `/tools/gromacs/new` is the protected Submission form.
 - `/tools/gromacs/jobs/:jobId` is the protected Job detail.
+- `/tools/alphafold3` is the public AlphaFold3 overview.
+- `/tools/alphafold3/new` is the protected AlphaFold3 builder and confirmation.
+- `/tools/alphafold3/jobs/:jobId` uses the shared protected Job detail.
 - `/jobs` is the protected cross-Tool Job History.
 - `/login` and `/set-password` own authentication entry points.
 

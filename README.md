@@ -87,17 +87,21 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
-The MVP has one available Tool, `GROMACS MD simulation`, plus a muted
-`AlphaFold3 structure prediction` WIP placeholder. The Catalog is structured
-to add more typed Tools without making every Job a GROMACS simulation.
+The MVP has two available Tools: `GROMACS MD simulation` and `AlphaFold3
+structure prediction`. AlphaFold3 accepts a guided protein, DNA, and RNA
+polymer builder or a native expert JSON document. Both paths validate on the
+server and present the same confirmation view before creating a Job.
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,
-per-stage Job Logs, My Jobs filtering, and direct Result downloads.
+per-stage Job Logs, My Jobs filtering, and direct Result downloads. AlphaFold3
+drafts remain in the browser while validated documents are retained briefly by
+the backend and never stored in the service database.
 
-Administrators can manage Users, admission limits, live non-secret Modal
-configuration, unknown remote states, and the local Result cache. API types in
-`src/api/schema.d.ts` come from the live FastAPI OpenAPI document.
+Administrators can manage Users, admission and provider-container limits, live
+non-secret Modal configuration, unknown remote states, the local Result cache,
+and optional Modal billing reports. API types in `src/api/schema.d.ts` come
+from the live FastAPI OpenAPI document.
 
 To add another Tool, add its metadata to `src/tools.ts` and introduce a
 lazy-loaded internal route module. Keep Tool cards as real links and prefer
