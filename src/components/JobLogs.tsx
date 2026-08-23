@@ -98,14 +98,14 @@ function timestampMilliseconds(value: string | null) {
 
 async function fetchHistoricalPage(
   jobId: string,
-  stageCode: string,
+  targetId: string,
   window: JobLogWindow,
   signal: AbortSignal
 ): Promise<HistoricalLogPage> {
   let text = ""
   await streamJobLogs(
     jobId,
-    stageCode,
+    targetId,
     signal,
     (chunk) => {
       text += chunk
@@ -195,7 +195,9 @@ function StageLogViewer({
     scrollTop: number
   } | null>(null)
   const lowerBound = useMemo(
-    () => Date.parse(target.started_at) - LOG_BOUNDARY_PADDING_MILLISECONDS,
+    () => target.started_at
+      ? Date.parse(target.started_at) - LOG_BOUNDARY_PADDING_MILLISECONDS
+      : Date.now(),
     [target.started_at]
   )
   const terminalUpperBound = useMemo(
@@ -218,13 +220,14 @@ function StageLogViewer({
       "logs",
       stageCode,
       "history",
+      target.target_id,
       target.mode,
       target.started_at,
       target.ended_at,
       liveHistoryUntil,
     ],
     queryFn: ({ pageParam, signal }) =>
-      fetchHistoricalPage(jobId, stageCode, pageParam, signal),
+      fetchHistoricalPage(jobId, target.target_id, pageParam, signal),
     initialPageParam: initialPage,
     getNextPageParam(lastPage) {
       const nextUntil = Date.parse(lastPage.since)
@@ -290,7 +293,7 @@ function StageLogViewer({
     setLiveBuffer(streamed)
     setLiveError(null)
     setLiveState("connecting")
-    void streamJobLogs(jobId, stageCode, controller.signal, (chunk) => {
+    void streamJobLogs(jobId, target.target_id, controller.signal, (chunk) => {
       streamed = appendLogChunk(streamed, chunk, retainAllLive.current)
       setLiveState("streaming")
       setLiveBuffer(streamed)
@@ -304,7 +307,7 @@ function StageLogViewer({
         setLiveState("error")
       })
     return () => controller.abort()
-  }, [jobId, stageCode, target.mode])
+  }, [jobId, target.mode, target.target_id])
 
   useLayoutEffect(() => {
     const element = output.current
@@ -390,7 +393,7 @@ function StageLogViewer({
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {target.function_name}
-            {target.state === "state_unknown" ? " · status unknown" : ""}
+            {target.status === "state_unknown" ? " · status unknown" : ""}
           </p>
         </div>
         <div className="ml-auto flex gap-2">
@@ -534,6 +537,7 @@ export default function StageLogs({
   stageLabel,
   toolSlug,
 }: StageLogsProps) {
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
   const targetsQuery = useQuery({
     queryKey: ["jobs", jobId, "log-targets"],
     queryFn: ({ signal }) => inspectJobLogTargets(jobId, signal),
@@ -546,9 +550,15 @@ export default function StageLogs({
     },
     refetchIntervalInBackground: false,
   })
-  const targetCandidate = targetsQuery.data?.targets.find(
-    (candidate) => candidate.stage_code === stageCode
-  )
+  const candidates = (targetsQuery.data?.targets ?? [])
+    .filter((candidate) => candidate.stage_code === stageCode)
+    .toSorted((left, right) => {
+      if (left.mode !== right.mode) return left.mode === "live" ? -1 : 1
+      return Date.parse(right.started_at ?? "") - Date.parse(left.started_at ?? "")
+    })
+  const targetCandidate = candidates.find(
+    (candidate) => candidate.target_id === selectedTargetId
+  ) ?? candidates[0]
   const awaitingFreshTarget = !targetsQuery.isError &&
     !targetsQuery.isFetchedAfterMount
   const target = awaitingFreshTarget ? undefined : targetCandidate
@@ -574,12 +584,33 @@ export default function StageLogs({
           Logs are not available for this stage. Modal may no longer retain this Function Call.
         </p>
       ) : (
-        <StageLogViewer
-          jobId={jobId}
-          stageCode={stageCode}
-          target={target}
-          toolSlug={toolSlug}
-        />
+        <>
+          {candidates.length > 1 ? (
+            <label className="mb-4 block text-sm font-medium">
+              Function call
+              <select
+                className="mt-1 block w-full rounded-lg border bg-background px-3 py-2 font-normal"
+                onChange={(event) => setSelectedTargetId(event.target.value)}
+                value={target.target_id}
+              >
+                {candidates.map((candidate) => (
+                  <option key={candidate.target_id} value={candidate.target_id}>
+                    {candidate.function_name} · {candidate.status}
+                    {candidate.started_at
+                      ? ` · ${new Date(candidate.started_at).toLocaleString()}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <StageLogViewer
+            jobId={jobId}
+            stageCode={stageCode}
+            target={target}
+            toolSlug={toolSlug}
+          />
+        </>
       )}
     </section>
   )

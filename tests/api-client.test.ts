@@ -62,9 +62,10 @@ describe("authorized Job logs", () => {
         job_id: "job/one",
         targets: [
           {
+            target_id: "11111111-1111-4111-8111-111111111111",
             stage_code: "run_production",
             function_name: "production_run_gpu",
-            state: "running",
+            status: "running",
             mode: "live",
             started_at: "2026-07-22T00:00:00Z",
             ended_at: null,
@@ -75,7 +76,7 @@ describe("authorized Job logs", () => {
 
     const result = await inspectJobLogTargets("job/one")
 
-    expect(requested).toBe("/api/v1/jobs/job%2Fone/log-targets")
+    expect(requested).toBe("/api/v1/jobs/job%2Fone/log-targets?limit=100")
     expect(result.targets?.[0]?.stage_code).toBe("run_production")
     expect(result.targets?.[0]?.mode).toBe("live")
     expect(result).not.toHaveProperty("modal_call_id")
@@ -83,7 +84,9 @@ describe("authorized Job logs", () => {
 
   test("decodes a streamed response and passes the abort signal through", async () => {
     const encoder = new TextEncoder()
-    const encoded = encoder.encode("step α\n")
+    const encoded = encoder.encode(
+      '{"timestamp":"2026-07-22T00:00:00Z","source":"stdout","message":"step α\\n"}\n'
+    )
     let requested = ""
     let requestSignal: AbortSignal | null = null
     globalThis.fetch = (async (input, init) => {
@@ -97,7 +100,7 @@ describe("authorized Job logs", () => {
             controller.close()
           },
         }),
-        { headers: { "Content-Type": "text/plain" } }
+        { headers: { "Content-Type": "application/x-ndjson" } }
       )
     }) as typeof fetch
     const controller = new AbortController()
@@ -105,16 +108,16 @@ describe("authorized Job logs", () => {
 
     await streamJobLogs(
       "job/one",
-      "analyze nvt",
+      "11111111-1111-4111-8111-111111111111",
       controller.signal,
       (chunk) => chunks.push(chunk)
     )
 
     expect(requested).toBe(
-      "/api/v1/jobs/job%2Fone/logs?stage=analyze+nvt"
+      "/api/v1/jobs/job%2Fone/logs?target=11111111-1111-4111-8111-111111111111"
     )
     expect(requestSignal).toBe(controller.signal)
-    expect(chunks.join("")).toBe("step α\n")
+    expect(chunks.join("")).toBe("2026-07-22T00:00:00Z step α\n")
   })
 
   test("reports a provider stream that fails after it starts", async () => {
@@ -125,7 +128,7 @@ describe("authorized Job logs", () => {
             controller.error(new Error("Modal log connection failed"))
           },
         }),
-        { headers: { "Content-Type": "text/plain" } }
+        { headers: { "Content-Type": "application/x-ndjson" } }
       )) as typeof fetch
 
     await expect(
@@ -142,15 +145,18 @@ describe("authorized Job logs", () => {
     let requested = ""
     globalThis.fetch = (async (input) => {
       requested = String(input)
-      return new Response("windowed output\n", {
-        headers: { "Content-Type": "text/plain" },
-      })
+      return new Response(
+        '{"timestamp":"2026-07-22T00:01:00Z","source":"stdout","message":"windowed output\\n"}\n',
+        {
+          headers: { "Content-Type": "application/x-ndjson" },
+        }
+      )
     }) as typeof fetch
     const chunks: string[] = []
 
     await streamJobLogs(
       "job/one",
-      "prepare simulation",
+      "22222222-2222-4222-8222-222222222222",
       new AbortController().signal,
       (chunk) => chunks.push(chunk),
       {
@@ -160,8 +166,8 @@ describe("authorized Job logs", () => {
     )
 
     expect(requested).toBe(
-      "/api/v1/jobs/job%2Fone/logs?stage=prepare+simulation&since=2026-07-22T00%3A00%3A00.000Z&until=2026-07-22T00%3A10%3A00.000Z"
+      "/api/v1/jobs/job%2Fone/logs?target=22222222-2222-4222-8222-222222222222&since=2026-07-22T00%3A00%3A00.000Z&until=2026-07-22T00%3A10%3A00.000Z"
     )
-    expect(chunks.join("")).toBe("windowed output\n")
+    expect(chunks.join("")).toBe("2026-07-22T00:01:00Z windowed output\n")
   })
 })

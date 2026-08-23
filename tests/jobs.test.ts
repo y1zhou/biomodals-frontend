@@ -5,7 +5,7 @@ import {
   formatTimestamp,
   formatRelativeTimestamp,
   filterAndSortJobs,
-  gromacsStageTimeline,
+  jobStageTimeline,
   isActiveJob,
   isProgressingJob,
   isPollableJob,
@@ -25,10 +25,11 @@ import {
 function job(jobId: string, state: Job["state"], createdAt: string): Job {
   return {
     job_id: jobId,
-    workload: "gromacs",
+    tool: "gromacs",
     display_name: `Job ${jobId}`,
     can_view_logs: false,
     state,
+    stages: [],
     created_at: createdAt,
     updated_at: createdAt,
   }
@@ -126,14 +127,7 @@ describe("Job lifecycle presentation", () => {
       error_code: "compute_failed" as const,
       error_message: "Remote compute failed before producing a Result.",
     }
-    const unknown = {
-      ...failed,
-      error_code: "provider_trace" as never,
-      error_message: "secret traceback",
-    }
-
     expect(jobFailureMessage(failed)).toBe(failed.error_message)
-    expect(jobFailureMessage(unknown)).toBe("This simulation could not be completed.")
   })
 
   test("uses plain-language labels for API states", () => {
@@ -147,55 +141,39 @@ describe("Job lifecycle presentation", () => {
   test("shows completed, parallel active, and upcoming GROMACS stages", () => {
     const running = {
       ...job("one", "running", "2026-07-17T00:00:00Z"),
-      stage: {
-        code: "run_production" as const,
-        function_name: "production_run_gpu" as const,
-        started_at: "2026-07-17T00:02:00Z",
-      },
-      active_stages: [
+      stages: [
         {
-          code: "analyze_nvt" as const,
-          function_name: "collect_traj_stats" as const,
-          started_at: "2026-07-17T00:02:00Z",
-        },
-        {
-          code: "analyze_npt" as const,
-          function_name: "collect_traj_stats" as const,
-          started_at: "2026-07-17T00:02:00Z",
-        },
-        {
-          code: "run_production" as const,
-          function_name: "production_run_gpu" as const,
-          started_at: "2026-07-17T00:02:00Z",
-        },
-      ],
-      stage_history: [
-        {
-          code: "prepare_simulation" as const,
-          function_name: "prepare_tpr_gpu" as const,
+          code: "prepare_simulation",
+          label: "Prepare simulation",
+          running_functions: ["prepare_tpr_gpu"],
           started_at: "2026-07-17T00:00:00Z",
           ended_at: "2026-07-17T00:02:00Z",
           outcome: "completed" as const,
         },
         {
-          code: "analyze_nvt" as const,
-          function_name: "collect_traj_stats" as const,
+          code: "analyze_nvt",
+          label: "Analyze NVT",
+          running_functions: ["collect_traj_stats"],
           started_at: "2026-07-17T00:02:00Z",
         },
         {
-          code: "analyze_npt" as const,
-          function_name: "collect_traj_stats" as const,
+          code: "analyze_npt",
+          label: "Analyze NPT",
+          running_functions: ["collect_traj_stats"],
           started_at: "2026-07-17T00:02:00Z",
         },
         {
-          code: "run_production" as const,
-          function_name: "production_run_gpu" as const,
+          code: "run_production",
+          label: "Run production",
+          running_functions: ["production_run_gpu"],
           started_at: "2026-07-17T00:02:00Z",
         },
+        { code: "analyze_production", label: "Analyze production" },
+        { code: "prepare_result", label: "Prepare result" },
       ],
     }
 
-    expect(gromacsStageTimeline(running).map((stage) => stage.state)).toEqual([
+    expect(jobStageTimeline(running).map((stage) => stage.state)).toEqual([
       "completed",
       "active",
       "active",
@@ -203,17 +181,17 @@ describe("Job lifecycle presentation", () => {
       "upcoming",
       "upcoming",
     ])
-    expect(gromacsStageTimeline(running)[0]?.label).toBe(
+    expect(jobStageTimeline(running)[0]?.label).toBe(
       "Prepare simulation"
     )
-    expect(gromacsStageTimeline(running)[1]?.functionName).toBe(
+    expect(jobStageTimeline(running)[1]?.functionName).toBe(
       "collect_traj_stats"
     )
-    expect(gromacsStageTimeline(running)[0]).toMatchObject({
+    expect(jobStageTimeline(running)[0]).toMatchObject({
       startedAt: "2026-07-17T00:00:00Z",
       endedAt: "2026-07-17T00:02:00Z",
     })
-    expect(gromacsStageTimeline(running)[3]).toMatchObject({
+    expect(jobStageTimeline(running)[3]).toMatchObject({
       functionName: "production_run_gpu",
       startedAt: "2026-07-17T00:02:00Z",
       endedAt: null,

@@ -41,7 +41,7 @@ import {
   type JobTableSort,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-import { availableTools, gromacsPaths, gromacsTool, toolName } from "@/tools"
+import { availableTools, toolJobPath, toolName } from "@/tools"
 
 function JobRow({
   job: initialJob,
@@ -68,8 +68,8 @@ function JobRow({
   })
   useExpireSession(jobQuery.error)
   const job = latestJob(initialJob, jobQuery.data)
-  const tool = availableTools.find((candidate) => candidate.slug === job.workload)
-  const path = tool?.slug === gromacsTool.slug ? gromacsPaths.job(job.job_id) : "/jobs"
+  const tool = availableTools.find((candidate) => candidate.slug === job.tool)
+  const path = toolJobPath(job.tool, job.job_id)
 
   useEffect(() => {
     if (!jobQuery.data) return
@@ -98,7 +98,7 @@ function JobRow({
         </p>
       </td>
       <td className="px-4 py-4 align-top text-sm text-muted-foreground">
-        {tool?.name ?? job.workload}
+        {tool?.name ?? job.tool}
       </td>
       <td className="px-4 py-4 align-top">
         <JobStatusBadge state={job.state} />

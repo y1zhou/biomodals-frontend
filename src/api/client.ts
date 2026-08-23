@@ -25,6 +25,8 @@ export type UpdateAdminModalToolInput =
   components["schemas"]["UpdateAdminModalToolRequest"]
 export type AdminStorage = components["schemas"]["AdminStorageView"]
 export type AdminCacheCleanup = components["schemas"]["AdminCacheCleanupView"]
+export type AdminCosts = components["schemas"]["AdminCostsView"]
+export type AlphaFold3Validation = components["schemas"]["ValidationView"]
 
 export interface JobLogWindow {
   since: string
@@ -41,6 +43,13 @@ export interface GromacsSubmission {
   pdb: File
   runPdbfixer: boolean
   simulationTimeNs: number
+}
+
+export interface AlphaFold3ValidationSettings {
+  recycle: number
+  sample: number
+  searchMsa: boolean
+  searchProteinTemplates: boolean
 }
 
 export class ApiError extends Error {
@@ -259,20 +268,26 @@ export function inspectAdminModal(signal?: AbortSignal) {
 }
 
 export function inspectJobLogTargets(jobId: string, signal?: AbortSignal) {
-  return requestJson<JobLogTargets>(
-    `/api/v1/jobs/${encodeURIComponent(jobId)}/log-targets`,
-    { signal }
-  )
+  return collectCursorPages<JobLogTarget>(async (cursor) => {
+    const page = await requestJson<JobLogTargets>(
+      cursorPagePath(
+        `/api/v1/jobs/${encodeURIComponent(jobId)}/log-targets`,
+        cursor
+      ),
+      { signal }
+    )
+    return { items: page.targets, nextCursor: page.next_cursor ?? null }
+  }).then((targets) => ({ job_id: jobId, targets, next_cursor: null }))
 }
 
 export async function streamJobLogs(
   jobId: string,
-  stageCode: string,
+  targetId: string,
   signal: AbortSignal,
   onChunk: (chunk: string) => void,
   window?: JobLogWindow
 ) {
-  const parameters = new URLSearchParams({ stage: stageCode })
+  const parameters = new URLSearchParams({ target: targetId })
   if (window) {
     parameters.set("since", window.since)
     parameters.set("until", window.until)
@@ -282,29 +297,41 @@ export async function streamJobLogs(
     {
       signal,
     },
-    "text/plain"
+    "application/x-ndjson"
   )
   if (!response.body) throw new Error("The API returned an empty log stream")
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
+  let pending = ""
+  const emit = (line: string) => {
+    if (!line) return
+    const entry = JSON.parse(line) as {
+      message: string
+      source: string
+      timestamp: string
+    }
+    onChunk(`${entry.timestamp} ${entry.message}`)
+  }
   try {
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
-      const chunk = decoder.decode(value, { stream: true })
-      if (chunk) onChunk(chunk)
+      pending += decoder.decode(value, { stream: true })
+      const lines = pending.split("\n")
+      pending = lines.pop() ?? ""
+      for (const line of lines) emit(line)
     }
-    const finalChunk = decoder.decode()
-    if (finalChunk) onChunk(finalChunk)
+    pending += decoder.decode()
+    if (pending) emit(pending)
   } finally {
     reader.releaseLock()
   }
 }
 
-export function markAdminStateUnknownJobFailed(jobId: string) {
+export function resolveAdminStateUnknownJob(jobId: string) {
   return requestJson<AdminModal>(
-    `/api/v1/admin/modal/state-unknown-jobs/${encodeURIComponent(jobId)}/mark-failed`,
+    `/api/v1/admin/modal/state-unknown-jobs/${encodeURIComponent(jobId)}/resolve`,
     {
       method: "POST",
       headers: { "X-CSRF-Token": csrfToken() },
@@ -324,11 +351,11 @@ export function updateAdminModalEnvironment(input: UpdateAdminModalEnvironmentIn
 }
 
 export function updateAdminModalTool(
-  workload: string,
+  tool: string,
   input: UpdateAdminModalToolInput
 ) {
   return requestJson<AdminModalTool>(
-    `/api/v1/admin/modal/tools/${encodeURIComponent(workload)}`,
+    `/api/v1/admin/modal/tools/${encodeURIComponent(tool)}`,
     {
       method: "PATCH",
       headers: {
@@ -338,6 +365,82 @@ export function updateAdminModalTool(
       body: JSON.stringify(input),
     }
   )
+}
+
+export function validateAlphaFold3(
+  document: Blob,
+  settings: AlphaFold3ValidationSettings,
+  signal?: AbortSignal
+) {
+  const parameters = new URLSearchParams({
+    recycle: String(settings.recycle),
+    sample: String(settings.sample),
+    search_msa: String(settings.searchMsa),
+    search_protein_templates: String(settings.searchProteinTemplates),
+  })
+  return requestJson<AlphaFold3Validation>(
+    `/api/v1/alphafold3/validations?${parameters}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken(),
+      },
+      body: document,
+      signal,
+    }
+  )
+}
+
+export function inspectAlphaFold3Validation(
+  validationId: string,
+  signal?: AbortSignal
+) {
+  return requestJson<AlphaFold3Validation>(
+    `/api/v1/alphafold3/validations/${encodeURIComponent(validationId)}`,
+    { signal }
+  )
+}
+
+export function deleteAlphaFold3Validation(validationId: string) {
+  return requestResponse(
+    `/api/v1/alphafold3/validations/${encodeURIComponent(validationId)}`,
+    {
+      method: "DELETE",
+      headers: { "X-CSRF-Token": csrfToken() },
+    }
+  )
+}
+
+export function alphaFold3DocumentUrl(validationId: string) {
+  return `/api/v1/alphafold3/validations/${encodeURIComponent(validationId)}/document`
+}
+
+export function submitAlphaFold3Job(
+  validationId: string,
+  idempotencyKey: string
+) {
+  return requestJson<Job>("/api/v1/alphafold3/jobs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+      "X-CSRF-Token": csrfToken(),
+    },
+    body: JSON.stringify({ validation_id: validationId }),
+  })
+}
+
+export function inspectAdminCosts(
+  start: string,
+  end: string,
+  refresh = false,
+  signal?: AbortSignal
+) {
+  const parameters = new URLSearchParams({ start, end, refresh: String(refresh) })
+  return requestJson<AdminCosts>(`/api/v1/admin/modal/costs?${parameters}`, {
+    signal,
+  })
 }
 
 export function inspectAdminStorage(signal?: AbortSignal) {

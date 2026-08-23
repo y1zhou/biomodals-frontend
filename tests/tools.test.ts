@@ -28,11 +28,14 @@ describe("filterToolCatalog", () => {
     expect(toolName("future-tool")).toBe("future-tool")
   })
 
-  test("keeps AlphaFold3 visible but unavailable", () => {
+  test("makes AlphaFold3 available", () => {
     expect(
       toolCatalog.find((tool) => tool.slug === "alphafold3")?.status
-    ).toBe("wip")
-    expect(availableTools.map((tool) => tool.slug)).toEqual(["gromacs"])
+    ).toBe("available")
+    expect(availableTools.map((tool) => tool.slug)).toEqual([
+      "gromacs",
+      "alphafold3",
+    ])
   })
 
   test("keeps catalog tags specific to each tool", () => {

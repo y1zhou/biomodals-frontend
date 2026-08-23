@@ -33,8 +33,8 @@ export const alphafold3Tool = {
   description: "Predict biomolecular structures and interactions from molecular inputs.",
   tags: ["Protein structure", "Structure prediction"],
   icon: Dna,
-  status: "wip",
-} satisfies ToolCatalogPlaceholder
+  status: "available",
+} satisfies AvailableTool
 
 export function toolOverviewPath(tool: AvailableTool) {
   return `/tools/${tool.slug}`
@@ -47,6 +47,28 @@ export const gromacsPaths = {
   submission: `${gromacsOverviewPath}/new`,
   jobRoute: `${gromacsOverviewPath}/jobs/:jobId`,
   job: (jobId: string) => `${gromacsOverviewPath}/jobs/${encodeURIComponent(jobId)}`,
+}
+
+const alphafold3OverviewPath = toolOverviewPath(alphafold3Tool)
+
+export const alphafold3Paths = {
+  overview: alphafold3OverviewPath,
+  submission: `${alphafold3OverviewPath}/new`,
+  jobRoute: `${alphafold3OverviewPath}/jobs/:jobId`,
+  job: (jobId: string) =>
+    `${alphafold3OverviewPath}/jobs/${encodeURIComponent(jobId)}`,
+}
+
+export function toolJobPath(tool: string, jobId: string) {
+  if (tool === "gromacs") return gromacsPaths.job(jobId)
+  if (tool === "alphafold3") return alphafold3Paths.job(jobId)
+  return "/jobs"
+}
+
+export function toolSubmissionPath(tool: string) {
+  if (tool === "gromacs") return gromacsPaths.submission
+  if (tool === "alphafold3") return alphafold3Paths.submission
+  return "/"
 }
 
 export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool]

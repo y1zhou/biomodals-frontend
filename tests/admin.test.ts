@@ -69,7 +69,7 @@ describe("Admin settings", () => {
 
   test("only submits Modal fields whose values changed", () => {
     const tool = {
-      workload: "gromacs",
+      tool: "gromacs",
       display_name: "GROMACS MD simulation",
       modal_app_name: {
         value: "Gromacs",
@@ -84,6 +84,16 @@ describe("Admin settings", () => {
       active_jobs: 0,
       active_job_limit: {
         value: 2,
+        source: "default" as const,
+        editable: true,
+      },
+      max_active_provider_calls: {
+        value: 40,
+        source: "default" as const,
+        editable: true,
+      },
+      max_active_gpu_provider_calls: {
+        value: 10,
         source: "default" as const,
         editable: true,
       },
@@ -107,26 +117,26 @@ describe("Admin settings", () => {
       },
     }
 
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "3", true)).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "3", "40", "10", true)).toEqual({
       active_job_limit: 3,
     })
-    expect(changedModalToolSettings(tool, "Gromacs Test", "2", "2", true)).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs Test", "2", "2", "40", "10", true)).toEqual({
       modal_app_name: "Gromacs Test",
     })
-    expect(changedModalToolSettings(tool, "Gromacs", "3", "2", true)).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "3", "2", "40", "10", true)).toEqual({
       modal_app_version: 3,
     })
     expect(
       changedModalEnvironmentSettings(environment, "department-a", "10")
     ).toEqual({ modal_environment: "department-a" })
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "", "2", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "0", "2", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "0", true)).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", "40", "10", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "", "2", "40", "10", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "0", "2", "40", "10", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "", "40", "10", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "0", "40", "10", true)).toEqual({
       active_job_limit: 0,
     })
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", false)).toEqual({
+    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", "40", "10", false)).toEqual({
       job_logs_visible_to_owner: false,
     })
     expect(
@@ -197,7 +207,7 @@ describe("Admin settings", () => {
       },
     }
     const tool = {
-      workload: "gromacs",
+      tool: "gromacs",
       display_name: "GROMACS MD simulation",
       modal_app_name: {
         value: "Gromacs",
@@ -212,6 +222,16 @@ describe("Admin settings", () => {
       active_jobs: 0,
       active_job_limit: {
         value: 2,
+        source: "default" as const,
+        editable: true,
+      },
+      max_active_provider_calls: {
+        value: 40,
+        source: "default" as const,
+        editable: true,
+      },
+      max_active_gpu_provider_calls: {
+        value: 10,
         source: "default" as const,
         editable: true,
       },

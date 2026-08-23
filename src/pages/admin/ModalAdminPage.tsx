@@ -39,7 +39,7 @@ import {
   apiErrorCode,
   apiRequestId,
   inspectAdminModal,
-  markAdminStateUnknownJobFailed,
+  resolveAdminStateUnknownJob,
   updateAdminModalEnvironment,
   updateAdminModalTool,
   type AdminModal,
@@ -79,14 +79,14 @@ function errorMessage(error: unknown) {
   return "The Modal configuration request failed."
 }
 
-const stateUnknownReasons: Record<AdminStateUnknownJob["reason"], string> = {
+const stateUnknownReasons: Record<string, string> = {
   submission_outcome_unknown: "Submission could not be confirmed",
   provider_outcome_unknown: "Modal call status could not be confirmed",
   cancellation_outcome_unknown: "Cancellation could not be confirmed",
 }
 
 function stateUnknownReason(reason: AdminStateUnknownJob["reason"]) {
-  return stateUnknownReasons[reason]
+  return stateUnknownReasons[reason] ?? reason.replaceAll("_", " ")
 }
 
 function StateUnknownJobsCard({
@@ -100,7 +100,7 @@ function StateUnknownJobsCard({
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [selected, setSelected] = useState<AdminStateUnknownJob | null>(null)
   const resolution = useMutation({
-    mutationFn: markAdminStateUnknownJobFailed,
+    mutationFn: resolveAdminStateUnknownJob,
     onSuccess(result) {
       queryClient.setQueryData(adminModalKey, result)
       confirmationDialog.current?.close()
@@ -117,7 +117,7 @@ function StateUnknownJobsCard({
         <CardHeader>
           <CardTitle>Jobs with unknown remote status</CardTitle>
           <p className="text-sm leading-6">
-            Check each job in Modal before resolving it. Marking a job failed does not stop remote work; stop it in Modal first if necessary.
+            Check each job in Modal before returning it to reconciliation.
           </p>
         </CardHeader>
         <CardContent className="px-0">
@@ -127,7 +127,6 @@ function StateUnknownJobsCard({
                 <tr>
                   <th className="px-6 py-3 font-medium" scope="col">Job</th>
                   <th className="px-6 py-3 font-medium" scope="col">Tool</th>
-                  <th className="px-6 py-3 font-medium" scope="col">Reason</th>
                   <th className="px-6 py-3 font-medium" scope="col">Since</th>
                   <th className="px-6 py-3 font-medium" scope="col">Action</th>
                 </tr>
@@ -140,15 +139,10 @@ function StateUnknownJobsCard({
                       <span className="mt-1 block break-all font-mono text-[0.7rem] text-amber-950/70">
                         {job.job_id}
                       </span>
-                      {job.run_name ? (
-                        <span className="mt-1 block break-all font-mono text-[0.7rem] text-amber-950/70">
-                          Run: {job.run_name}
-                        </span>
-                      ) : null}
                     </td>
                     <td className="px-6 py-4 align-top">
-                      {tools.find((tool) => tool.workload === job.workload)?.display_name ??
-                        job.workload}
+                      {tools.find((tool) => tool.tool === job.tool)?.display_name ??
+                        job.tool}
                     </td>
                     <td className="px-6 py-4 align-top">
                       {stateUnknownReason(job.reason)}
@@ -167,7 +161,7 @@ function StateUnknownJobsCard({
                         size="sm"
                         variant="destructive"
                       >
-                        Mark failed
+                        Resolve
                       </Button>
                     </td>
                   </tr>
@@ -191,10 +185,10 @@ function StateUnknownJobsCard({
       >
         <div className="p-6">
           <h2 className="font-heading text-xl font-semibold" id="resolve-state-unknown-title">
-            Mark this job failed?
+            Return this job to reconciliation?
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Do this only after checking Modal. This releases the job's active-job slot and cannot be undone from the Admin panel.
+            Do this only after checking the exact deployment in Modal. BioModals will inspect the remote run again.
           </p>
           {selected ? (
             <p className="mt-3 break-all text-sm font-medium">{selected.display_name} · {selected.job_id}</p>
@@ -222,7 +216,7 @@ function StateUnknownJobsCard({
               {resolution.isPending ? (
                 <LoaderCircle aria-hidden="true" className="animate-spin" />
               ) : null}
-              Mark failed
+              Resolve status
             </Button>
           </div>
         </div>
@@ -536,19 +530,26 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const [appName, setAppName] = useState(tool.modal_app_name.value)
   const [appVersion, setAppVersion] = useState(String(tool.modal_app_version.value))
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
+  const [maxContainers, setMaxContainers] = useState(
+    String(tool.max_active_provider_calls.value)
+  )
+  const [maxGpuContainers, setMaxGpuContainers] = useState(
+    String(tool.max_active_gpu_provider_calls.value)
+  )
   const [jobLogsVisibleToOwner, setJobLogsVisibleToOwner] = useState(
     tool.job_logs_visible_to_owner.value
   )
   const [appDirty, setAppDirty] = useState(false)
   const [versionDirty, setVersionDirty] = useState(false)
   const [limitDirty, setLimitDirty] = useState(false)
+  const [capacityDirty, setCapacityDirty] = useState(false)
   const [jobLogAccessDirty, setJobLogAccessDirty] = useState(false)
 
   function mutationOptions() {
     return {
       mutationFn: (input: UpdateAdminModalToolInput) =>
-        updateAdminModalTool(tool.workload, input),
-      scope: { id: `admin-modal-tool-${tool.workload}` },
+        updateAdminModalTool(tool.tool, input),
+      scope: { id: `admin-modal-tool-${tool.tool}` },
       onSuccess(result: AdminModalTool, input: UpdateAdminModalToolInput) {
         queryClient.setQueryData<AdminModal>(adminModalKey, (modal) =>
           modal ? mergeAdminModalTool(modal, result) : modal
@@ -565,6 +566,18 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           setActiveJobLimit(String(result.active_job_limit.value))
           setLimitDirty(false)
         }
+        if (Object.hasOwn(input, "max_active_provider_calls")) {
+          setMaxContainers(String(result.max_active_provider_calls.value))
+        }
+        if (Object.hasOwn(input, "max_active_gpu_provider_calls")) {
+          setMaxGpuContainers(String(result.max_active_gpu_provider_calls.value))
+        }
+        if (
+          Object.hasOwn(input, "max_active_provider_calls") ||
+          Object.hasOwn(input, "max_active_gpu_provider_calls")
+        ) {
+          setCapacityDirty(false)
+        }
         if (Object.hasOwn(input, "job_logs_visible_to_owner")) {
           setJobLogsVisibleToOwner(result.job_logs_visible_to_owner.value)
           setJobLogAccessDirty(false)
@@ -577,11 +590,13 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const appUpdate = useMutation(mutationOptions())
   const versionUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
+  const capacityUpdate = useMutation(mutationOptions())
   const jobLogAccessUpdate = useMutation(mutationOptions())
   const toolUpdates = [
     appUpdate,
     versionUpdate,
     limitUpdate,
+    capacityUpdate,
     jobLogAccessUpdate,
   ]
   const resetMutationErrors = () => {
@@ -592,6 +607,7 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   useExpireSession(appUpdate.error)
   useExpireSession(versionUpdate.error)
   useExpireSession(limitUpdate.error)
+  useExpireSession(capacityUpdate.error)
   useExpireSession(jobLogAccessUpdate.error)
 
   const mutationIncludes = (
@@ -612,6 +628,10 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const jobLogAccessPending = toolUpdates.some((update) =>
     mutationIncludes(update, "job_logs_visible_to_owner")
   )
+  const capacityPending = toolUpdates.some((update) =>
+    mutationIncludes(update, "max_active_provider_calls") ||
+    mutationIncludes(update, "max_active_gpu_provider_calls")
+  )
   const mutationPending = toolUpdates.some((update) => update.isPending)
   const failedMutation = latestModalToolFailure(toolUpdates)
   const mutationError = failedMutation?.error ?? null
@@ -627,6 +647,16 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
     if (!limitDirty) setActiveJobLimit(String(tool.active_job_limit.value))
   }, [limitDirty, tool.active_job_limit.source, tool.active_job_limit.value])
   useEffect(() => {
+    if (!capacityDirty) {
+      setMaxContainers(String(tool.max_active_provider_calls.value))
+      setMaxGpuContainers(String(tool.max_active_gpu_provider_calls.value))
+    }
+  }, [
+    capacityDirty,
+    tool.max_active_gpu_provider_calls.value,
+    tool.max_active_provider_calls.value,
+  ])
+  useEffect(() => {
     if (!jobLogAccessDirty) {
       setJobLogsVisibleToOwner(tool.job_logs_visible_to_owner.value)
     }
@@ -641,11 +671,15 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
     appName,
     appVersion,
     activeJobLimit,
+    maxContainers,
+    maxGpuContainers,
     jobLogsVisibleToOwner
   )
   const normalizedAppName = appName.trim()
   const normalizedVersion = positiveInteger(appVersion)
   const normalizedLimit = nonnegativeInteger(activeJobLimit)
+  const normalizedContainers = positiveInteger(maxContainers)
+  const normalizedGpuContainers = positiveInteger(maxGpuContainers)
   const displayName = tool.display_name
   const hasChanges = Object.keys(changedSettings).length > 0
   const overLimit = tool.active_jobs > tool.active_job_limit.value
@@ -690,6 +724,57 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               </p>
             ) : null}
           </div>
+        </div>
+      </td>
+      <td className="px-2 py-4 text-center align-middle">
+        <div className="mx-auto grid max-w-36 grid-cols-2 gap-2">
+          <RuntimeSettingInput
+            aria-label={`Maximum containers for ${displayName}`}
+            label={`maximum containers for ${displayName}`}
+            min={1}
+            onChange={(value) => {
+              resetMutationErrors()
+              setMaxContainers(value)
+              setCapacityDirty(
+                positiveInteger(value) !== tool.max_active_provider_calls.value ||
+                positiveInteger(maxGpuContainers) !==
+                  tool.max_active_gpu_provider_calls.value
+              )
+            }}
+            onRestoreOverride={() => {
+              resetMutationErrors()
+              capacityUpdate.mutate({ max_active_provider_calls: null })
+            }}
+            pending={capacityPending}
+            setting={tool.max_active_provider_calls}
+            type="number"
+            value={maxContainers}
+          />
+          <RuntimeSettingInput
+            aria-label={`Maximum GPU containers for ${displayName}`}
+            label={`maximum GPU containers for ${displayName}`}
+            min={1}
+            onChange={(value) => {
+              resetMutationErrors()
+              setMaxGpuContainers(value)
+              setCapacityDirty(
+                positiveInteger(maxContainers) !==
+                  tool.max_active_provider_calls.value ||
+                positiveInteger(value) !==
+                  tool.max_active_gpu_provider_calls.value
+              )
+            }}
+            onRestoreOverride={() => {
+              resetMutationErrors()
+              capacityUpdate.mutate({ max_active_gpu_provider_calls: null })
+            }}
+            pending={capacityPending}
+            setting={tool.max_active_gpu_provider_calls}
+            type="number"
+            value={maxGpuContainers}
+          />
+          <span className="text-[0.65rem] text-muted-foreground">Total</span>
+          <span className="text-[0.65rem] text-muted-foreground">GPU</span>
         </div>
       </td>
       <td className="px-3 py-4 text-center align-middle">
@@ -770,6 +855,9 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
             mutationPending ||
             !hasChanges ||
             normalizedLimit === null ||
+            normalizedContainers === null ||
+            normalizedGpuContainers === null ||
+            normalizedGpuContainers > normalizedContainers ||
             (tool.modal_app_version.editable && normalizedVersion === null) ||
             (tool.modal_app_name.editable && !normalizedAppName)
           }
@@ -1073,11 +1161,12 @@ export default function ModalAdminPage() {
           <Tooltip.Provider closeDelay={100} delay={250}>
             <table className="w-[calc(100%_-_1px)] min-w-[56rem] table-fixed border-collapse text-center">
               <colgroup>
-                <col className="w-[21%]" />
-                <col className="w-[22%]" />
                 <col className="w-[18%]" />
-                <col className="w-[17%]" />
+                <col className="w-[19%]" />
                 <col className="w-[16%]" />
+                <col className="w-[17%]" />
+                <col className="w-[13%]" />
+                <col className="w-[11%]" />
                 <col className="w-[6%]" />
               </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1091,6 +1180,13 @@ export default function ModalAdminPage() {
                     scope="col"
                   >
                     Active jobs / active job limit
+                  </th>
+                  <th
+                    className="px-2 py-3 font-medium"
+                    rowSpan={2}
+                    scope="col"
+                  >
+                    Maximum containers
                   </th>
                   <th
                     className="border-b px-2 py-2 font-semibold text-foreground/80"
@@ -1117,7 +1213,7 @@ export default function ModalAdminPage() {
               </thead>
               <tbody>
                 {modal.data.tools.map((tool) => (
-                  <ToolRow key={tool.workload} tool={tool} />
+                  <ToolRow key={tool.tool} tool={tool} />
                 ))}
               </tbody>
             </table>

@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
+  alphafold3Paths,
   filterToolCatalog,
   gromacsPaths,
   toolCatalog,
@@ -23,6 +24,8 @@ import {
 
 const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
+const AlphaFold3OverviewPage = lazy(() => import("@/pages/AlphaFold3OverviewPage"))
+const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3SubmissionPage"))
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
@@ -167,12 +170,21 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route element={<LandingPage />} path="/" />
           <Route element={<GromacsOverviewPage />} path={gromacsPaths.overview} />
+          <Route element={<AlphaFold3OverviewPage />} path={alphafold3Paths.overview} />
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
-            <Route element={<JobDetailPage />} path={gromacsPaths.jobRoute} />
+            <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
+            <Route
+              element={<JobDetailPage tool="gromacs" />}
+              path={gromacsPaths.jobRoute}
+            />
+            <Route
+              element={<JobDetailPage tool="alphafold3" />}
+              path={alphafold3Paths.jobRoute}
+            />
             <Route element={<AdminRoute />}>
               <Route element={<AdminLayout />} path="/admin">
                 <Route element={<Navigate replace to="users" />} index />
