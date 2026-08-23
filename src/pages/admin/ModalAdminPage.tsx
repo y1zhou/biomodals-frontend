@@ -38,10 +38,12 @@ import {
   ApiError,
   apiErrorCode,
   apiRequestId,
+  inspectAdminCosts,
   inspectAdminModal,
   resolveAdminStateUnknownJob,
   updateAdminModalEnvironment,
   updateAdminModalTool,
+  type AdminCosts,
   type AdminModal,
   type AdminModalEnvironment,
   type AdminStateUnknownJob,
@@ -53,6 +55,7 @@ import { useExpireSession } from "@/auth-state"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DatePickerField } from "@/components/ui/date-picker-field"
 import { Input } from "@/components/ui/input"
 import {
   formatTimestamp,
@@ -61,6 +64,142 @@ import {
 } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
+import { toolName } from "@/tools"
+
+type CostInterval = "month" | "7d" | "30d" | "previous" | "custom"
+
+function dateValue(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function costDateRange(interval: Exclude<CostInterval, "custom">, now = new Date()) {
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  if (interval === "month") {
+    return {
+      start: dateValue(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))),
+      end: dateValue(today),
+    }
+  }
+  if (interval === "previous") {
+    return {
+      start: dateValue(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1))),
+      end: dateValue(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0))),
+    }
+  }
+  const start = new Date(today)
+  start.setUTCDate(start.getUTCDate() - (interval === "7d" ? 6 : 29))
+  return { start: dateValue(start), end: dateValue(today) }
+}
+
+function billingBounds(start: string, end: string) {
+  const exclusiveEnd = new Date(`${end}T00:00:00.000Z`)
+  exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1)
+  return {
+    start: `${start}T00:00:00.000Z`,
+    end: exclusiveEnd.toISOString(),
+  }
+}
+
+function currency(value: string) {
+  const number = Number(value)
+  return Number.isFinite(number)
+    ? new Intl.NumberFormat(undefined, { currency: "USD", style: "currency" }).format(number)
+    : value
+}
+
+function CostsCard() {
+  const queryClient = useQueryClient()
+  const initial = costDateRange("month")
+  const [interval, setInterval] = useState<CostInterval>("month")
+  const [start, setStart] = useState(initial.start)
+  const [end, setEnd] = useState(initial.end)
+  const validRange = Boolean(start && end && start <= end)
+  const bounds = validRange ? billingBounds(start, end) : null
+  const queryKey = ["admin", "modal", "costs", bounds?.start, bounds?.end] as const
+  const costs = useQuery({
+    enabled: Boolean(bounds),
+    queryKey,
+    queryFn: ({ signal }) =>
+      inspectAdminCosts(bounds!.start, bounds!.end, false, signal),
+    retry: false,
+    staleTime: 5 * 60_000,
+  })
+  const refresh = useMutation({
+    mutationFn: () => inspectAdminCosts(bounds!.start, bounds!.end, true),
+    onSuccess: (result) => queryClient.setQueryData(queryKey, result),
+  })
+  useExpireSession(costs.error)
+  useExpireSession(refresh.error)
+
+  function chooseInterval(next: Exclude<CostInterval, "custom">) {
+    const range = costDateRange(next)
+    setInterval(next)
+    setStart(range.start)
+    setEnd(range.end)
+  }
+
+  const report: AdminCosts | undefined = costs.data
+  const failure = refresh.error ?? costs.error
+  const presetLabels = {
+    month: "Current month",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    previous: "Previous month",
+  } as const
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle>Costs</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Modal workspace usage for the selected interval. Reports may be unavailable on some workspace plans.</p>
+          </div>
+          <RefreshButton
+            disabled={!bounds || costs.isFetching || refresh.isPending}
+            onRefresh={async () => {
+              if (bounds) await refresh.mutateAsync()
+            }}
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex flex-wrap gap-2">
+          {(["month", "7d", "30d", "previous"] as const).map((value) => (
+            <Button key={value} onClick={() => chooseInterval(value)} size="sm" type="button" variant={interval === value ? "default" : "outline"}>
+              {presetLabels[value]}
+            </Button>
+          ))}
+          <Button onClick={() => setInterval("custom")} size="sm" type="button" variant={interval === "custom" ? "default" : "outline"}>Custom</Button>
+        </div>
+        {interval === "custom" ? (
+          <div className="grid max-w-xl gap-3 sm:grid-cols-2">
+            <div><label className="mb-1 block text-xs text-muted-foreground">Start date</label><DatePickerField aria-label="Billing start date" onValueChange={setStart} value={start} /></div>
+            <div><label className="mb-1 block text-xs text-muted-foreground">End date</label><DatePickerField aria-label="Billing end date" onValueChange={setEnd} value={end} /></div>
+          </div>
+        ) : null}
+        {!validRange ? <p className="text-sm text-destructive">Choose an end date on or after the start date.</p> : null}
+        {failure ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="alert">
+            <p className="font-medium">Modal billing could not be loaded.</p>
+            <p className="mt-1">{errorMessage(failure)}</p>
+            <Button className="mt-3" disabled={!bounds || refresh.isPending} onClick={() => refresh.mutate()} size="sm" variant="outline">Refresh</Button>
+          </div>
+        ) : costs.isPending ? (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Loading billing report…</p>
+        ) : report ? (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-muted p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Total workspace cost</p><p className="mt-1 font-heading text-3xl font-semibold tabular-nums">{currency(report.total)}</p></div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div><h3 className="text-sm font-medium">Tools</h3><ul className="mt-2 space-y-2 text-sm">{report.tools.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{toolName(group.name)}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}{!report.tools.length ? <li className="text-muted-foreground">No tagged Tool usage</li> : null}</ul></div>
+              <div><h3 className="text-sm font-medium">Environments</h3><ul className="mt-2 space-y-2 text-sm">{report.environments.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{group.name}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}</ul></div>
+              <div><h3 className="text-sm font-medium">Other workspace usage</h3><p className="mt-2 text-sm tabular-nums">{currency(report.other_workspace_usage)}</p></div>
+            </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}
 
 function errorMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -127,6 +266,7 @@ function StateUnknownJobsCard({
                 <tr>
                   <th className="px-6 py-3 font-medium" scope="col">Job</th>
                   <th className="px-6 py-3 font-medium" scope="col">Tool</th>
+                  <th className="px-6 py-3 font-medium" scope="col">Reason</th>
                   <th className="px-6 py-3 font-medium" scope="col">Since</th>
                   <th className="px-6 py-3 font-medium" scope="col">Action</th>
                 </tr>
@@ -1152,6 +1292,8 @@ export default function ModalAdminPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <CostsCard />
 
       <section aria-labelledby="modal-tools-heading">
         <h2 className="font-heading text-xl font-semibold" id="modal-tools-heading">
