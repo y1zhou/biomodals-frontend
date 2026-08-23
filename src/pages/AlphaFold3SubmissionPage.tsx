@@ -180,6 +180,11 @@ function Confirmation({
   const requiresConfirmation = preview.requires_confirmation === true
   const [confirmed, setConfirmed] = useState(false)
   const entities = previewArray(preview, "entities") as Record<string, unknown>[]
+  const seeds = previewArray(preview, "seeds")
+  const warnings = previewArray(preview, "warnings")
+  const advancedCounts = typeof preview.advanced_counts === "object" && preview.advanced_counts !== null
+    ? preview.advanced_counts as Record<string, unknown>
+    : {}
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10 lg:px-8 lg:py-14">
@@ -201,18 +206,36 @@ function Confirmation({
             <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Samples per seed</p><p className="mt-1 font-medium">{previewNumber(preview, "samples")}</p></div>
             <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Recycles</p><p className="mt-1 font-medium">{previewNumber(preview, "recycle")}</p></div>
           </div>
+          <dl className="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-2">
+            <div><dt className="text-muted-foreground">Model seeds</dt><dd className="mt-1 break-all">{seeds.join(", ")}</dd></div>
+            <div><dt className="text-muted-foreground">Sequence searches</dt><dd className="mt-1">MSAs {preview.search_msa === true ? "enabled for proteins and RNA" : "disabled"}; protein templates {preview.search_protein_templates === true ? "enabled" : "disabled"}</dd></div>
+          </dl>
           <div>
             <h2 className="font-medium">Entities</h2>
             <div className="mt-2 divide-y rounded-lg border">
               {entities.map((entity, index) => (
                 <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 text-sm" key={`${String(entity.type)}-${index}`}>
-                  <span className="capitalize">{String(entity.type)}</span>
+                  <span><span className="capitalize">{String(entity.type)}</span><span className="ml-2 text-muted-foreground">{previewArray(entity, "ids").join(", ")}</span></span>
                   <span className="text-muted-foreground">{Number(entity.length ?? 0).toLocaleString()} residues</span>
                   <span className="text-muted-foreground">{Number(entity.copies ?? 0)} copies</span>
                 </div>
               ))}
             </div>
           </div>
+          <div>
+            <h2 className="font-medium">Expert input summary</h2>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+              {[["Modifications", "modifications"], ["Bonds", "bonds"], ["Ligands", "ligands"], ["Templates", "templates"], ["Custom inputs", "custom_inputs"]].map(([label, key]) => (
+                <div className="rounded-lg bg-muted p-3" key={key}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{Number(advancedCounts[key] ?? 0).toLocaleString()}</p></div>
+              ))}
+            </div>
+          </div>
+          {warnings.length > 0 ? (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <p className="font-medium">Validation warnings</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">{warnings.map((warning) => <li key={String(warning)}>{String(warning)}</li>)}</ul>
+            </div>
+          ) : null}
           {requiresConfirmation ? (
             <label className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
               <input checked={confirmed} className="mt-0.5 size-4" onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" />
