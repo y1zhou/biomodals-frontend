@@ -376,7 +376,7 @@ export default function AlphaFold3SubmissionPage() {
         onBack={() => void backToEdit()}
         onSubmit={() => submissionMutation.mutate(validation)}
         pending={submissionMutation.isPending}
-        submissionError={submissionMutation.error ? errorMessage(submissionMutation.error) : ""}
+        submissionError={submissionMutation.error ? errorMessage(submissionMutation.error) : formError}
         validation={validation}
       />
     )
