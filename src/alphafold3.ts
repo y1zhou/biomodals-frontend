@@ -10,6 +10,8 @@ export interface PolymerEntity {
 
 export interface AlphaFold3Draft {
   entities: PolymerEntity[]
+  expertFilename: string
+  expertJson: string
   jobName: string
   mode: "regular" | "expert"
   nextChainIndex: number
@@ -26,6 +28,8 @@ const DATABASE_NAME = "biomodals-alphafold3"
 export function newAlphaFold3Draft(): AlphaFold3Draft {
   return {
     entities: [newPolymerEntity("protein", 0)],
+    expertFilename: "",
+    expertJson: "",
     jobName: "",
     mode: "regular",
     nextChainIndex: 1,

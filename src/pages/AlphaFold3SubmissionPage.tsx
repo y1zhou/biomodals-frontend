@@ -19,6 +19,7 @@ import {
   alphaFold3DocumentUrl,
   ApiError,
   deleteAlphaFold3Validation,
+  inspectAlphaFold3Validation,
   submitAlphaFold3Job,
   validateAlphaFold3,
   type AlphaFold3Validation,
@@ -48,6 +49,7 @@ import { cn } from "@/lib/utils"
 import { alphafold3Paths, alphafold3Tool } from "@/tools"
 
 const IDEMPOTENCY_PREFIX = "biomodals:alphafold3:submission:"
+const VALIDATION_KEY = "biomodals:alphafold3:validation"
 const polymerOptions = [
   { label: "Protein", value: "protein" },
   { label: "DNA", value: "dna" },
@@ -161,12 +163,14 @@ function EntityEditor({
 
 function Confirmation({
   onBack,
+  onClear,
   onSubmit,
   pending,
   submissionError,
   validation,
 }: {
   onBack: () => void
+  onClear: () => void
   onSubmit: () => void
   pending: boolean
   submissionError: string
@@ -179,7 +183,10 @@ function Confirmation({
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10 lg:px-8 lg:py-14">
-      <Button className="mb-8" onClick={onBack} variant="ghost"><ArrowLeft />Back to edit</Button>
+      <div className="mb-8 flex justify-between gap-4">
+        <Button disabled={pending} onClick={onBack} variant="ghost"><ArrowLeft />Back to edit</Button>
+        <Button disabled={pending} onClick={onClear} variant="ghost"><RotateCcw />Clear</Button>
+      </div>
       <Badge variant="secondary">Review</Badge>
       <h1 className="mt-4 font-heading text-3xl font-semibold">Confirm AlphaFold3 job</h1>
       <p className="mt-3 text-muted-foreground">Review the parsed server input before remote execution begins.</p>
@@ -229,8 +236,6 @@ export default function AlphaFold3SubmissionPage() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
   const [draftLoaded, setDraftLoaded] = useState(false)
-  const [expertJson, setExpertJson] = useState("")
-  const [expertFilename, setExpertFilename] = useState("")
   const [validation, setValidation] = useState<AlphaFold3Validation | null>(null)
   const [formError, setFormError] = useState("")
   const validationController = useRef<AbortController | null>(null)
@@ -240,6 +245,17 @@ export default function AlphaFold3SubmissionPage() {
       if (saved) setDraft(saved)
       setDraftLoaded(true)
     }).catch(() => setDraftLoaded(true))
+  }, [])
+  useEffect(() => {
+    const validationId = window.sessionStorage.getItem(VALIDATION_KEY)
+    if (!validationId) return
+    const controller = new AbortController()
+    inspectAlphaFold3Validation(validationId, controller.signal).then(setValidation).catch((error) => {
+      if (controller.signal.aborted) return
+      window.sessionStorage.removeItem(VALIDATION_KEY)
+      setFormError(errorMessage(error))
+    })
+    return () => controller.abort()
   }, [])
   useEffect(() => {
     if (!draftLoaded) return
@@ -263,6 +279,7 @@ export default function AlphaFold3SubmissionPage() {
     onSuccess: (result) => {
       validationController.current = null
       setValidation(result)
+      window.sessionStorage.setItem(VALIDATION_KEY, result.validation_id)
       setFormError("")
     },
   })
@@ -280,6 +297,7 @@ export default function AlphaFold3SubmissionPage() {
     },
     onSuccess: (job) => {
       window.sessionStorage.removeItem(`${IDEMPOTENCY_PREFIX}${validation?.validation_id}`)
+      window.sessionStorage.removeItem(VALIDATION_KEY)
       void clearAlphaFold3Draft().catch(() => undefined)
       navigate(alphafold3Paths.job(job.job_id), { replace: true })
     },
@@ -328,8 +346,11 @@ export default function AlphaFold3SubmissionPage() {
       return
     }
     file.text().then((text) => {
-      setExpertJson(text)
-      setExpertFilename(file.name)
+      setDraft((current) => ({
+        ...current,
+        expertFilename: file.name,
+        expertJson: text,
+      }))
       setFormError("")
     }).catch(() => setFormError("The JSON file could not be read."))
   }
@@ -339,7 +360,7 @@ export default function AlphaFold3SubmissionPage() {
     try {
       const document = draft.mode === "regular"
         ? regularAlphaFold3Document(draft)
-        : expertAlphaFold3Document(expertJson, draft.jobName)
+        : expertAlphaFold3Document(draft.expertJson, draft.jobName)
       const controller = new AbortController()
       validationController.current = controller
       setFormError("")
@@ -349,12 +370,15 @@ export default function AlphaFold3SubmissionPage() {
     }
   }
 
-  async function backToEdit() {
+  async function discardValidation(clear: boolean) {
     if (!validation) return
     try {
       await deleteAlphaFold3Validation(validation.validation_id)
+      window.sessionStorage.removeItem(`${IDEMPOTENCY_PREFIX}${validation.validation_id}`)
+      window.sessionStorage.removeItem(VALIDATION_KEY)
       setValidation(null)
       submissionMutation.reset()
+      if (clear) reset()
     } catch (error) {
       submissionMutation.reset()
       setFormError(errorMessage(error))
@@ -363,9 +387,8 @@ export default function AlphaFold3SubmissionPage() {
 
   function reset() {
     validationController.current?.abort()
+    window.sessionStorage.removeItem(VALIDATION_KEY)
     setDraft(newAlphaFold3Draft())
-    setExpertJson("")
-    setExpertFilename("")
     setFormError("")
     void clearAlphaFold3Draft().catch(() => undefined)
   }
@@ -373,7 +396,8 @@ export default function AlphaFold3SubmissionPage() {
   if (validation) {
     return (
       <Confirmation
-        onBack={() => void backToEdit()}
+        onBack={() => void discardValidation(false)}
+        onClear={() => void discardValidation(true)}
         onSubmit={() => submissionMutation.mutate(validation)}
         pending={submissionMutation.isPending}
         submissionError={submissionMutation.error ? errorMessage(submissionMutation.error) : formError}
@@ -427,7 +451,7 @@ export default function AlphaFold3SubmissionPage() {
             <CardContent>
               <input accept=".json,application/json" className="sr-only" id="alphafold3-json" onChange={uploadExpertJson} type="file" />
               <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer")} htmlFor="alphafold3-json"><Upload />Upload JSON</label>
-              <span className="ml-3 text-sm text-muted-foreground">{expertFilename || "No file selected · maximum 256 MiB"}</span>
+              <span className="ml-3 text-sm text-muted-foreground">{draft.expertFilename || "No file selected · maximum 256 MiB"}</span>
             </CardContent>
           </Card>
         )}
@@ -445,7 +469,7 @@ export default function AlphaFold3SubmissionPage() {
 
         {formError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
         <div className="flex justify-end">
-          <Button disabled={validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !expertJson)} size="lg" type="submit">
+          <Button disabled={validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson)} size="lg" type="submit">
             {validationMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
             Continue and preview job
           </Button>
