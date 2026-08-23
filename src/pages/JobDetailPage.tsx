@@ -23,6 +23,7 @@ import {
   isServiceConfigurationError,
   jobDownloadUrl,
   prepareJobDownload,
+  refreshJob,
   type Job,
 } from "@/api/client"
 import { adminStorageKey } from "@/admin"
@@ -238,8 +239,13 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
           <RefreshButton
             disabled={jobQuery.isFetching}
             onRefresh={async () => {
-              const result = await jobQuery.refetch()
-              if (result.isError) throw result.error
+              const refreshed = await refreshJob(jobId)
+              queryClient.setQueryData(jobKey(jobId), refreshed)
+              queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
+                jobs?.map((candidate) =>
+                  candidate.job_id === refreshed.job_id ? refreshed : candidate
+                )
+              )
             }}
           />
         </div>

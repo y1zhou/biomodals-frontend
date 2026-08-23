@@ -207,6 +207,13 @@ export function inspectJob(jobId: string, signal?: AbortSignal) {
   return requestJson<Job>(`/api/v1/jobs/${encodeURIComponent(jobId)}`, { signal })
 }
 
+export function refreshJob(jobId: string) {
+  return requestJson<Job>(`/api/v1/jobs/${encodeURIComponent(jobId)}/refresh`, {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken() },
+  })
+}
+
 export function cancelJob(jobId: string) {
   return requestJson<Job>(`/api/v1/jobs/${encodeURIComponent(jobId)}/cancel`, {
     method: "POST",
