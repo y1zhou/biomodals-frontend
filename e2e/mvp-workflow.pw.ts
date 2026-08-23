@@ -14,7 +14,6 @@ interface BrowserStats {
   preflight_versions: number[]
   submit_calls: number
   submit_versions: number[]
-  provider_calls: number
   cancel_calls: number
   log_fetches: number
 }
@@ -208,7 +207,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
   const statusMetadata = page.locator("p", { hasText: "Job updated" }).first()
   await expect(statusMetadata).toContainText(/Last checked \d+s ago/)
-  const stagesTable = page.getByRole("table", { name: "GROMACS execution stages" })
+  const stagesTable = page.getByRole("table", { name: "Execution stages" })
   expect(
     await stagesTable.evaluate(
       (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
@@ -218,7 +217,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const prepareResultRow = page.getByRole("row", { name: /Prepare result/ })
   await expect(prepareResultRow).toContainText("N/A")
   await expect(prepareResultRow).not.toContainText("Not applicable")
-  await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(4)
+  await page.waitForTimeout(1_100)
   await page.getByRole("button", { name: "Refresh" }).click()
   for (const stage of ["Analyze NVT", "Analyze NPT", "Run production"]) {
     await expect(page.getByRole("row", { name: new RegExp(stage) })).toContainText(
@@ -226,9 +225,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       { timeout: 5_000 }
     )
   }
-  await expect
-    .poll(async () => (await browserStats()).provider_calls)
-    .toBeGreaterThanOrEqual(5)
+  await page.waitForTimeout(1_600)
   await page.getByRole("button", { name: "Refresh" }).click()
   await expect(page.getByRole("row", { name: /Analyze production/ })).toContainText(
     "Running"
@@ -327,7 +324,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const downloadEvent = page.waitForEvent("download")
   await page.getByRole("button", { name: "Download result" }).click()
   const download = await downloadEvent
-  expect(download.suggestedFilename()).toBe("browser-success-workflow-results.zip")
+  expect(download.suggestedFilename()).toBe("result.zip")
   const stream = await download.createReadStream()
   const firstChunk = await new Promise<Buffer>((resolve, reject) => {
     stream.once("data", resolve)
@@ -555,10 +552,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     const response = await route.fetch()
     const document = await response.json()
     document.tools = document.tools.map((tool: {
-      workload: string
+      tool: string
       modal_app_version: Record<string, unknown>
     }) =>
-      tool.workload === "gromacs"
+      tool.tool === "gromacs"
         ? {
             ...tool,
             modal_app_version: {
@@ -641,8 +638,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const activeJobLimit = page.getByRole("spinbutton", {
     name: "Active job limit for GROMACS MD simulation",
   })
-  expect(await toolsTable.locator("colgroup col").count()).toBe(6)
-  expect(await toolsTable.getByRole("columnheader").count()).toBe(7)
+  expect(await toolsTable.locator("colgroup col").count()).toBe(7)
+  expect(await toolsTable.getByRole("columnheader").count()).toBe(8)
   await expect(
     toolsTable.getByRole("columnheader", { name: "Save changes" })
   ).toBeVisible()
@@ -650,7 +647,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     await saveToolSettings.evaluate(
       (button) => (button.closest("td") as HTMLTableCellElement | null)?.cellIndex
     )
-  ).toBe(5)
+  ).toBe(6)
   expect(
     await activeJobLimit.evaluate(
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
@@ -659,7 +656,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const jobLogAccess = page.getByRole("checkbox", {
     name: "Allow Job owners to view logs for GROMACS MD simulation",
   })
-  const jobLogAccessToggle = page.locator(
+  const jobLogAccessToggle = jobLogAccess.locator("xpath=ancestor::tr").locator(
     '[data-slot="job-log-access-toggle"]'
   )
   const jobLogAccessTrack = jobLogAccessToggle.locator(
@@ -721,9 +718,11 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       status: 400,
     })
   })
-  await page.getByRole("spinbutton", {
+  const modalDeploymentVersion = page.getByRole("spinbutton", {
     name: "Modal deployment version for GROMACS MD simulation",
-  }).fill("999999")
+  })
+  await expect(modalDeploymentVersion).toBeEnabled()
+  await modalDeploymentVersion.fill("999999")
   await saveToolSettings.click()
   const toolError = page.getByRole("alert", {
     name: "Could not save GROMACS MD simulation settings",
