@@ -121,9 +121,7 @@ export function parseModelSeeds(input: string) {
     if (range) {
       const start = Number(range[1])
       const end = Number(range[2])
-      if (start > end || end - start > 4999) {
-        throw new Error("Seed ranges must be ascending and contain at most 5,000 values.")
-      }
+      if (start > end) throw new Error("Seed ranges must be ascending.")
       for (let seed = start; seed <= end; seed += 1) seeds.push(seed)
     } else if (/^\d+$/.test(part)) {
       seeds.push(Number(part))

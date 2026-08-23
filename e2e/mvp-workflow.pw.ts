@@ -268,7 +268,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
 
   const historicalEnd = Date.now() - 60_000
   const historicalStart = historicalEnd - 20 * 60_000
-  const targetsRoute = `**/api/v1/jobs/${completedJobId}/log-targets`
+  let analysisTarget = ""
+  const targetsRoute = `**/api/v1/jobs/${completedJobId}/log-targets?*`
   const logsRoute = `**/api/v1/jobs/${completedJobId}/logs?*`
   await page.route(targetsRoute, async (route) => {
     const response = await route.fetch()
@@ -278,10 +279,12 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
         ended_at: string | null
         stage_code: string
         started_at: string
+        target_id: string
       }>
     }
     for (const target of body.targets) {
       if (target.stage_code !== "analyze_production") continue
+      analysisTarget = target.target_id
       target.started_at = new Date(historicalStart).toISOString()
       target.ended_at = new Date(historicalEnd).toISOString()
     }
@@ -289,16 +292,20 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   })
   await page.route(logsRoute, async (route) => {
     const url = new URL(route.request().url())
-    if (url.searchParams.get("stage") !== "analyze_production") {
+    if (url.searchParams.get("target") !== analysisTarget) {
       await route.continue()
       return
     }
     const since = Date.parse(url.searchParams.get("since") ?? "")
     await route.fulfill({
-      contentType: "text/plain",
+      contentType: "application/x-ndjson",
       status: 200,
       body: since < historicalEnd - 10 * 60_000
-        ? "2026-07-22 10:00:00 Older retained log\n"
+        ? `${JSON.stringify({
+            timestamp: "2026-07-22T10:00:00Z",
+            message: "Older retained log\n",
+            source: "stdout",
+          })}\n`
         : "",
     })
   })

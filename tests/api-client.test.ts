@@ -74,9 +74,11 @@ describe("authorized Job logs", () => {
       })
     }) as typeof fetch
 
-    const result = await inspectJobLogTargets("job/one")
+    const result = await inspectJobLogTargets("job/one", "run_production")
 
-    expect(requested).toBe("/api/v1/jobs/job%2Fone/log-targets?limit=100")
+    expect(requested).toBe(
+      "/api/v1/jobs/job%2Fone/log-targets?limit=100&stage_code=run_production"
+    )
     expect(result.targets?.[0]?.stage_code).toBe("run_production")
     expect(result.targets?.[0]?.mode).toBe("live")
     expect(result).not.toHaveProperty("modal_call_id")

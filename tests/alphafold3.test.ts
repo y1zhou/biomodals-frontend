@@ -36,6 +36,7 @@ describe("AlphaFold3 input builder", () => {
 
   test("expands compact model seed ranges", () => {
     expect(parseModelSeeds("1, 3-5, 3")).toEqual([1, 3, 4, 5])
+    expect(parseModelSeeds("0-5000")).toHaveLength(5001)
     expect(() => parseModelSeeds("5-3")).toThrow("ascending")
   })
 

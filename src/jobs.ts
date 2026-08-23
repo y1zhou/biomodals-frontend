@@ -113,7 +113,7 @@ export function jobFailureMessage(job: Job) {
   ) {
     return job.error_message
   }
-  return "This simulation could not be completed."
+  return "This job could not be completed."
 }
 
 export function jobStageTimeline(job: Job) {
@@ -129,6 +129,8 @@ export function jobStageTimeline(job: Job) {
       state:
         stage.outcome === "completed"
           ? ("completed" as const)
+          : stage.outcome === "partial"
+            ? ("partial" as const)
           : stage.outcome === "failed"
             ? ("failed" as const)
           : stage.outcome === "cancelled"
@@ -171,7 +173,7 @@ export const jobPresentation: Record<
   },
   blocked: {
     label: "Result temporarily unavailable",
-    description: "The simulation output is preserved while BioModals retries result preparation. An administrator may need to repair the service.",
+    description: "The job output is preserved while BioModals retries result preparation. An administrator may need to repair the service.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
   succeeded: {
@@ -186,7 +188,7 @@ export const jobPresentation: Record<
   },
   failed: {
     label: "Failed",
-    description: "This simulation could not be completed.",
+    description: "This job could not be completed.",
     className: "border-red-300 bg-red-50 text-red-800",
   },
   cancelled: {

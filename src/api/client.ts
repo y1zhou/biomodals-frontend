@@ -19,6 +19,8 @@ export type AdminModal = components["schemas"]["AdminModalView"]
 export type AdminModalEnvironment = components["schemas"]["AdminModalEnvironmentView"]
 export type AdminModalTool = components["schemas"]["AdminModalToolView"]
 export type AdminStateUnknownJob = components["schemas"]["AdminStateUnknownJobView"]
+export type ResolveStateUnknownJobInput =
+  components["schemas"]["ResolveStateUnknownJobRequest"]
 export type UpdateAdminModalEnvironmentInput =
   components["schemas"]["UpdateAdminModalEnvironmentRequest"]
 export type UpdateAdminModalToolInput =
@@ -274,17 +276,19 @@ export function inspectAdminModal(signal?: AbortSignal) {
   return requestJson<AdminModal>("/api/v1/admin/modal", { signal })
 }
 
-export function inspectJobLogTargets(jobId: string, signal?: AbortSignal) {
-  return collectCursorPages<JobLogTarget>(async (cursor) => {
-    const page = await requestJson<JobLogTargets>(
-      cursorPagePath(
-        `/api/v1/jobs/${encodeURIComponent(jobId)}/log-targets`,
-        cursor
-      ),
-      { signal }
-    )
-    return { items: page.targets, nextCursor: page.next_cursor ?? null }
-  }).then((targets) => ({ job_id: jobId, targets, next_cursor: null }))
+export function inspectJobLogTargets(
+  jobId: string,
+  stageCode: string,
+  signal?: AbortSignal
+) {
+  const parameters = new URLSearchParams({
+    limit: "100",
+    stage_code: stageCode,
+  })
+  return requestJson<JobLogTargets>(
+    `/api/v1/jobs/${encodeURIComponent(jobId)}/log-targets?${parameters}`,
+    { signal }
+  )
 }
 
 export async function streamJobLogs(
@@ -336,12 +340,19 @@ export async function streamJobLogs(
   }
 }
 
-export function resolveAdminStateUnknownJob(jobId: string) {
+export function resolveAdminStateUnknownJob(
+  jobId: string,
+  input: ResolveStateUnknownJobInput
+) {
   return requestJson<AdminModal>(
     `/api/v1/admin/modal/state-unknown-jobs/${encodeURIComponent(jobId)}/resolve`,
     {
       method: "POST",
-      headers: { "X-CSRF-Token": csrfToken() },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken(),
+      },
+      body: JSON.stringify(input),
     }
   )
 }

@@ -515,7 +515,7 @@ export interface components {
              * Category
              * @enum {string}
              */
-            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity";
+            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity" | "result_preparation_failed";
             /** Count */
             readonly count: number;
             /**
@@ -693,6 +693,8 @@ export interface components {
             readonly job_id: string;
             /** Reason */
             readonly reason: string;
+            /** Root Function Call Id */
+            readonly root_function_call_id: string | null;
             /**
              * State Unknown At
              * Format: date-time
@@ -1013,7 +1015,7 @@ export interface components {
             /** Label */
             readonly label: string;
             /** Outcome */
-            readonly outcome?: ("completed" | "failed" | "cancelled") | null;
+            readonly outcome?: ("completed" | "partial" | "failed" | "cancelled") | null;
             /** Running Functions */
             readonly running_functions?: readonly string[];
             /** Started At */
@@ -1172,6 +1174,19 @@ export interface components {
              * Format: uuid
              */
             readonly user_id: string;
+        };
+        /**
+         * ResolveStateUnknownJobRequest
+         * @description One explicit safe outcome after an Administrator checks Modal.
+         */
+        readonly ResolveStateUnknownJobRequest: {
+            /** Function Call Id */
+            readonly function_call_id?: string | null;
+            /**
+             * Resolution
+             * @enum {string}
+             */
+            readonly resolution: "resume" | "requeue" | "cancel";
         };
         /**
          * SetPasswordRequest
@@ -1598,7 +1613,11 @@ export interface operations {
             };
             readonly cookie?: never;
         };
-        readonly requestBody?: never;
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ResolveStateUnknownJobRequest"];
+            };
+        };
         readonly responses: {
             /** @description Successful Response */
             readonly 200: {
@@ -3366,6 +3385,7 @@ export interface operations {
             readonly query?: {
                 readonly cursor?: string | null;
                 readonly limit?: number;
+                readonly stage_code?: string | null;
             };
             readonly header?: never;
             readonly path: {

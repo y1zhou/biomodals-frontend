@@ -145,7 +145,16 @@ function EntityEditor({
               onClick={() => setEditing(true)}
               type="button"
             >
-              {formatSequence(entity.sequence)}
+              <span className="flex flex-wrap gap-x-[0.9em] gap-y-2 pt-4">
+                {formatSequence(entity.sequence).split(" ").map((group, groupIndex) => (
+                  <span className="relative" key={`${groupIndex}-${group}`}>
+                    <span className="absolute -top-4 right-0 font-sans text-[0.65rem] tracking-normal text-muted-foreground">
+                      {groupIndex * 10 + group.length}
+                    </span>
+                    {group}
+                  </span>
+                ))}
+              </span>
               <span className="mt-2 block font-sans text-xs tracking-normal text-muted-foreground">{entity.sequence.length.toLocaleString()} residues · click to edit</span>
             </button>
           )}
@@ -484,7 +493,7 @@ export default function AlphaFold3SubmissionPage() {
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex items-center gap-2 text-sm"><input checked={draft.searchMsa} onChange={(event) => setDraft({ ...draft, searchMsa: event.target.checked })} type="checkbox" />Search MSAs</label>
             <label className="flex items-center gap-2 text-sm"><input checked={draft.searchProteinTemplates} onChange={(event) => setDraft({ ...draft, searchProteinTemplates: event.target.checked })} type="checkbox" />Search protein templates</label>
-            <div><label className="mb-1 block text-sm" htmlFor="alphafold3-recycle">Recycles</label><Input id="alphafold3-recycle" min={1} onChange={(event) => setDraft({ ...draft, recycle: Number(event.target.value) })} type="number" value={draft.recycle} /></div>
+            <div><label className="mb-1 block text-sm" htmlFor="alphafold3-recycle">Recycles</label><Input id="alphafold3-recycle" min={0} onChange={(event) => setDraft({ ...draft, recycle: Number(event.target.value) })} type="number" value={draft.recycle} /></div>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-sample">Samples per seed</label><Input id="alphafold3-sample" min={1} onChange={(event) => setDraft({ ...draft, sample: Number(event.target.value) })} type="number" value={draft.sample} /></div>
             <div className="sm:col-span-2 lg:col-span-4"><label className="mb-1 block text-sm" htmlFor="alphafold3-seeds">Model seeds</label><Input id="alphafold3-seeds" onChange={(event) => setDraft({ ...draft, seeds: event.target.value })} placeholder="1,3-5" value={draft.seeds} /><p className="mt-1 text-xs text-muted-foreground">Comma-separated integers or ranges.</p></div>
           </div>

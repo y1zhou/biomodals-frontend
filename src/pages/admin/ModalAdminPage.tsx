@@ -220,6 +220,7 @@ function errorMessage(error: unknown) {
 
 const stateUnknownReasons: Record<string, string> = {
   submission_outcome_unknown: "Submission could not be confirmed",
+  submission_in_progress: "Submission was interrupted before confirmation",
   provider_outcome_unknown: "Modal call status could not be confirmed",
   cancellation_outcome_unknown: "Cancellation could not be confirmed",
 }
@@ -238,12 +239,20 @@ function StateUnknownJobsCard({
   const queryClient = useQueryClient()
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [selected, setSelected] = useState<AdminStateUnknownJob | null>(null)
+  const [functionCallId, setFunctionCallId] = useState("")
   const resolution = useMutation({
-    mutationFn: resolveAdminStateUnknownJob,
+    mutationFn: ({
+      jobId,
+      input,
+    }: {
+      jobId: string
+      input: Parameters<typeof resolveAdminStateUnknownJob>[1]
+    }) => resolveAdminStateUnknownJob(jobId, input),
     onSuccess(result) {
       queryClient.setQueryData(adminModalKey, result)
       confirmationDialog.current?.close()
       setSelected(null)
+      setFunctionCallId("")
     },
   })
   useExpireSession(resolution.error)
@@ -325,20 +334,32 @@ function StateUnknownJobsCard({
       >
         <div className="p-6">
           <h2 className="font-heading text-xl font-semibold" id="resolve-state-unknown-title">
-            Return this job to reconciliation?
+            Resolve this unknown launch
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Do this only after checking the exact deployment in Modal. BioModals will inspect the remote run again.
+            Check the exact deployment in Modal first. Resume an existing Function Call, requeue only after confirming no launch occurred, or cancel the run.
           </p>
           {selected ? (
-            <p className="mt-3 break-all text-sm font-medium">{selected.display_name} · {selected.job_id}</p>
+            <>
+              <p className="mt-3 break-all text-sm font-medium">{selected.display_name} · {selected.job_id}</p>
+              <label className="mt-4 block text-sm font-medium" htmlFor="root-function-call-id">
+                Existing Function Call ID
+              </label>
+              <Input
+                className="mt-2 font-mono"
+                id="root-function-call-id"
+                onChange={(event) => setFunctionCallId(event.target.value)}
+                placeholder="fc-…"
+                value={functionCallId}
+              />
+            </>
           ) : null}
           {resolution.error ? (
             <p className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
               {errorMessage(resolution.error)}
             </p>
           ) : null}
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
             <Button
               disabled={resolution.isPending}
               onClick={() => confirmationDialog.current?.close()}
@@ -349,14 +370,43 @@ function StateUnknownJobsCard({
             <Button
               disabled={resolution.isPending || !selected}
               onClick={() => {
-                if (selected) resolution.mutate(selected.job_id)
+                if (selected) resolution.mutate({
+                  jobId: selected.job_id,
+                  input: { resolution: "cancel" },
+                })
               }}
               variant="destructive"
+            >
+              Cancel run
+            </Button>
+            <Button
+              disabled={resolution.isPending || !selected}
+              onClick={() => {
+                if (selected) resolution.mutate({
+                  jobId: selected.job_id,
+                  input: { resolution: "requeue" },
+                })
+              }}
+              variant="outline"
+            >
+              Requeue — no launch occurred
+            </Button>
+            <Button
+              disabled={resolution.isPending || !selected || !functionCallId.trim()}
+              onClick={() => {
+                if (selected) resolution.mutate({
+                  jobId: selected.job_id,
+                  input: {
+                    resolution: "resume",
+                    function_call_id: functionCallId.trim(),
+                  },
+                })
+              }}
             >
               {resolution.isPending ? (
                 <LoaderCircle aria-hidden="true" className="animate-spin" />
               ) : null}
-              Resolve status
+              Resume existing launch
             </Button>
           </div>
         </div>

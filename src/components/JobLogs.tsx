@@ -293,15 +293,19 @@ function StageLogViewer({
     setLiveBuffer(streamed)
     setLiveError(null)
     setLiveState("connecting")
-    void streamJobLogs(jobId, target.target_id, controller.signal, (chunk) => {
-      streamed = appendLogChunk(streamed, chunk, retainAllLive.current)
-      setLiveState("streaming")
-      setLiveBuffer(streamed)
-    })
-      .then(() => {
-        if (!controller.signal.aborted) setLiveState("ended")
-      })
-      .catch((error: unknown) => {
+    const follow = async () => {
+      while (!controller.signal.aborted) {
+        await streamJobLogs(jobId, target.target_id, controller.signal, (chunk) => {
+          streamed = appendLogChunk(streamed, chunk, retainAllLive.current)
+          setLiveState("streaming")
+          setLiveBuffer(streamed)
+        })
+        if (controller.signal.aborted) return
+        setLiveState("connecting")
+        await new Promise((resolve) => window.setTimeout(resolve, 1_000))
+      }
+    }
+    void follow().catch((error: unknown) => {
         if (controller.signal.aborted) return
         setLiveError(error)
         setLiveState("error")
@@ -539,8 +543,8 @@ export default function StageLogs({
 }: StageLogsProps) {
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
   const targetsQuery = useQuery({
-    queryKey: ["jobs", jobId, "log-targets"],
-    queryFn: ({ signal }) => inspectJobLogTargets(jobId, signal),
+    queryKey: ["jobs", jobId, "log-targets", stageCode],
+    queryFn: ({ signal }) => inspectJobLogTargets(jobId, stageCode, signal),
     retry: 1,
     refetchInterval(query) {
       const target = query.state.data?.targets.find(

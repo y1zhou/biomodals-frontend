@@ -216,7 +216,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
     : []
   const downloadError = downloadMutation.error
     ? apiErrorCode(downloadMutation.error) === "result_invalid"
-      ? "The result could not be verified. BioModals will keep the simulation output for an administrator to recover."
+      ? "The result could not be verified. BioModals will keep the job output for an administrator to recover."
       : apiErrorCode(downloadMutation.error) === "result_storage_unavailable"
         ? "Result storage is temporarily unavailable. Try again shortly."
         : downloadMutation.error instanceof ApiError && downloadMutation.error.status === 409
@@ -423,6 +423,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       const statusLabel =
                         stage.state === "completed"
                           ? "Completed"
+                          : stage.state === "partial"
+                            ? "Partial"
                           : stage.state === "failed"
                             ? "Failed"
                             : stage.state === "cancelled"
@@ -480,6 +482,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                                 "px-6 py-4",
                                 stage.state === "completed"
                                   ? "text-emerald-700"
+                                  : stage.state === "partial"
+                                    ? "text-amber-700"
                                   : stage.state === "failed"
                                     ? "text-destructive"
                                     : stage.state === "cancelled"
