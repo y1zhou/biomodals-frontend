@@ -305,6 +305,7 @@ function StateUnknownJobsCard({
                         onClick={() => {
                           resolution.reset()
                           setSelected(job)
+                          setFunctionCallId(job.root_function_call_id ?? "")
                           confirmationDialog.current?.showModal()
                         }}
                         size="sm"
@@ -342,6 +343,20 @@ function StateUnknownJobsCard({
           {selected ? (
             <>
               <p className="mt-3 break-all text-sm font-medium">{selected.display_name} · {selected.job_id}</p>
+              <dl className="mt-4 grid gap-2 rounded-lg bg-muted p-3 text-sm">
+                <div>
+                  <dt className="font-medium">Pinned deployment</dt>
+                  <dd className="break-all font-mono text-xs text-muted-foreground">
+                    {selected.modal_environment} / {selected.modal_app_name} / v{selected.modal_app_version}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium">Diagnostic</dt>
+                  <dd className="text-muted-foreground">
+                    {selected.diagnostic_message ?? "No diagnostic message was recorded."}
+                  </dd>
+                </div>
+              </dl>
               <label className="mt-4 block text-sm font-medium" htmlFor="root-function-call-id">
                 Existing Function Call ID
               </label>

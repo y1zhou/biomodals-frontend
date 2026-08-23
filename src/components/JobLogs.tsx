@@ -293,23 +293,17 @@ function StageLogViewer({
     setLiveBuffer(streamed)
     setLiveError(null)
     setLiveState("connecting")
-    const follow = async () => {
-      while (!controller.signal.aborted) {
-        await streamJobLogs(jobId, target.target_id, controller.signal, (chunk) => {
-          streamed = appendLogChunk(streamed, chunk, retainAllLive.current)
-          setLiveState("streaming")
-          setLiveBuffer(streamed)
-        })
-        if (controller.signal.aborted) return
-        setLiveState("connecting")
-        await new Promise((resolve) => window.setTimeout(resolve, 1_000))
-      }
-    }
-    void follow().catch((error: unknown) => {
+    void streamJobLogs(jobId, target.target_id, controller.signal, (chunk) => {
+      streamed = appendLogChunk(streamed, chunk, retainAllLive.current)
+      setLiveState("streaming")
+      setLiveBuffer(streamed)
+    }).then(() => {
+      if (!controller.signal.aborted) setLiveState("ended")
+    }).catch((error: unknown) => {
         if (controller.signal.aborted) return
         setLiveError(error)
         setLiveState("error")
-      })
+    })
     return () => controller.abort()
   }, [jobId, target.mode, target.target_id])
 

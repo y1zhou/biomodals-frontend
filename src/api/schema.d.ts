@@ -684,6 +684,8 @@ export interface components {
          * @description Safe Job identity needed for manual Modal review.
          */
         readonly AdminStateUnknownJobView: {
+            /** Diagnostic Message */
+            readonly diagnostic_message: string | null;
             /** Display Name */
             readonly display_name: string;
             /**
@@ -691,6 +693,12 @@ export interface components {
              * Format: uuid
              */
             readonly job_id: string;
+            /** Modal App Name */
+            readonly modal_app_name: string;
+            /** Modal App Version */
+            readonly modal_app_version: number;
+            /** Modal Environment */
+            readonly modal_environment: string;
             /** Reason */
             readonly reason: string;
             /** Root Function Call Id */
