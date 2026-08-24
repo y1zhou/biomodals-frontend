@@ -88,9 +88,10 @@ bun run preview  # preview dist/ locally
 ## Current state
 
 The MVP has two available Tools: `GROMACS MD simulation` and `AlphaFold3
-structure prediction`. AlphaFold3 accepts a guided protein, DNA, and RNA
-polymer builder or a native expert JSON document. Both paths validate on the
-server and present the same confirmation view before creating a Job.
+structure prediction`. AlphaFold3 accepts a guided protein, DNA, RNA, and
+small-molecule entity builder or a native expert JSON document. Both paths
+validate on the server and present the same confirmation view before creating
+a Job.
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,

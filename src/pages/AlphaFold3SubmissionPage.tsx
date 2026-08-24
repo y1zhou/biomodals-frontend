@@ -3,9 +3,8 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
-  Braces,
+  ChevronRight,
   Download,
-  GripVertical,
   LoaderCircle,
   Plus,
   RotateCcw,
@@ -26,18 +25,22 @@ import {
 } from "@/api/client"
 import {
   clearAlphaFold3Draft,
+  expandEntityRecords,
   expertAlphaFold3Document,
   formatSequence,
   loadAlphaFold3Draft,
   newAlphaFold3Draft,
-  newPolymerEntity,
-  parsePolymerSequence,
+  newAlphaFold3Entity,
+  parsePolymerRecords,
+  reindexEntities,
   regularAlphaFold3Document,
   resizeEntityCopies,
   saveAlphaFold3Draft,
   type AlphaFold3Draft,
-  type PolymerEntity,
-  type PolymerType,
+  type AlphaFold3Entity,
+  type EntityType,
+  type LigandFormat,
+  type PolymerRecord,
 } from "@/alphafold3"
 import { useExpireSession } from "@/auth-state"
 import { Badge } from "@/components/ui/badge"
@@ -50,10 +53,15 @@ import { alphafold3Paths, alphafold3Tool } from "@/tools"
 
 const IDEMPOTENCY_PREFIX = "biomodals:alphafold3:submission:"
 const VALIDATION_KEY = "biomodals:alphafold3:validation"
-const polymerOptions = [
+const entityOptions = [
   { label: "Protein", value: "protein" },
   { label: "DNA", value: "dna" },
   { label: "RNA", value: "rna" },
+  { label: "Ligand", value: "ligand" },
+]
+const ligandFormatOptions = [
+  { label: "CCD codes", value: "ccd" },
+  { label: "SMILES", value: "smiles" },
 ]
 
 function errorMessage(error: unknown) {
@@ -75,13 +83,15 @@ function EntityEditor({
   index,
   isLast,
   onChange,
+  onExpand,
   onMove,
   onRemove,
 }: {
-  entity: PolymerEntity
+  entity: AlphaFold3Entity
   index: number
   isLast: boolean
-  onChange: (entity: PolymerEntity, copies?: number) => void
+  onChange: (entity: AlphaFold3Entity, copies?: number) => void
+  onExpand: (records: PolymerRecord[]) => void
   onMove: (direction: -1 | 1) => void
   onRemove: () => void
 }) {
@@ -90,8 +100,8 @@ function EntityEditor({
 
   function finishEditing() {
     try {
-      const sequence = parsePolymerSequence(entity.sequence)
-      onChange({ ...entity, sequence })
+      const records = parsePolymerRecords(entity.sequence)
+      onExpand(records)
       setSequenceError("")
       setEditing(false)
     } catch (error) {
@@ -102,14 +112,24 @@ function EntityEditor({
   return (
     <div className="rounded-xl border bg-muted/20 p-4">
       <div className="grid items-start gap-3 md:grid-cols-[auto_9rem_7rem_minmax(0,1fr)_auto]">
-        <GripVertical aria-hidden="true" className="mt-2 size-4 text-muted-foreground" />
+        <ChevronRight aria-hidden="true" className="mt-7 size-4 text-muted-foreground" />
         <div>
           <label className="mb-1 block text-xs text-muted-foreground" htmlFor={`entity-type-${entity.id}`}>Entity type</label>
           <SelectField
             aria-label="Entity type"
             id={`entity-type-${entity.id}`}
-            onValueChange={(value) => onChange({ ...entity, type: value as PolymerType })}
-            options={polymerOptions}
+            onValueChange={(value) => {
+              const type = value as EntityType
+              onChange({
+                ...entity,
+                description: type === "ligand" || entity.type === "ligand" ? "" : entity.description,
+                sequence: type === "ligand" || entity.type === "ligand" ? "" : entity.sequence,
+                type,
+              })
+              setEditing(true)
+              setSequenceError("")
+            }}
+            options={entityOptions}
             value={entity.type}
           />
         </div>
@@ -125,8 +145,25 @@ function EntityEditor({
           <p className="mt-1 truncate text-xs text-muted-foreground">{entity.chainIds.join(", ")}</p>
         </div>
         <div className="min-w-0">
-          <label className="mb-1 block text-xs text-muted-foreground" htmlFor={`entity-sequence-${entity.id}`}>Sequence or FASTA</label>
-          {editing ? (
+          <label className="mb-1 block text-xs text-muted-foreground" htmlFor={`entity-sequence-${entity.id}`}>
+            {entity.type === "ligand" ? "Ligand definition" : "Sequence or FASTA records"}
+          </label>
+          {entity.type === "ligand" ? (
+            <div className="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]">
+              <SelectField
+                aria-label="Ligand format"
+                onValueChange={(value) => onChange({ ...entity, ligandFormat: value as LigandFormat })}
+                options={ligandFormatOptions}
+                value={entity.ligandFormat}
+              />
+              <Input
+                id={`entity-sequence-${entity.id}`}
+                onChange={(event) => onChange({ ...entity, sequence: event.target.value })}
+                placeholder={entity.ligandFormat === "ccd" ? "ATP, MG" : "CC(=O)O"}
+                value={entity.sequence}
+              />
+            </div>
+          ) : editing ? (
             <textarea
               aria-invalid={Boolean(sequenceError)}
               className="min-h-24 w-full resize-y rounded-lg border border-input bg-background px-3 py-2 font-mono text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -145,17 +182,17 @@ function EntityEditor({
               onClick={() => setEditing(true)}
               type="button"
             >
-              <span className="flex flex-wrap gap-x-[0.9em] gap-y-2 pt-4">
+              <span className="flex flex-wrap gap-x-[0.9em] gap-y-5 pt-3 leading-5">
                 {formatSequence(entity.sequence).split(" ").map((group, groupIndex) => (
                   <span className="relative" key={`${groupIndex}-${group}`}>
-                    <span className="absolute -top-4 right-0 font-sans text-[0.65rem] tracking-normal text-muted-foreground">
+                    <span className="absolute -top-3 right-0 font-sans text-[0.65rem] leading-none tracking-normal text-muted-foreground">
                       {groupIndex * 10 + group.length}
                     </span>
                     {group}
                   </span>
                 ))}
               </span>
-              <span className="mt-2 block font-sans text-xs tracking-normal text-muted-foreground">{entity.sequence.length.toLocaleString()} residues · click to edit</span>
+              <span className="mt-3 block font-sans text-xs tracking-normal text-muted-foreground">{entity.sequence.length.toLocaleString()} residues · click to edit</span>
             </button>
           )}
           {sequenceError ? <p className="mt-1 text-sm text-destructive">{sequenceError}</p> : null}
@@ -225,7 +262,11 @@ function Confirmation({
               {entities.map((entity, index) => (
                 <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 text-sm" key={`${String(entity.type)}-${index}`}>
                   <span><span className="capitalize">{String(entity.type)}</span><span className="ml-2 text-muted-foreground">{previewArray(entity, "ids").join(", ")}</span></span>
-                  <span className="text-muted-foreground">{Number(entity.length ?? 0).toLocaleString()} residues</span>
+                  <span className="text-muted-foreground">
+                    {entity.type === "ligand"
+                      ? "Small molecule"
+                      : `${Number(entity.length ?? 0).toLocaleString()} residues`}
+                  </span>
                   <span className="text-muted-foreground">{Number(entity.copies ?? 0)} copies</span>
                 </div>
               ))}
@@ -274,7 +315,7 @@ export default function AlphaFold3SubmissionPage() {
 
   useEffect(() => {
     loadAlphaFold3Draft().then((saved) => {
-      if (saved) setDraft(saved)
+      if (saved) setDraft({ ...saved, entities: reindexEntities(saved.entities) })
       setDraftLoaded(true)
     }).catch(() => setDraftLoaded(true))
   }, [])
@@ -336,19 +377,16 @@ export default function AlphaFold3SubmissionPage() {
   })
   useExpireSession(submissionMutation.error)
 
-  function updateEntity(index: number, entity: PolymerEntity, copies?: number) {
+  function updateEntity(index: number, entity: AlphaFold3Entity, copies?: number) {
     setDraft((current) => {
-      let nextEntity = entity
-      let nextChainIndex = current.nextChainIndex
-      if (copies !== undefined) {
-        const resized = resizeEntityCopies(entity, copies, nextChainIndex)
-        nextEntity = resized.entity
-        nextChainIndex = resized.nextChainIndex
-      }
+      const nextEntity = copies === undefined
+        ? entity
+        : resizeEntityCopies(entity, copies)
       return {
         ...current,
-        entities: current.entities.map((value, position) => position === index ? nextEntity : value),
-        nextChainIndex,
+        entities: reindexEntities(
+          current.entities.map((value, position) => position === index ? nextEntity : value)
+        ),
       }
     })
   }
@@ -356,8 +394,17 @@ export default function AlphaFold3SubmissionPage() {
   function addEntity() {
     setDraft((current) => ({
       ...current,
-      entities: [...current.entities, newPolymerEntity("protein", current.nextChainIndex)],
-      nextChainIndex: current.nextChainIndex + 1,
+      entities: reindexEntities([
+        ...current.entities,
+        newAlphaFold3Entity("protein"),
+      ]),
+    }))
+  }
+
+  function expandEntity(index: number, records: PolymerRecord[]) {
+    setDraft((current) => ({
+      ...current,
+      entities: expandEntityRecords(current.entities, index, records),
     }))
   }
 
@@ -366,8 +413,17 @@ export default function AlphaFold3SubmissionPage() {
       const entities = [...current.entities]
       const target = index + direction
       ;[entities[index], entities[target]] = [entities[target], entities[index]]
-      return { ...current, entities }
+      return { ...current, entities: reindexEntities(entities) }
     })
+  }
+
+  function removeEntity(index: number) {
+    setDraft((current) => ({
+      ...current,
+      entities: reindexEntities(
+        current.entities.filter((_, position) => position !== index)
+      ),
+    }))
   }
 
   function uploadExpertJson(event: ChangeEvent<HTMLInputElement>) {
@@ -445,7 +501,7 @@ export default function AlphaFold3SubmissionPage() {
         <div>
           <Badge variant="secondary">{alphafold3Tool.name}</Badge>
           <h1 className="mt-4 font-heading text-3xl font-semibold sm:text-4xl">Configure a prediction</h1>
-          <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">Build a polymer input or upload a native AlphaFold3 JSON document, then confirm the parsed request.</p>
+          <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">Build polymer and ligand entities or upload a native AlphaFold3 JSON document, then confirm the parsed request.</p>
         </div>
         <Button onClick={reset} variant="ghost"><RotateCcw />Clear</Button>
       </div>
@@ -453,15 +509,25 @@ export default function AlphaFold3SubmissionPage() {
       <form className="mt-8 space-y-6" noValidate onSubmit={validate}>
         <Card>
           <CardHeader><CardTitle>Job</CardTitle></CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <CardContent className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div><label className="mb-2 block text-sm font-medium" htmlFor="alphafold3-job-name">Job name</label><Input id="alphafold3-job-name" maxLength={120} onChange={(event) => setDraft({ ...draft, jobName: event.target.value })} placeholder="My structure prediction" value={draft.jobName} /></div>
-            <div><span className="mb-2 block text-sm font-medium">Input mode</span><div className="flex rounded-lg bg-muted p-1"><Button onClick={() => setDraft({ ...draft, mode: "regular" })} size="sm" type="button" variant={draft.mode === "regular" ? "default" : "ghost"}>Polymers</Button><Button onClick={() => setDraft({ ...draft, mode: "expert" })} size="sm" type="button" variant={draft.mode === "expert" ? "default" : "ghost"}><Braces />Expert JSON</Button></div></div>
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium">
+              <span>Expert mode</span>
+              <input
+                checked={draft.mode === "expert"}
+                className="peer sr-only"
+                onChange={(event) => setDraft({ ...draft, mode: event.target.checked ? "expert" : "regular" })}
+                role="switch"
+                type="checkbox"
+              />
+              <span className="relative h-6 w-11 rounded-full bg-muted-foreground/35 transition-colors duration-200 peer-checked:bg-foreground peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 after:absolute after:left-1 after:top-1 after:size-4 after:rounded-full after:bg-background after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
+            </label>
           </CardContent>
         </Card>
 
         {draft.mode === "regular" ? (
           <Card>
-            <CardHeader><CardTitle>Polymers</CardTitle><p className="text-sm text-muted-foreground">Add one protein, DNA, or RNA sequence per entity. Chain IDs are assigned automatically.</p></CardHeader>
+            <CardHeader><CardTitle>Entities</CardTitle><p className="text-sm text-muted-foreground">Add protein, DNA, RNA, or ligand entities. Multi-record FASTA input expands into separate entities, and chain IDs follow the visible order.</p></CardHeader>
             <CardContent className="space-y-4">
               {draft.entities.map((entity, index) => (
                 <EntityEditor
@@ -470,8 +536,9 @@ export default function AlphaFold3SubmissionPage() {
                   isLast={index === draft.entities.length - 1}
                   key={entity.id}
                   onChange={(next, copies) => updateEntity(index, next, copies)}
+                  onExpand={(records) => expandEntity(index, records)}
                   onMove={(direction) => moveEntity(index, direction)}
-                  onRemove={() => setDraft({ ...draft, entities: draft.entities.filter((_, position) => position !== index) })}
+                  onRemove={() => removeEntity(index)}
                 />
               ))}
               <Button onClick={addEntity} type="button" variant="outline"><Plus />Add entity</Button>
@@ -479,7 +546,7 @@ export default function AlphaFold3SubmissionPage() {
           </Card>
         ) : (
           <Card>
-            <CardHeader><CardTitle>Native AlphaFold3 JSON</CardTitle><p className="text-sm text-muted-foreground">Use this mode for modifications, covalent bonds, ligands, templates, or embedded MSAs. The job name above replaces the document name.</p></CardHeader>
+            <CardHeader><CardTitle>Native AlphaFold3 JSON</CardTitle><p className="text-sm text-muted-foreground">Use this mode for modifications, covalent bonds, custom CCD definitions, templates, or embedded MSAs. The job name above replaces the document name.</p></CardHeader>
             <CardContent>
               <input accept=".json,application/json" className="sr-only" id="alphafold3-json" onChange={uploadExpertJson} type="file" />
               <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer")} htmlFor="alphafold3-json"><Upload />Upload JSON</label>
@@ -495,7 +562,7 @@ export default function AlphaFold3SubmissionPage() {
             <label className="flex items-center gap-2 text-sm"><input checked={draft.searchProteinTemplates} onChange={(event) => setDraft({ ...draft, searchProteinTemplates: event.target.checked })} type="checkbox" />Search protein templates</label>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-recycle">Recycles</label><Input id="alphafold3-recycle" min={0} onChange={(event) => setDraft({ ...draft, recycle: Number(event.target.value) })} type="number" value={draft.recycle} /></div>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-sample">Samples per seed</label><Input id="alphafold3-sample" min={1} onChange={(event) => setDraft({ ...draft, sample: Number(event.target.value) })} type="number" value={draft.sample} /></div>
-            <div className="sm:col-span-2 lg:col-span-4"><label className="mb-1 block text-sm" htmlFor="alphafold3-seeds">Model seeds</label><Input id="alphafold3-seeds" onChange={(event) => setDraft({ ...draft, seeds: event.target.value })} placeholder="1,3-5" value={draft.seeds} /><p className="mt-1 text-xs text-muted-foreground">Comma-separated integers or ranges.</p></div>
+            <div className="sm:col-span-2 lg:col-span-4"><label className="mb-1 block text-sm" htmlFor="alphafold3-seeds">Model seeds</label><Input id="alphafold3-seeds" onChange={(event) => setDraft({ ...draft, seeds: event.target.value })} placeholder="1,2,4,8 or 1-10,42,1024" value={draft.seeds} /><p className="mt-1 text-xs text-muted-foreground">Comma-separated integers or ranges, e.g., &quot;1,2,4,8&quot; or &quot;1-10,42,1024&quot;.</p></div>
           </div>
         </details>
 

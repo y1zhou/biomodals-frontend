@@ -10,9 +10,9 @@ import { alphafold3Paths, alphafold3Tool } from "@/tools"
 
 const features = [
   {
-    description: "Add protein, DNA, and RNA sequences with one or more copies.",
+    description: "Add protein, DNA, RNA, and small-molecule entities with one or more copies.",
     icon: Dna,
-    title: "Build a polymer input",
+    title: "Build an entity input",
   },
   {
     description: "Review parsed entities, chain IDs, seeds, and prediction count before submitting.",

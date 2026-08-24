@@ -1,20 +1,22 @@
-export type PolymerType = "protein" | "dna" | "rna"
+export type EntityType = "protein" | "dna" | "rna" | "ligand"
+export type LigandFormat = "ccd" | "smiles"
 
-export interface PolymerEntity {
+export interface AlphaFold3Entity {
   chainIds: string[]
   copies: number
+  description: string
   id: string
+  ligandFormat: LigandFormat
   sequence: string
-  type: PolymerType
+  type: EntityType
 }
 
 export interface AlphaFold3Draft {
-  entities: PolymerEntity[]
+  entities: AlphaFold3Entity[]
   expertFilename: string
   expertJson: string
   jobName: string
   mode: "regular" | "expert"
-  nextChainIndex: number
   recycle: number
   sample: number
   searchMsa: boolean
@@ -27,12 +29,11 @@ const DATABASE_NAME = "biomodals-alphafold3"
 
 export function newAlphaFold3Draft(): AlphaFold3Draft {
   return {
-    entities: [newPolymerEntity("protein", 0)],
+    entities: [newAlphaFold3Entity("protein")],
     expertFilename: "",
     expertJson: "",
     jobName: "",
     mode: "regular",
-    nextChainIndex: 1,
     recycle: 10,
     sample: 5,
     searchMsa: true,
@@ -52,65 +53,108 @@ export function chainId(index: number) {
   return result
 }
 
-export function newPolymerEntity(
-  type: PolymerType,
-  chainIndex: number
-): PolymerEntity {
+export function newAlphaFold3Entity(type: EntityType): AlphaFold3Entity {
   return {
-    chainIds: [chainId(chainIndex)],
+    chainIds: ["A"],
     copies: 1,
+    description: "",
     id: crypto.randomUUID(),
+    ligandFormat: "ccd",
     sequence: "",
     type,
   }
 }
 
 export function resizeEntityCopies(
-  entity: PolymerEntity,
-  copies: number,
-  nextChainIndex: number
-) {
+  entity: AlphaFold3Entity,
+  copies: number
+): AlphaFold3Entity {
   const bounded = Math.max(1, Math.min(99, Math.trunc(copies) || 1))
-  if (bounded <= entity.chainIds.length) {
-    return {
-      entity: {
-        ...entity,
-        copies: bounded,
-        chainIds: entity.chainIds.slice(0, bounded),
-      },
-      nextChainIndex,
-    }
-  }
-  const added = Array.from(
-    { length: bounded - entity.chainIds.length },
-    (_, index) => chainId(nextChainIndex + index)
-  )
-  return {
-    entity: {
-      ...entity,
-      copies: bounded,
-      chainIds: [...entity.chainIds, ...added],
-    },
-    nextChainIndex: nextChainIndex + added.length,
-  }
+  return { ...entity, copies: bounded }
 }
 
-export function parsePolymerSequence(input: string) {
-  const lines = input.trim().split(/\r?\n/)
-  const headers = lines.filter((line) => line.trimStart().startsWith(">"))
-  if (headers.length > 1) {
-    throw new Error("Paste one sequence or one FASTA record at a time.")
-  }
-  const sequence = lines
-    .filter((line) => !line.trimStart().startsWith(">"))
-    .join("")
-    .replace(/\s+/g, "")
-    .toUpperCase()
+export function reindexEntities(entities: AlphaFold3Entity[]) {
+  let nextChainIndex = 0
+  return entities.map((entity) => {
+    const copies = Math.max(1, Math.min(99, Math.trunc(entity.copies) || 1))
+    const chainIds = Array.from(
+      { length: copies },
+      () => chainId(nextChainIndex++)
+    )
+    return { ...entity, chainIds, copies }
+  })
+}
+
+export interface PolymerRecord {
+  description: string
+  sequence: string
+}
+
+function normalizePolymerSequence(input: string) {
+  const sequence = input.replace(/\s+/g, "").toUpperCase()
   if (!sequence) throw new Error("Enter a polymer sequence.")
   if (!/^[A-Z]+$/.test(sequence)) {
     throw new Error("Sequences may only contain letter residue codes.")
   }
   return sequence
+}
+
+export function parsePolymerRecords(input: string): PolymerRecord[] {
+  const lines = input.trim().split(/\r?\n/)
+  if (!lines.some((line) => line.trimStart().startsWith(">"))) {
+    return [{ description: "", sequence: normalizePolymerSequence(input) }]
+  }
+
+  const records: PolymerRecord[] = []
+  let description: string | null = null
+  let sequenceLines: string[] = []
+  function finishRecord() {
+    if (description === null) return
+    if (!sequenceLines.some((line) => line.trim())) {
+      throw new Error("Each FASTA record must contain a sequence.")
+    }
+    records.push({
+      description,
+      sequence: normalizePolymerSequence(sequenceLines.join("")),
+    })
+  }
+
+  for (const line of lines) {
+    if (line.trimStart().startsWith(">")) {
+      finishRecord()
+      description = line.trimStart().slice(1).trim()
+      sequenceLines = []
+    } else if (line.trim()) {
+      if (description === null) {
+        throw new Error("FASTA sequence content must follow a header.")
+      }
+      sequenceLines.push(line)
+    }
+  }
+  finishRecord()
+  return records
+}
+
+export function expandEntityRecords(
+  entities: AlphaFold3Entity[],
+  index: number,
+  records: PolymerRecord[]
+) {
+  const source = entities[index]
+  if (source.type === "ligand") return reindexEntities(entities)
+  const replacements = records.map((record, recordIndex) => ({
+    ...source,
+    chainIds: [],
+    copies: records.length === 1 ? source.copies : 1,
+    description: record.description,
+    id: recordIndex === 0 ? source.id : crypto.randomUUID(),
+    sequence: record.sequence,
+  }))
+  return reindexEntities([
+    ...entities.slice(0, index),
+    ...replacements,
+    ...entities.slice(index + 1),
+  ])
 }
 
 export function parseModelSeeds(input: string) {
@@ -139,15 +183,38 @@ export function parseModelSeeds(input: string) {
 export function regularAlphaFold3Document(draft: AlphaFold3Draft) {
   const name = draft.jobName.trim()
   if (!name) throw new Error("Enter a job name.")
-  const sequences = draft.entities.map((entity) => {
-    const sequence = parsePolymerSequence(entity.sequence)
-    return {
-      [entity.type]: {
-        id: entity.chainIds,
-        sequence,
-      },
+  let nextChainIndex = 0
+  const sequences: object[] = []
+  for (const entity of draft.entities) {
+    if (entity.type === "ligand") {
+      const id = Array.from({ length: entity.copies }, () => chainId(nextChainIndex++))
+      const value = entity.sequence.trim()
+      if (!value) throw new Error("Enter CCD codes or a SMILES string.")
+      if (entity.ligandFormat === "smiles") {
+        sequences.push({ ligand: { id, smiles: value } })
+        continue
+      }
+      const ccdCodes = value.split(/[\s,]+/).filter(Boolean)
+      if (!ccdCodes.length) throw new Error("Enter at least one CCD code.")
+      sequences.push({ ligand: { ccdCodes, id } })
+      continue
     }
-  })
+    const records = parsePolymerRecords(entity.sequence)
+    for (const record of records) {
+      const copies = records.length === 1 ? entity.copies : 1
+      const id = Array.from({ length: copies }, () => chainId(nextChainIndex++))
+      const description = record.description || (
+        records.length === 1 ? entity.description : ""
+      )
+      sequences.push({
+        [entity.type]: {
+          ...(description ? { description } : {}),
+          id,
+          sequence: record.sequence,
+        },
+      })
+    }
+  }
   return {
     dialect: "alphafold3",
     modelSeeds: parseModelSeeds(draft.seeds),
