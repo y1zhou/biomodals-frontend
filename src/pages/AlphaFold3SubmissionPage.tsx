@@ -185,7 +185,7 @@ function EntityEditor({
               <span className="flex flex-wrap gap-x-[0.9em] gap-y-5 pt-3 leading-5">
                 {formatSequence(entity.sequence).split(" ").map((group, groupIndex) => (
                   <span className="relative" key={`${groupIndex}-${group}`}>
-                    <span className="absolute -top-3 right-0 font-sans text-[0.65rem] leading-none tracking-normal text-muted-foreground">
+                    <span className="absolute -top-3 right-0 min-w-[4ch] whitespace-nowrap text-right font-sans text-[0.65rem] leading-none tracking-normal text-muted-foreground">
                       {groupIndex * 10 + group.length}
                     </span>
                     {group}
@@ -243,7 +243,12 @@ function Confirmation({
       <p className="mt-3 text-muted-foreground">Review the parsed server input before remote execution begins.</p>
       <Card className="mt-8">
         <CardHeader className="flex-row items-start justify-between gap-4">
-          <div><CardTitle>{String(preview.name ?? "AlphaFold3 job")}</CardTitle><p className="mt-1 text-sm text-muted-foreground">{previewNumber(preview, "prediction_count").toLocaleString()} predictions</p></div>
+          <div>
+            <CardTitle>{String(preview.name ?? "AlphaFold3 job")}</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {previewNumber(preview, "seed_count").toLocaleString()} seeds × {previewNumber(preview, "samples").toLocaleString()} samples/seed = <strong className="font-semibold text-foreground">{previewNumber(preview, "prediction_count").toLocaleString()}</strong> predicted structures
+            </p>
+          </div>
           <a className={buttonVariants({ size: "sm", variant: "outline" })} download href={alphaFold3DocumentUrl(validation.validation_id)}><Download />Download JSON</a>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -275,7 +280,7 @@ function Confirmation({
           <div>
             <h2 className="font-medium">Expert input summary</h2>
             <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
-              {[["Modifications", "modifications"], ["Bonds", "bonds"], ["Ligands", "ligands"], ["Templates", "templates"], ["Custom inputs", "custom_inputs"]].map(([label, key]) => (
+              {[["Modifications", "modifications"], ["Bonds", "bonds"], ["Custom MSAs", "custom_msas"], ["Custom templates", "custom_templates"], ["Custom CCD definitions", "custom_ccd"]].map(([label, key]) => (
                 <div className="rounded-lg bg-muted p-3" key={key}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{Number(advancedCounts[key] ?? 0).toLocaleString()}</p></div>
               ))}
             </div>
