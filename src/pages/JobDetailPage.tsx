@@ -208,6 +208,9 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
   const stateDescription =
     job.state === "failed" ? jobFailureMessage(job) : presentation.description
   const stages = jobStageTimeline(job)
+  const currentStages = stages.filter((stage) =>
+    stage.state === "active" || stage.state === "queued"
+  )
   const activeStages = stages.filter((stage) => stage.state === "active")
   const runningFunctions = job.state === "running"
     ? Array.from(new Set(activeStages.flatMap((stage) =>
@@ -253,8 +256,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
         <section className="mt-8">
           <p aria-atomic="true" aria-live="polite" className="sr-only">
             Job status: {presentation.label}.
-            {activeStages.length
-              ? ` Active stages: ${activeStages.map((stage) => stage.label).join(", ")}.`
+            {currentStages.length
+              ? ` Current stages: ${currentStages.map((stage) => stage.label).join(", ")}.`
               : ""}
             {runningFunctions.length
               ? ` Running functions: ${runningFunctions.join(", ")}.`
@@ -368,7 +371,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             <CardHeader>
               <CardTitle>Execution stages</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Highlighted rows are the active stages last reported by BioModals.
+                Highlighted rows are queued or active stages last reported by BioModals.
                 Timestamps show when BioModals recorded each transition.
                 {job.can_view_logs
                   ? " Click a started remote stage to view its logs."
@@ -408,8 +411,10 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                   <tbody className="divide-y">
                     {stages.map((stage, index) => {
                       const active = stage.state === "active"
+                      const queued = stage.state === "queued"
                       const canInspectLogs = Boolean(
                         job.can_view_logs &&
+                        active &&
                         stage.startedAt
                       )
                       const logsExpanded =
@@ -425,19 +430,21 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                           ? "Completed"
                           : stage.state === "partial"
                             ? "Partial"
-                          : stage.state === "failed"
-                            ? "Failed"
+                            : stage.state === "failed"
+                              ? "Failed"
                             : stage.state === "cancelled"
                               ? "Cancelled"
-                          : stage.state === "upcoming"
-                            ? "Not started"
-                            : presentation.label
+                              : stage.state === "upcoming"
+                                ? "Not started"
+                                : stage.state === "queued"
+                                  ? "Queued"
+                                  : presentation.label
 
                       return (
                         <Fragment key={stage.code}>
                           <tr
                             className={cn(
-                              active && "bg-muted/50",
+                              (active || queued) && "bg-muted/50",
                               canInspectLogs &&
                                 "cursor-pointer transition-colors hover:bg-muted/60 active:bg-muted",
                               logsExpanded && "bg-muted/60"

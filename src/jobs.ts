@@ -131,13 +131,15 @@ export function jobStageTimeline(job: Job) {
           ? ("completed" as const)
           : stage.outcome === "partial"
             ? ("partial" as const)
-          : stage.outcome === "failed"
-            ? ("failed" as const)
-          : stage.outcome === "cancelled"
+            : stage.outcome === "failed"
+              ? ("failed" as const)
+              : stage.outcome === "cancelled"
               ? ("cancelled" as const)
-          : active
-            ? ("active" as const)
-            : ("upcoming" as const),
+                : active && stage.provider_state === "queued"
+                  ? ("queued" as const)
+                  : active
+                    ? ("active" as const)
+                    : ("upcoming" as const),
     }
   })
 }

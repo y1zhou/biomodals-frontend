@@ -198,6 +198,23 @@ describe("Job lifecycle presentation", () => {
     })
   })
 
+  test("distinguishes provider calls waiting for a Modal container", () => {
+    const running = {
+      ...job("queued-provider", "running", "2026-07-17T00:00:00Z"),
+      stages: [
+        {
+          code: "prepare_environment",
+          label: "Prepare environment",
+          running_functions: ["prepare_alphafold3_environment_asset"],
+          provider_state: "queued" as const,
+          started_at: "2026-07-17T00:00:00Z",
+        },
+      ],
+    }
+
+    expect(jobStageTimeline(running)[0]?.state).toBe("queued")
+  })
+
   test("filters and sorts every Job History column without mutating jobs", () => {
     const older = {
       ...job("older", "running", "2026-07-16T00:00:00Z"),

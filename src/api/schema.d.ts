@@ -1024,6 +1024,8 @@ export interface components {
             readonly label: string;
             /** Outcome */
             readonly outcome?: ("completed" | "partial" | "failed" | "cancelled") | null;
+            /** Provider State */
+            readonly provider_state?: ("queued" | "running") | null;
             /** Running Functions */
             readonly running_functions?: readonly string[];
             /** Started At */
