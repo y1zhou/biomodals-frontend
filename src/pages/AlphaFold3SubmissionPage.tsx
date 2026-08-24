@@ -239,27 +239,26 @@ function Confirmation({
         <Button disabled={pending} onClick={onClear} variant="ghost"><RotateCcw />Clear</Button>
       </div>
       <Badge variant="secondary">Review</Badge>
-      <h1 className="mt-4 font-heading text-3xl font-semibold">Confirm AlphaFold3 job</h1>
+      <div className="mt-4 flex items-center justify-between gap-4">
+        <h1 className="font-heading text-3xl font-semibold">Confirm AlphaFold3 job</h1>
+        <a className={buttonVariants({ size: "sm", variant: "outline" })} download href={alphaFold3DocumentUrl(validation.validation_id)}><Download />Download JSON</a>
+      </div>
       <p className="mt-3 text-muted-foreground">Review the parsed server input before remote execution begins.</p>
       <Card className="mt-8">
-        <CardHeader className="flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle>{String(preview.name ?? "AlphaFold3 job")}</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {previewNumber(preview, "seed_count").toLocaleString()} seeds × {previewNumber(preview, "samples").toLocaleString()} samples/seed = <strong className="font-semibold text-foreground">{previewNumber(preview, "prediction_count").toLocaleString()}</strong> predicted structures
-            </p>
-          </div>
-          <a className={buttonVariants({ size: "sm", variant: "outline" })} download href={alphaFold3DocumentUrl(validation.validation_id)}><Download />Download JSON</a>
-        </CardHeader>
+        <CardHeader><CardTitle>{String(preview.name ?? "AlphaFold3 job")}</CardTitle></CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Seeds</p><p className="mt-1 font-medium">{previewNumber(preview, "seed_count")}</p></div>
-            <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Samples per seed</p><p className="mt-1 font-medium">{previewNumber(preview, "samples")}</p></div>
-            <div className="rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Recycles</p><p className="mt-1 font-medium">{previewNumber(preview, "recycle")}</p></div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="w-28 rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Seeds</p><p className="mt-1 font-medium">{previewNumber(preview, "seed_count")}</p></div>
+            <span className="text-muted-foreground">×</span>
+            <div className="w-36 rounded-lg bg-muted p-3"><p className="text-xs text-muted-foreground">Samples per seed</p><p className="mt-1 font-medium">{previewNumber(preview, "samples")}</p></div>
+            <span className="text-muted-foreground">=</span>
+            <p className="text-sm text-muted-foreground"><strong className="font-semibold text-foreground">{previewNumber(preview, "prediction_count").toLocaleString()}</strong> predicted structures</p>
           </div>
-          <dl className="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-2">
-            <div><dt className="text-muted-foreground">Model seeds</dt><dd className="mt-1 break-all">{seeds.join(", ")}</dd></div>
-            <div><dt className="text-muted-foreground">Sequence searches</dt><dd className="mt-1">MSAs {preview.search_msa === true ? "enabled for proteins and RNA" : "disabled"}; protein templates {preview.search_protein_templates === true ? "enabled" : "disabled"}</dd></div>
+          <dl className="divide-y rounded-lg border text-sm">
+            <div className="grid gap-2 px-4 py-3 sm:grid-cols-[12rem_1fr]"><dt className="text-muted-foreground">Model seeds</dt><dd className="break-all">{seeds.join(", ")}</dd></div>
+            <div className="grid gap-2 px-4 py-3 sm:grid-cols-[12rem_1fr]"><dt className="text-muted-foreground">MSA search</dt><dd>{preview.search_msa === true ? "Enabled for proteins and RNA" : "Disabled"}</dd></div>
+            <div className="grid gap-2 px-4 py-3 sm:grid-cols-[12rem_1fr]"><dt className="text-muted-foreground">Protein template search</dt><dd>{preview.search_protein_templates === true ? "Enabled" : "Disabled"}</dd></div>
+            <div className="grid gap-2 px-4 py-3 sm:grid-cols-[12rem_1fr]"><dt className="text-muted-foreground">Number of recycles</dt><dd>{previewNumber(preview, "recycle")}</dd></div>
           </dl>
           <div>
             <h2 className="font-medium">Entities</h2>
@@ -279,9 +278,12 @@ function Confirmation({
           </div>
           <div>
             <h2 className="font-medium">Expert input summary</h2>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
-              {[["Modifications", "modifications"], ["Bonds", "bonds"], ["Custom MSAs", "custom_msas"], ["Custom templates", "custom_templates"], ["Custom CCD definitions", "custom_ccd"]].map(([label, key]) => (
-                <div className="rounded-lg bg-muted p-3" key={key}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{Number(advancedCounts[key] ?? 0).toLocaleString()}</p></div>
+            <div className="mt-2 grid grid-cols-6 gap-2 text-sm">
+              {[["Modifications", "modifications"], ["Bonds", "bonds"]].map(([label, key]) => (
+                <div className="col-span-3 rounded-lg bg-muted p-3" key={key}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{Number(advancedCounts[key] ?? 0).toLocaleString()}</p></div>
+              ))}
+              {[["Custom MSAs", "custom_msas"], ["Custom templates", "custom_templates"], ["Custom CCD definitions", "custom_ccd"]].map(([label, key]) => (
+                <div className="col-span-2 rounded-lg bg-muted p-3" key={key}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{Number(advancedCounts[key] ?? 0).toLocaleString()}</p></div>
               ))}
             </div>
           </div>
