@@ -214,11 +214,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
     stage.state === "active" || stage.state === "queued"
   )
   const activeStages = stages.filter((stage) => stage.state === "active")
-  const runningFunctions = job.state === "running"
-    ? Array.from(new Set(activeStages.flatMap((stage) =>
-        stage.functionName ? [stage.functionName] : []
-      )))
-    : []
   const downloadError = downloadMutation.error
     ? apiErrorCode(downloadMutation.error) === "result_invalid"
       ? "The result could not be verified. BioModals will keep the job output for an administrator to recover."
@@ -260,9 +255,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             Job status: {presentation.label}.
             {currentStages.length
               ? ` Current stages: ${currentStages.map((stage) => stage.label).join(", ")}.`
-              : ""}
-            {runningFunctions.length
-              ? ` Running functions: ${runningFunctions.join(", ")}.`
               : ""}
           </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -382,14 +374,13 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             </CardHeader>
             <CardContent className="px-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[58rem] table-fixed text-left text-sm">
+                <table className="w-full min-w-[44rem] table-fixed text-left text-sm">
                   <caption className="sr-only">Execution stages</caption>
                   <colgroup>
-                    <col className="w-[24%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[22%]" />
+                    <col className="w-[30%]" />
                     <col className="w-[18%]" />
+                    <col className="w-[26%]" />
+                    <col className="w-[26%]" />
                   </colgroup>
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
                     <tr>
@@ -398,9 +389,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       </th>
                       <th className="px-6 py-3 font-medium" scope="col">
                         Status
-                      </th>
-                      <th className="px-6 py-3 font-medium" scope="col">
-                        Running function
                       </th>
                       <th className="px-3 py-3 font-medium" scope="col">
                         Started
@@ -504,18 +492,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                             >
                               {statusLabel}
                             </td>
-                            <td className="px-6 py-4">
-                              {stage.code === "prepare_result" ||
-                              stage.code === "prepare_input" ? (
-                                <span className="text-muted-foreground">N/A</span>
-                              ) : stage.functionName ? (
-                                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                                  {stage.functionName}
-                                </code>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </td>
                             <td className="px-3 py-4 text-muted-foreground">
                               {formatTimestamp(stage.startedAt)}
                             </td>
@@ -527,7 +503,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                             <tr>
                               <td
                                 className="max-w-0 bg-muted/20 px-6 py-4"
-                                colSpan={5}
+                                colSpan={4}
                               >
                                 <StageLogs
                                   jobId={job.job_id}
