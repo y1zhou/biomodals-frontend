@@ -620,9 +620,6 @@ export interface components {
             /** Display Name */
             readonly display_name: string;
             readonly job_logs_visible_to_owner: components["schemas"]["BooleanSettingView"];
-            readonly max_active_gpu_provider_calls: components["schemas"]["IntegerSettingView"];
-            readonly max_active_provider_calls: components["schemas"]["IntegerSettingView"];
-            readonly modal_app_name: components["schemas"]["TextSettingView"];
             readonly modal_app_version: components["schemas"]["IntegerSettingView"];
             /** Tool */
             readonly tool: string;
@@ -1294,21 +1291,6 @@ export interface components {
              * @description Whether authenticated Job owners may inspect provider logs. Administrators always retain access. Omit to keep unchanged; null restores the Tool default.
              */
             readonly job_logs_visible_to_owner?: boolean | null;
-            /**
-             * Max Active Gpu Provider Calls
-             * @description Maximum active GPU containers within the total limit.
-             */
-            readonly max_active_gpu_provider_calls?: number | null;
-            /**
-             * Max Active Provider Calls
-             * @description Maximum active workload containers for newly admitted Runs.
-             */
-            readonly max_active_provider_calls?: number | null;
-            /**
-             * Modal App Name
-             * @description Omit to keep unchanged; null restores the configured default.
-             */
-            readonly modal_app_name?: string | null;
             /**
              * Modal App Version
              * @description Exact Modal deployment version used for new Jobs. Omit to keep unchanged; null restores the configured default.

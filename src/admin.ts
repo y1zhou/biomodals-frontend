@@ -82,20 +82,11 @@ export function modalToolSettingLabels(
 ) {
   if (!input) return []
   const labels: string[] = []
-  if (Object.hasOwn(input, "modal_app_name")) {
-    labels.push("Deployed Modal app name")
-  }
   if (Object.hasOwn(input, "modal_app_version")) {
     labels.push("Modal deployment version")
   }
   if (Object.hasOwn(input, "active_job_limit")) {
     labels.push("Active job limit")
-  }
-  if (Object.hasOwn(input, "max_active_provider_calls")) {
-    labels.push("Maximum containers")
-  }
-  if (Object.hasOwn(input, "max_active_gpu_provider_calls")) {
-    labels.push("Maximum GPU containers")
   }
   if (Object.hasOwn(input, "job_logs_visible_to_owner")) {
     labels.push("Job log access")
@@ -138,22 +129,13 @@ export function changedModalEnvironmentSettings(
 
 export function changedModalToolSettings(
   tool: AdminModalTool,
-  modalAppName: string,
   modalAppVersion: string,
   activeJobLimit: string,
-  maxActiveProviderCalls: string,
-  maxActiveGpuProviderCalls: string,
   jobLogsVisibleToOwner: boolean
 ): UpdateAdminModalToolInput {
-  const normalizedAppName = modalAppName.trim()
   const normalizedVersion = positiveInteger(modalAppVersion)
   const normalizedLimit = nonnegativeInteger(activeJobLimit)
-  const normalizedProviderLimit = positiveInteger(maxActiveProviderCalls)
-  const normalizedGpuLimit = positiveInteger(maxActiveGpuProviderCalls)
   return {
-    ...(tool.modal_app_name.editable && normalizedAppName !== tool.modal_app_name.value
-      ? { modal_app_name: normalizedAppName }
-      : {}),
     ...(normalizedVersion !== null &&
     tool.modal_app_version.editable &&
     normalizedVersion !== tool.modal_app_version.value
@@ -163,14 +145,6 @@ export function changedModalToolSettings(
     tool.active_job_limit.editable &&
     normalizedLimit !== tool.active_job_limit.value
       ? { active_job_limit: normalizedLimit }
-      : {}),
-    ...(normalizedProviderLimit !== null &&
-    normalizedProviderLimit !== tool.max_active_provider_calls.value
-      ? { max_active_provider_calls: normalizedProviderLimit }
-      : {}),
-    ...(normalizedGpuLimit !== null &&
-    normalizedGpuLimit !== tool.max_active_gpu_provider_calls.value
-      ? { max_active_gpu_provider_calls: normalizedGpuLimit }
       : {}),
     ...(jobLogsVisibleToOwner !== tool.job_logs_visible_to_owner.value
       ? { job_logs_visible_to_owner: jobLogsVisibleToOwner }

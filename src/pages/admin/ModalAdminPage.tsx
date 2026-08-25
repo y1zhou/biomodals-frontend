@@ -732,22 +732,13 @@ function ToolSettingErrorPopover({
 function ToolRow({ tool }: { tool: AdminModalTool }) {
   const queryClient = useQueryClient()
   const [saveButton, setSaveButton] = useState<HTMLButtonElement | null>(null)
-  const [appName, setAppName] = useState(tool.modal_app_name.value)
   const [appVersion, setAppVersion] = useState(String(tool.modal_app_version.value))
   const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
-  const [maxContainers, setMaxContainers] = useState(
-    String(tool.max_active_provider_calls.value)
-  )
-  const [maxGpuContainers, setMaxGpuContainers] = useState(
-    String(tool.max_active_gpu_provider_calls.value)
-  )
   const [jobLogsVisibleToOwner, setJobLogsVisibleToOwner] = useState(
     tool.job_logs_visible_to_owner.value
   )
-  const [appDirty, setAppDirty] = useState(false)
   const [versionDirty, setVersionDirty] = useState(false)
   const [limitDirty, setLimitDirty] = useState(false)
-  const [capacityDirty, setCapacityDirty] = useState(false)
   const [jobLogAccessDirty, setJobLogAccessDirty] = useState(false)
 
   function mutationOptions() {
@@ -759,10 +750,6 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
         queryClient.setQueryData<AdminModal>(adminModalKey, (modal) =>
           modal ? mergeAdminModalTool(modal, result) : modal
         )
-        if (Object.hasOwn(input, "modal_app_name")) {
-          setAppName(result.modal_app_name.value)
-          setAppDirty(false)
-        }
         if (Object.hasOwn(input, "modal_app_version")) {
           setAppVersion(String(result.modal_app_version.value))
           setVersionDirty(false)
@@ -770,18 +757,6 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
         if (Object.hasOwn(input, "active_job_limit")) {
           setActiveJobLimit(String(result.active_job_limit.value))
           setLimitDirty(false)
-        }
-        if (Object.hasOwn(input, "max_active_provider_calls")) {
-          setMaxContainers(String(result.max_active_provider_calls.value))
-        }
-        if (Object.hasOwn(input, "max_active_gpu_provider_calls")) {
-          setMaxGpuContainers(String(result.max_active_gpu_provider_calls.value))
-        }
-        if (
-          Object.hasOwn(input, "max_active_provider_calls") ||
-          Object.hasOwn(input, "max_active_gpu_provider_calls")
-        ) {
-          setCapacityDirty(false)
         }
         if (Object.hasOwn(input, "job_logs_visible_to_owner")) {
           setJobLogsVisibleToOwner(result.job_logs_visible_to_owner.value)
@@ -792,16 +767,12 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
     }
   }
 
-  const appUpdate = useMutation(mutationOptions())
   const versionUpdate = useMutation(mutationOptions())
   const limitUpdate = useMutation(mutationOptions())
-  const capacityUpdate = useMutation(mutationOptions())
   const jobLogAccessUpdate = useMutation(mutationOptions())
   const toolUpdates = [
-    appUpdate,
     versionUpdate,
     limitUpdate,
-    capacityUpdate,
     jobLogAccessUpdate,
   ]
   const resetMutationErrors = () => {
@@ -809,21 +780,16 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
       if (!update.isPending) update.reset()
     }
   }
-  useExpireSession(appUpdate.error)
   useExpireSession(versionUpdate.error)
   useExpireSession(limitUpdate.error)
-  useExpireSession(capacityUpdate.error)
   useExpireSession(jobLogAccessUpdate.error)
 
   const mutationIncludes = (
-    mutation: typeof appUpdate,
+    mutation: typeof versionUpdate,
     field: keyof UpdateAdminModalToolInput
   ) =>
     mutation.isPending &&
     Boolean(mutation.variables && Object.hasOwn(mutation.variables, field))
-  const appPending = toolUpdates.some((update) =>
-    mutationIncludes(update, "modal_app_name")
-  )
   const versionPending = toolUpdates.some((update) =>
     mutationIncludes(update, "modal_app_version")
   )
@@ -833,34 +799,17 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
   const jobLogAccessPending = toolUpdates.some((update) =>
     mutationIncludes(update, "job_logs_visible_to_owner")
   )
-  const capacityPending = toolUpdates.some((update) =>
-    mutationIncludes(update, "max_active_provider_calls") ||
-    mutationIncludes(update, "max_active_gpu_provider_calls")
-  )
   const mutationPending = toolUpdates.some((update) => update.isPending)
   const failedMutation = latestModalToolFailure(toolUpdates)
   const mutationError = failedMutation?.error ?? null
   const failedFields = modalToolSettingLabels(failedMutation?.variables)
 
   useEffect(() => {
-    if (!appDirty) setAppName(tool.modal_app_name.value)
-  }, [appDirty, tool.modal_app_name.source, tool.modal_app_name.value])
-  useEffect(() => {
     if (!versionDirty) setAppVersion(String(tool.modal_app_version.value))
   }, [tool.modal_app_version.source, tool.modal_app_version.value, versionDirty])
   useEffect(() => {
     if (!limitDirty) setActiveJobLimit(String(tool.active_job_limit.value))
   }, [limitDirty, tool.active_job_limit.source, tool.active_job_limit.value])
-  useEffect(() => {
-    if (!capacityDirty) {
-      setMaxContainers(String(tool.max_active_provider_calls.value))
-      setMaxGpuContainers(String(tool.max_active_gpu_provider_calls.value))
-    }
-  }, [
-    capacityDirty,
-    tool.max_active_gpu_provider_calls.value,
-    tool.max_active_provider_calls.value,
-  ])
   useEffect(() => {
     if (!jobLogAccessDirty) {
       setJobLogsVisibleToOwner(tool.job_logs_visible_to_owner.value)
@@ -873,18 +822,12 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
 
   const changedSettings = changedModalToolSettings(
     tool,
-    appName,
     appVersion,
     activeJobLimit,
-    maxContainers,
-    maxGpuContainers,
     jobLogsVisibleToOwner
   )
-  const normalizedAppName = appName.trim()
   const normalizedVersion = positiveInteger(appVersion)
   const normalizedLimit = nonnegativeInteger(activeJobLimit)
-  const normalizedContainers = positiveInteger(maxContainers)
-  const normalizedGpuContainers = positiveInteger(maxGpuContainers)
   const displayName = tool.display_name
   const hasChanges = Object.keys(changedSettings).length > 0
   const overLimit = tool.active_jobs > tool.active_job_limit.value
@@ -929,77 +872,6 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
               </p>
             ) : null}
           </div>
-        </div>
-      </td>
-      <td className="px-2 py-4 text-center align-middle">
-        <div className="mx-auto grid max-w-36 grid-cols-2 gap-2">
-          <RuntimeSettingInput
-            aria-label={`Maximum containers for ${displayName}`}
-            label={`maximum containers for ${displayName}`}
-            min={1}
-            onChange={(value) => {
-              resetMutationErrors()
-              setMaxContainers(value)
-              setCapacityDirty(
-                positiveInteger(value) !== tool.max_active_provider_calls.value ||
-                positiveInteger(maxGpuContainers) !==
-                  tool.max_active_gpu_provider_calls.value
-              )
-            }}
-            onRestoreOverride={() => {
-              resetMutationErrors()
-              capacityUpdate.mutate({ max_active_provider_calls: null })
-            }}
-            pending={capacityPending}
-            setting={tool.max_active_provider_calls}
-            type="number"
-            value={maxContainers}
-          />
-          <RuntimeSettingInput
-            aria-label={`Maximum GPU containers for ${displayName}`}
-            label={`maximum GPU containers for ${displayName}`}
-            min={1}
-            onChange={(value) => {
-              resetMutationErrors()
-              setMaxGpuContainers(value)
-              setCapacityDirty(
-                positiveInteger(maxContainers) !==
-                  tool.max_active_provider_calls.value ||
-                positiveInteger(value) !==
-                  tool.max_active_gpu_provider_calls.value
-              )
-            }}
-            onRestoreOverride={() => {
-              resetMutationErrors()
-              capacityUpdate.mutate({ max_active_gpu_provider_calls: null })
-            }}
-            pending={capacityPending}
-            setting={tool.max_active_gpu_provider_calls}
-            type="number"
-            value={maxGpuContainers}
-          />
-          <span className="text-[0.65rem] text-muted-foreground">Total</span>
-          <span className="text-[0.65rem] text-muted-foreground">GPU</span>
-        </div>
-      </td>
-      <td className="px-3 py-4 text-center align-middle">
-        <div className="mx-auto max-w-48">
-          <RuntimeSettingInput
-            aria-label={`Modal app name for ${displayName}`}
-            label={`Modal app name for ${displayName}`}
-            onChange={(value) => {
-              resetMutationErrors()
-              setAppName(value)
-              setAppDirty(value.trim() !== tool.modal_app_name.value)
-            }}
-            onRestoreOverride={() => {
-              resetMutationErrors()
-              appUpdate.mutate({ modal_app_name: null })
-            }}
-            pending={appPending}
-            setting={tool.modal_app_name}
-            value={appName}
-          />
         </div>
       </td>
       <td className="px-2 py-4 text-center align-middle">
@@ -1060,14 +932,10 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
             mutationPending ||
             !hasChanges ||
             normalizedLimit === null ||
-            normalizedContainers === null ||
-            normalizedGpuContainers === null ||
-            normalizedGpuContainers > normalizedContainers ||
-            (tool.modal_app_version.editable && normalizedVersion === null) ||
-            (tool.modal_app_name.editable && !normalizedAppName)
+            (tool.modal_app_version.editable && normalizedVersion === null)
           }
           onClick={() => {
-            appUpdate.mutate(changedSettings)
+            versionUpdate.mutate(changedSettings)
           }}
           ref={setSaveButton}
           size="icon"
@@ -1366,15 +1234,13 @@ export default function ModalAdminPage() {
         </h2>
         <div className="mt-4 overflow-x-auto rounded-xl border bg-card shadow-sm">
           <Tooltip.Provider closeDelay={100} delay={250}>
-            <table className="w-[calc(100%_-_1px)] min-w-[56rem] table-fixed border-collapse text-center">
+            <table className="w-[calc(100%_-_1px)] min-w-[42rem] table-fixed border-collapse text-center">
               <colgroup>
-                <col className="w-[18%]" />
-                <col className="w-[19%]" />
-                <col className="w-[16%]" />
-                <col className="w-[17%]" />
-                <col className="w-[13%]" />
-                <col className="w-[11%]" />
-                <col className="w-[6%]" />
+                <col className="w-[28%]" />
+                <col className="w-[30%]" />
+                <col className="w-[20%]" />
+                <col className="w-[14%]" />
+                <col className="w-[8%]" />
               </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -1389,15 +1255,8 @@ export default function ModalAdminPage() {
                     Active jobs / active job limit
                   </th>
                   <th
-                    className="px-2 py-3 font-medium"
-                    rowSpan={2}
-                    scope="col"
-                  >
-                    Maximum containers
-                  </th>
-                  <th
                     className="border-b px-2 py-2 font-semibold text-foreground/80"
-                    colSpan={3}
+                    colSpan={2}
                     scope="colgroup"
                   >
                     Modal
@@ -1407,9 +1266,6 @@ export default function ModalAdminPage() {
                   </th>
                 </tr>
                 <tr>
-                  <th className="px-3 py-2.5 font-medium" scope="col">
-                    Deployed app name
-                  </th>
                   <th className="whitespace-nowrap px-2 py-2.5 font-medium" scope="col">
                     Deployment version
                   </th>
