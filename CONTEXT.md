@@ -97,9 +97,11 @@ A Job for which remote work may still exist but BioModals cannot safely confirm
 or reconcile it. It consumes Active Job Limits until an Administrator checks
 Modal and returns it to remote reconciliation. The UI label is Status unknown.
 
-The Administrator view identifies whether uncertainty came from an ambiguous
-Submission or an unavailable exact deployment. The fixed reason codes are
-`submission_outcome_unknown` and `deployment_unavailable`.
+The Administrator view identifies whether uncertainty came from an interrupted
+launch, an ambiguous Submission or provider result, or an unavailable exact
+deployment. The fixed reason codes are `submission_in_progress`,
+`submission_outcome_unknown`, `provider_outcome_unknown`, and
+`deployment_unavailable`.
 _Avoid_: Blocked Job, stalled Job, provider-unknown Job
 
 **Blocking Category**:
@@ -114,8 +116,9 @@ completed/total work or an indeterminate phase and message.
 _Avoid_: Job Status, progress log
 
 **Job Stage**:
-One workload-specific step of a Job and, when applicable, the deployed function
-associated with that step. Several Job Stages may be active concurrently.
+One user-facing, workload-specific step of a Job. Several Job Stages may be
+active concurrently. Provider functions remain diagnostic log targets rather
+than part of the ordinary stage-table presentation.
 _Avoid_: Job Status, Modal call
 
 **Active Job Stages**:
@@ -164,11 +167,6 @@ A rebuildable local copy of finalized Result data whose authoritative source
 remains on a remote Modal Volume.
 _Avoid_: Result retention, authoritative Result, Job deletion
 
-**Retry**:
-A new Submission that creates a linked Job using retained Input from an earlier
-failed Job.
-_Avoid_: Restart, rerun in place
-
 **Cancellation**:
 A durable best-effort request to stop an Active Job without deleting its
 record. It continues consuming Active Job Limits until the remote outcome is
@@ -176,10 +174,6 @@ known and never becomes cancelled solely because time elapsed.
 If the provider status expires before BioModals can confirm the outcome, the
 Job becomes state_unknown for Administrator review.
 _Avoid_: Deletion, request abort
-
-**Deletion**:
-The irreversible removal of a Job and its retained data.
-_Avoid_: Cancellation, archival
 
 **Capacity Limit**:
 An operational bound on how many Jobs may execute concurrently. Accepted Jobs
@@ -206,7 +200,8 @@ _Avoid_: Capacity Limit, concurrency limit
 A non-secret service or Tool value that an Administrator may change in the
 database and that takes effect without restarting the backend unless an
 explicit process environment variable controls it.
-_Avoid_: Modal credential, frontend API URL
+Deployed Modal App names are startup configuration, not Runtime Settings.
+_Avoid_: Modal credential, frontend API URL, Modal App name
 
 **Modal Configuration Snapshot**:
 The Modal Environment, deployed Modal app name, and exact positive deployment

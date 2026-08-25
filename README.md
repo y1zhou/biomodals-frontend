@@ -99,10 +99,12 @@ per-stage Job Logs, My Jobs filtering, and direct Result downloads. AlphaFold3
 drafts remain in the browser while validated documents are retained briefly by
 the backend and never stored in the service database.
 
-Administrators can manage Users, admission and provider-container limits, live
-non-secret Modal configuration, unknown remote states, the local Result cache,
-and optional Modal billing reports. API types in `src/api/schema.d.ts` come
-from the live FastAPI OpenAPI document.
+Administrators can manage Users, active-Job admission limits, the effective
+Modal Environment, exact Tool deployment versions, Job-log access, unknown
+remote states, the local Result cache, and optional Modal billing reports.
+Per-Job container ceilings are derived from each Tool's active-Job limit;
+deployed Modal App names remain backend startup configuration. API types in
+`src/api/schema.d.ts` come from the live FastAPI OpenAPI document.
 
 To add another Tool, add its metadata to `src/tools.ts` and introduce a
 lazy-loaded internal route module. Keep Tool cards as real links and prefer

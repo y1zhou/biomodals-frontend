@@ -4,10 +4,11 @@ status: accepted
 
 # Add administrator-managed runtime configuration
 
-> Backend ADR 0007 and the backend API Tool service spec supersede the Job
-> execution-state and unknown-state action details in this ADR. The current
-> action returns a reviewed Job to remote reconciliation; it does not mark the
-> Job failed locally. Runtime setting and storage UI decisions remain current.
+> Backend ADR 0007 and the backend API Tool service spec supersede the original
+> Job execution-state and unknown-state action details in this ADR. Current
+> resolution can resume a known root call, requeue only after confirming no
+> launch occurred, or cancel. It does not mark the Job failed locally. Runtime
+> setting, storage, and billing UI decisions below are current.
 
 BioModals adds an Administrator role and a protected Admin interface. An
 Administrator is an ordinary User with additional authorization; the backend,
@@ -69,7 +70,7 @@ Results are unavailable to the disabled User until re-enabling; Administrators
 do not gain access to them.
 
 Disable User, Remove Administrator role, replacement Password Link issuance,
-Clear Result Cache, and Mark failed for a state-unknown Job are the only actions
+Clear Result Cache, and state-unknown Job resolution are the only actions
 requiring confirmation. Their dialogs identify the exact User, Job, or cache
 scope, explain the consequence, and use the destructive red confirmation style
 without a typed phrase. Saving or
@@ -115,16 +116,16 @@ private Job detail; Administrator access still does not grant inspection of
 another User's Jobs.
 
 A separate `Jobs with unknown remote status` table is the narrow operational
-exception. It exposes only Job ID, workload display name, Job display name,
-safe run name, `state_unknown_at`, and one fixed ambiguity reason:
-`submission_outcome_unknown`, `provider_outcome_unknown`, or
-`cancellation_outcome_unknown`. This lets an Administrator locate the work in
-Modal without exposing private Job data.
+exception. It exposes only Job ID, Tool display name, Job display name, safe
+run name, `state_unknown_at`, and one fixed ambiguity reason:
+`submission_in_progress`, `submission_outcome_unknown`,
+`provider_outcome_unknown`, or `deployment_unavailable`. This lets an
+Administrator locate the work in Modal without exposing private Job data.
 
-The Administrator must stop remote work in Modal first when necessary. A red
-`Mark failed` action requires confirmation, records terminal
-`failed/compute_failed`, and releases Active Job Limits. It does not contact
-Modal and cannot be undone from the Admin panel.
+After checking Modal, an Administrator may attach a known root Function Call
+and resume reconciliation, requeue only when no launch occurred, or request
+cancellation. Each resolution is confirmed and preserves the remote
+coordinator as execution authority.
 
 ## Storage administration
 
@@ -160,13 +161,13 @@ Clearing the Result Cache never deletes a Job or its authoritative remote Modal
 Volume data. A later User download restores or reconstructs the Result locally
 without rerunning scientific compute.
 
-The Tools section is a six-column table whose first header row contains the
+The Tools section is a five-column table whose first header row contains the
 user-facing Tool name, combined Active Jobs / Tool Active Job Limit, a `Modal`
-group spanning three columns, and a visually unlabeled row-action column. The
-second header row labels the grouped deployed app name, exact positive
-deployment version, and Job Logs columns. The final column's accessible label
-and independent placement make clear that Save applies to every changed field
-in the row.
+group spanning exact deployment version and Job Logs, and a visually unlabeled
+row-action column. The final column's accessible label and independent
+placement make clear that Save applies to every changed field in the row.
+Modal App names are deliberately absent because they are startup-only
+configuration.
 
 Job Log access uses an icon-only switch. `Admins only` is a black track with a
 locked icon and the thumb on the right; `Job owners` is a gray track with an
@@ -197,7 +198,7 @@ Each save sends only fields whose values actually changed. A restore control
 inside every editable setting removes that field's Administrator override and
 reveals its configured-file or built-in default. Restore controls and
 provenance are field-specific: changing or restoring a Tool Active Job Limit
-does not turn its deployed Modal app name into an Administrator setting.
+does not affect the deployment version or Job Log policy.
 The Job Log toggle participates in the same row-wide Save action, and its
 adjacent restore control removes only its database override.
 Toggle tracks and thumbs transition smoothly between states. Restore controls
@@ -209,14 +210,14 @@ dialogs. Changed-field PATCH requests avoid overwriting unrelated settings;
 two Administrators editing the same field receive ordinary last-commit-wins
 behavior. Revisit this only if concurrent administration becomes common.
 
-Changing the Modal Environment performs a read-only backend preflight of the
-configured output Volume and every required GROMACS Function in that
-Environment at each Tool's effective App name and deployment version before the
-database update commits. Changing either a deployed App name or deployment
-version preflights the candidate name/version pair in the current effective
-Environment. Limit-only changes do not validate unrelated Modal fields. A
-failed preflight leaves every prior Runtime Setting intact and returns a stable
-configuration error; validation never invokes a paid Function.
+Changing the Modal Environment performs a read-only backend preflight of every
+registered Tool coordinator in that Environment at its startup-configured App
+name and effective deployment version before the database update commits.
+Changing a deployment version preflights that version with the configured App
+name in the current effective Environment. Limit-only and Job-log changes do
+not validate unrelated Modal fields. A failed preflight leaves every prior
+Runtime Setting intact and returns a stable configuration error; validation
+never invokes a paid Function.
 
 Within one API process, provider-identity mutations serialize their effective
 setting read, preflight, and database commit. Concurrent Environment and Tool
@@ -227,10 +228,9 @@ save/restore controls while validation is pending. Other field provenance and
 pending state remain unchanged.
 
 A failed Tool save opens a field-aware error popover above that row's Save
-button. It lists every field included in the attempted update and retains the
-backend's safe diagnostic detail, so a combined App-name/version update does
-not guess which value Modal rejected. The popover has a top-right close button
-and also clears when the Administrator edits or retries the row.
+button. It identifies the rejected deployment-version field and retains the
+backend's safe diagnostic detail. The popover has a top-right close button and
+also clears when the Administrator edits or retries the row.
 
 The Tool Active Job Limit counts Active Jobs for one workload across all Users.
 The Global Active Job Limit counts Active Jobs across all Users and Tools.
@@ -261,6 +261,21 @@ beta, production, or the Modal account. Separate deployments may share a Modal
 Environment and App but do not coordinate limits. Pre-release configuration
 examples set User, Tool, and Global defaults to one to bound test cost; a true
 provider-account cap is outside the MVP.
+
+## Cost administration
+
+The Modal page includes an optional Administrator-only Costs section. Its
+default current-month interval is followed by Today, last seven days, last 30
+days, previous month, and a custom date range. A successful report shows Total
+workspace cost and Current environment cost for the effective Modal Environment
+reported by the backend, followed by Tool and Environment breakdowns separated
+by a subtle divider.
+
+Unknown or untagged Tool usage appears as `Other / untagged` in the Tool
+breakdown. It is not a separate Environment category: every billing row still
+contributes to its reported Environment. Reports are cached for five minutes.
+An unsupported workspace plan or provider failure displays an explicit failure
+with Refresh rather than a synthetic zero.
 
 ## Responsive administration
 
@@ -315,11 +330,11 @@ URL is embedded in the frontend or stored as an Administrator setting.
 
 ## Live changes and existing Jobs
 
-Modal Environment, deployed app name, and exact deployment-version changes
-apply to newly admitted Jobs. Each Job stores a Modal Configuration Snapshot at
-admission. Submission, later deployed-Function lookups, and Volume access use
-that snapshot, so existing Jobs remain attached to the environment, app, and
-version under which they were accepted.
+Modal Environment and exact deployment-version changes apply to newly admitted
+Jobs. Each Job stores a Modal Configuration Snapshot at admission. Submission,
+later deployed-Function lookups, and Volume access use that snapshot, so
+existing Jobs remain attached to the environment, startup-configured App name,
+and version under which they were accepted.
 
 Job-owner log access is an authorization policy rather than provider identity,
 so it is evaluated for each new log request and is not included in the Modal

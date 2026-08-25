@@ -4,8 +4,8 @@ status: accepted
 
 # Build the MVP frontend against the live API
 
-> The execution-ownership, Job-shape, unknown-state, and provider-log sections
-> below record the original GROMACS MVP. Backend ADR 0007,
+> The execution-ownership, Job-shape, unknown-state, stage-table, and
+> provider-log sections below record the original GROMACS MVP. Backend ADR 0007,
 > the backend API Tool service spec, and the generated OpenAPI document supersede
 > those details. The Tool catalog, account, routing, and visual interaction
 > decisions remain current unless updated explicitly below.
@@ -32,8 +32,8 @@ The first Tool has this catalog identity:
 
 The Catalog also presents the available `AlphaFold3 structure prediction` Tool
 with `Protein structure` and `Structure prediction` tags. It supports a guided
-protein, DNA, and RNA builder and native expert JSON through one retained
-server-validation and confirmation flow.
+protein, DNA, RNA, and simple ligand builder and native expert JSON through one
+retained server-validation and confirmation flow.
 
 The public Tool overview explains its PDB Input, simulation options,
 downloadable Result, and durable remote execution before presenting the
@@ -295,8 +295,8 @@ labels and actions as follows:
 | `state_unknown` | Status unknown | Active, Admin review required | None |
 | `succeeded` | Completed | Terminal | Download result |
 | `partial` | Completed with warnings | Terminal | Download result |
-| `failed` | Failed | Terminal | Start a new simulation |
-| `cancelled` | Cancelled | Terminal | Start a new simulation |
+| `failed` | Failed | Terminal | Start a new job |
+| `cancelled` | Cancelled | Terminal | Start a new job |
 
 `partial` always means that a useful, downloadable Result exists. Succeeded and
 partial are terminal in the ordinary compute lifecycle, but either may become
@@ -321,7 +321,7 @@ reconstruct earlier settings because the API does not retain those values in
 `JobView`. The backend never sends a UI action field.
 
 The typed Job Error codes are `compute_failed` and `result_invalid`. Each offers
-Start a new simulation and the Job identifier for support. Post-publication
+Start a new job and the Job identifier for support. Post-publication
 Result loss uses blocked category `result_integrity`, not a terminal
 `result_unavailable` Job Error. `result_expired` is not used because `expired`
 is a separate planned Job Status tied to Result retention.

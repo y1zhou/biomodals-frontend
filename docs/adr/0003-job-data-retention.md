@@ -1,5 +1,11 @@
 # Retain Job data for recovery and retry
 
+> Superseded before the first release by backend ADR 0007 and the backend API
+> Tool service specification. Current Jobs do not retain submitted Input for
+> retry and cannot be deleted through the product. Remote Tool publications are
+> authoritative; the local Result Cache is rebuildable. The text below remains
+> only as design history.
+
 Input is retained for 30 days after a terminal status, and a Result is retained
 for 30 days after its Job becomes `succeeded` or `partial`. Job metadata is
 retained for six months. This gives Users time to download Results and retry
