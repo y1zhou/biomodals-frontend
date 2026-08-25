@@ -66,7 +66,7 @@ import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import { toolName } from "@/tools"
 
-type CostInterval = "month" | "7d" | "30d" | "previous" | "custom"
+type CostInterval = "month" | "today" | "7d" | "30d" | "previous" | "custom"
 
 function dateValue(date: Date) {
   return date.toISOString().slice(0, 10)
@@ -79,6 +79,9 @@ function costDateRange(interval: Exclude<CostInterval, "custom">, now = new Date
       start: dateValue(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))),
       end: dateValue(today),
     }
+  }
+  if (interval === "today") {
+    return { start: dateValue(today), end: dateValue(today) }
   }
   if (interval === "previous") {
     return {
@@ -142,6 +145,7 @@ function CostsCard() {
   const failure = refresh.error ?? costs.error
   const presetLabels = {
     month: "Current month",
+    today: "Today",
     "7d": "Last 7 days",
     "30d": "Last 30 days",
     previous: "Previous month",
@@ -164,7 +168,7 @@ function CostsCard() {
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="flex flex-wrap gap-2">
-          {(["month", "7d", "30d", "previous"] as const).map((value) => (
+          {(["month", "today", "7d", "30d", "previous"] as const).map((value) => (
             <Button key={value} onClick={() => chooseInterval(value)} size="sm" type="button" variant={interval === value ? "default" : "outline"}>
               {presetLabels[value]}
             </Button>
@@ -189,10 +193,9 @@ function CostsCard() {
         ) : report ? (
           <div className="space-y-4">
             <div className="rounded-xl bg-muted p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Total workspace cost</p><p className="mt-1 font-heading text-3xl font-semibold tabular-nums">{currency(report.total)}</p></div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div><h3 className="text-sm font-medium">Tools</h3><ul className="mt-2 space-y-2 text-sm">{report.tools.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{toolName(group.name)}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}{!report.tools.length ? <li className="text-muted-foreground">No tagged Tool usage</li> : null}</ul></div>
-              <div><h3 className="text-sm font-medium">Environments</h3><ul className="mt-2 space-y-2 text-sm">{report.environments.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{group.name}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}</ul></div>
-              <div><h3 className="text-sm font-medium">Other workspace usage</h3><p className="mt-2 text-sm tabular-nums">{currency(report.other_workspace_usage)}</p></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><h3 className="text-sm font-medium">Tools</h3><ul className="mt-2 space-y-2 text-sm">{report.tools.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{toolName(group.name)}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}{!report.tools.length ? <li className="text-muted-foreground">No tagged Tool usage</li> : null}<li className="flex justify-between gap-3 text-muted-foreground"><span>Other / untagged</span><span className="tabular-nums">{currency(report.other_workspace_usage)}</span></li></ul></div>
+              <div className="sm:border-l sm:border-border/60 sm:pl-4"><h3 className="text-sm font-medium">Environments</h3><ul className="mt-2 space-y-2 text-sm">{report.environments.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{group.name}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}</ul></div>
             </div>
           </div>
         ) : null}
