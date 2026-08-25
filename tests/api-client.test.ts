@@ -143,6 +143,27 @@ describe("authorized Job logs", () => {
     ).rejects.toThrow("Modal log connection failed")
   })
 
+  test("preserves line boundaries without trailing Modal newlines", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        '{"timestamp":"2026-07-22T00:00:00Z","source":"stdout","message":"first"}\n' +
+          '{"timestamp":"2026-07-22T00:00:01Z","source":"stdout","message":"second"}\n',
+        { headers: { "Content-Type": "application/x-ndjson" } }
+      )) as typeof fetch
+    const chunks: string[] = []
+
+    await streamJobLogs(
+      "job",
+      "11111111-1111-4111-8111-111111111111",
+      new AbortController().signal,
+      (chunk) => chunks.push(chunk)
+    )
+
+    expect(chunks.join("")).toBe(
+      "2026-07-22T00:00:00Z first\n2026-07-22T00:00:01Z second\n"
+    )
+  })
+
   test("requests a bounded historical window", async () => {
     let requested = ""
     globalThis.fetch = (async (input) => {

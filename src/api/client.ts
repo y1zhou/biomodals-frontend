@@ -322,7 +322,9 @@ export async function streamJobLogs(
       source: string
       timestamp: string
     }
-    onChunk(`${entry.timestamp} ${entry.message}`)
+    onChunk(
+      `${entry.timestamp} ${entry.message}${entry.message.endsWith("\n") ? "" : "\n"}`
+    )
   }
   try {
     while (true) {
