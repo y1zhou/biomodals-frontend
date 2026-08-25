@@ -305,6 +305,13 @@ be restored exactly. Exact recovery returns the prior completed state. API
 warnings are shown whenever present, regardless of state, but never change the
 authoritative state.
 
+A queued AlphaFold3 Job may include the owner-safe
+`state_reason=waiting_for_shared_publication` and a `state_message` while an
+earlier identical API Job may still be active. The status panel and empty-stage
+copy show that message instead of the generic waiting-to-start description.
+The frontend does not infer whether the earlier Job completed or whether the
+new Job can repair its cache.
+
 Only failed Jobs contain typed `error_code` and display-safe `error_message`
 fields; `JobView.detail` is removed. The frontend chooses the next action from
 the code, displays the safe message, and falls back to generic failure copy for

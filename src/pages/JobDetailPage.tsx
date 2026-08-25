@@ -206,7 +206,9 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
     job.state !== "partial" &&
     job.state !== "cancelled"
   const stateDescription =
-    job.state === "failed" ? jobFailureMessage(job) : presentation.description
+    job.state === "failed"
+      ? jobFailureMessage(job)
+      : job.state_message ?? presentation.description
   const stages = jobStageTimeline(job)
   const currentStages = stages.filter((stage) =>
     stage.state === "active" || stage.state === "queued"
@@ -545,7 +547,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               {!activeStages.length && isProgressingJob(job.state) ? (
                 <p className="px-6 pt-4 text-sm text-muted-foreground">
                   {job.state === "queued"
-                    ? "BioModals accepted this job and is waiting to start the first stage."
+                    ? job.state_message ??
+                      "BioModals accepted this job and is waiting to start the first stage."
                     : job.state === "cancel_requested"
                       ? "No remote function is currently recorded while cancellation is being resolved."
                       : "BioModals is moving to the next stage. No running function is currently recorded."}

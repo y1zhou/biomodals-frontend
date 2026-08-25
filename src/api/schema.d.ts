@@ -1070,6 +1070,10 @@ export interface components {
             /** Stages */
             readonly stages: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];
+            /** State Message */
+            readonly state_message?: string | null;
+            /** State Reason */
+            readonly state_reason?: string | null;
             /** Tool */
             readonly tool: string;
             /**
