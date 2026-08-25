@@ -28,6 +28,7 @@ import {
   latestModalToolFailure,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
+  modalEnvironmentCost,
   modalToolSettingLabels,
   nonnegativeInteger,
   positiveInteger,
@@ -110,7 +111,7 @@ function currency(value: string) {
     : value
 }
 
-function CostsCard() {
+function CostsCard({ environmentName }: { environmentName: string }) {
   const queryClient = useQueryClient()
   const initial = costDateRange("month")
   const [interval, setInterval] = useState<CostInterval>("month")
@@ -192,7 +193,10 @@ function CostsCard() {
           <p className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Loading billing report…</p>
         ) : report ? (
           <div className="space-y-4">
-            <div className="rounded-xl bg-muted p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Total workspace cost</p><p className="mt-1 font-heading text-3xl font-semibold tabular-nums">{currency(report.total)}</p></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl bg-muted p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Total workspace cost</p><p className="mt-1 font-heading text-3xl font-semibold tabular-nums">{currency(report.total)}</p></div>
+              <div className="rounded-xl bg-muted p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">Current environment cost</p><p className="mt-1 font-heading text-3xl font-semibold tabular-nums">{currency(modalEnvironmentCost(report, environmentName))}</p><p className="mt-1 text-xs text-muted-foreground">{environmentName}</p></div>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div><h3 className="text-sm font-medium">Tools</h3><ul className="mt-2 space-y-2 text-sm">{report.tools.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{toolName(group.name)}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}{!report.tools.length ? <li className="text-muted-foreground">No tagged Tool usage</li> : null}<li className="flex justify-between gap-3 text-muted-foreground"><span>Other / untagged</span><span className="tabular-nums">{currency(report.other_workspace_usage)}</span></li></ul></div>
               <div className="sm:border-l sm:border-border/60 sm:pl-4"><h3 className="text-sm font-medium">Environments</h3><ul className="mt-2 space-y-2 text-sm">{report.environments.map((group) => <li className="flex justify-between gap-3" key={group.name}><span>{group.name}</span><span className="tabular-nums">{currency(group.cost)}</span></li>)}</ul></div>
@@ -1229,7 +1233,9 @@ export default function ModalAdminPage() {
         </CardContent>
       </Card>
 
-      <CostsCard />
+      <CostsCard
+        environmentName={modal.data.environment.modal_environment.value}
+      />
 
       <section aria-labelledby="modal-tools-heading">
         <h2 className="font-heading text-xl font-semibold" id="modal-tools-heading">

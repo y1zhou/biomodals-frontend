@@ -1,4 +1,5 @@
 import type {
+  AdminCosts,
   AdminModal,
   AdminModalEnvironment,
   AdminModalTool,
@@ -10,6 +11,13 @@ import type {
 export const adminUsersKey = ["admin", "users"] as const
 export const adminModalKey = ["admin", "modal"] as const
 export const adminStorageKey = ["admin", "storage"] as const
+
+export function modalEnvironmentCost(
+  report: AdminCosts,
+  environmentName: string
+) {
+  return report.environments.find((group) => group.name === environmentName)?.cost ?? "0"
+}
 
 export function upsertAdminUser(
   users: AdminUser[] | undefined,

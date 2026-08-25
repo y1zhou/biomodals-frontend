@@ -6,6 +6,7 @@ import {
   latestModalToolFailure,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
+  modalEnvironmentCost,
   modalToolSettingLabels,
   settingSourceNote,
   sortAdminUsersByCreatedAt,
@@ -13,6 +14,24 @@ import {
 } from "../src/admin"
 
 describe("Admin settings", () => {
+  test("finds the configured environment cost", () => {
+    const report = {
+      start: "2026-08-25T00:00:00Z",
+      end: "2026-08-26T00:00:00Z",
+      total: "7.50",
+      tools: [],
+      environments: [
+        { name: "main", cost: "2.25" },
+        { name: "production", cost: "5.25" },
+      ],
+      other_workspace_usage: "0",
+      fetched_at: "2026-08-26T00:00:00Z",
+    }
+
+    expect(modalEnvironmentCost(report, "production")).toBe("5.25")
+    expect(modalEnvironmentCost(report, "missing")).toBe("0")
+  })
+
   test("labels the Modal tool fields included in a failed save", () => {
     expect(modalToolSettingLabels({ modal_app_version: 404 })).toEqual([
       "Modal deployment version",
