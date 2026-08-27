@@ -1,3 +1,4 @@
+import { AlertDialog } from "@base-ui/react/alert-dialog"
 import { Popover } from "@base-ui/react/popover"
 import { Tooltip } from "@base-ui/react/tooltip"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -884,6 +885,8 @@ export default function ModalAdminPage() {
   const [tokenCopied, setTokenCopied] = useState(false)
   const [toolDrafts, setToolDrafts] = useState<Record<string, ToolDraft>>({})
   const [toolFailure, setToolFailure] = useState<ToolFailure | null>(null)
+  const [restoreAllConfirmationOpen, setRestoreAllConfirmationOpen] =
+    useState(false)
   const [toolsSaveButton, setToolsSaveButton] =
     useState<HTMLButtonElement | null>(null)
   function environmentMutationOptions() {
@@ -1101,6 +1104,23 @@ export default function ModalAdminPage() {
     } else {
       globalLimitUpdate.mutate(changedEnvironmentSettings)
     }
+  }
+
+  function restoreAllTools() {
+    if (!modal.data) return
+    const updates = modal.data.tools.flatMap((tool) => {
+      const input: UpdateAdminModalToolInput = {
+        ...(tool.active_job_limit.editable ? { active_job_limit: null } : {}),
+        ...(tool.job_logs_visible_to_owner.editable
+          ? { job_logs_visible_to_owner: null }
+          : {}),
+        ...(tool.modal_app_version.editable ? { modal_app_version: null } : {}),
+      }
+      return Object.keys(input).length ? [{ tool: tool.tool, input }] : []
+    })
+    toolsUpdate.mutate(updates, {
+      onSuccess: () => setRestoreAllConfirmationOpen(false),
+    })
   }
 
   if (modal.isPending) {
@@ -1353,25 +1373,11 @@ export default function ModalAdminPage() {
           <div className="flex flex-wrap items-center justify-end gap-3 border-t px-4 py-4">
             <Button
               disabled={toolsUpdate.isPending || !canRestoreAllTools}
+              id="restore-all-tools"
               onClick={() => {
-                toolsUpdate.mutate(
-                  modal.data.tools.flatMap((tool) => {
-                    const input: UpdateAdminModalToolInput = {
-                      ...(tool.active_job_limit.editable
-                        ? { active_job_limit: null }
-                        : {}),
-                      ...(tool.job_logs_visible_to_owner.editable
-                        ? { job_logs_visible_to_owner: null }
-                        : {}),
-                      ...(tool.modal_app_version.editable
-                        ? { modal_app_version: null }
-                        : {}),
-                    }
-                    return Object.keys(input).length
-                      ? [{ tool: tool.tool, input }]
-                      : []
-                  })
-                )
+                toolsUpdate.reset()
+                setToolFailure(null)
+                setRestoreAllConfirmationOpen(true)
               }}
               type="button"
               variant="destructive"
@@ -1419,6 +1425,59 @@ export default function ModalAdminPage() {
           </div>
         </div>
       </section>
+      <AlertDialog.Root
+        onOpenChange={(open) => {
+          if (!open && !toolsUpdate.isPending) {
+            setRestoreAllConfirmationOpen(false)
+          }
+        }}
+        open={restoreAllConfirmationOpen}
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-foreground/30 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+          <AlertDialog.Viewport className="fixed inset-0 z-50 grid place-items-center p-4">
+            <AlertDialog.Popup
+              className="w-full max-w-md rounded-xl border bg-background p-6 text-foreground shadow-2xl outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0"
+              finalFocus={() => document.getElementById("restore-all-tools")}
+            >
+              <AlertDialog.Title className="font-heading text-xl font-semibold">
+                Restore all Tool settings?
+              </AlertDialog.Title>
+              <AlertDialog.Description className="mt-3 text-sm leading-6 text-muted-foreground">
+                This removes every administrator override for deployment
+                versions, active job limits, and Job Log access. Unsaved Tool
+                edits will also be discarded.
+              </AlertDialog.Description>
+              {toolsUpdate.error ? (
+                <p className="mt-4 text-sm text-destructive" role="alert">
+                  {errorMessage(toolsUpdate.error)}
+                </p>
+              ) : null}
+              <div className="mt-6 flex justify-end gap-3">
+                <AlertDialog.Close
+                  render={
+                    <Button disabled={toolsUpdate.isPending} variant="outline" />
+                  }
+                >
+                  Cancel
+                </AlertDialog.Close>
+                <Button
+                  disabled={toolsUpdate.isPending}
+                  onClick={restoreAllTools}
+                  variant="destructive"
+                >
+                  {toolsUpdate.isPending ? (
+                    <LoaderCircle aria-hidden="true" className="animate-spin" />
+                  ) : (
+                    <RotateCcw aria-hidden="true" />
+                  )}
+                  Restore all
+                </Button>
+              </div>
+            </AlertDialog.Popup>
+          </AlertDialog.Viewport>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   )
 }

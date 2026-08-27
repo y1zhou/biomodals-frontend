@@ -70,12 +70,12 @@ Results are unavailable to the disabled User until re-enabling; Administrators
 do not gain access to them.
 
 Disable User, Remove Administrator role, replacement Password Link issuance,
-Clear Result Cache, and state-unknown Job resolution are the only actions
-requiring confirmation. Their dialogs identify the exact User, Job, or cache
-scope, explain the consequence, and use the destructive red confirmation style
-without a typed phrase. Saving or
-restoring a setting, enabling a User, granting Administrator role, and copying
-a value remain immediate.
+Clear Result Cache, bulk restoration of every Tool setting, and state-unknown
+Job resolution are the only actions requiring confirmation. Their dialogs
+identify the exact User, Job, or affected setting scope, explain the
+consequence, and use the destructive red confirmation style without a typed
+phrase. Saving or restoring an individual setting, enabling a User, granting
+Administrator role, and copying a value remain immediate.
 
 Every User-row action uses the same control height, padding, typography, and
 spacing. Disable User and Remove Administrator role remain red destructive
@@ -201,6 +201,8 @@ provenance are field-specific: changing or restoring a Tool Active Job Limit
 does not affect the deployment version or Job Log policy.
 The Job Log toggle participates in the same row-wide Save action, and its
 adjacent restore control removes only its database override.
+The table-wide Restore all to defaults action confirms before removing every
+Tool-setting override and discarding unsaved Tool edits.
 Toggle tracks and thumbs transition smoothly between states. Restore controls
 rotate their counter-clockwise arrow counter-clockwise when activated, while
 still replacing it with the ordinary pending spinner for a server mutation.

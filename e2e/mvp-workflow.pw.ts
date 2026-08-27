@@ -630,9 +630,19 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   })
   expect(await toolsTable.locator("colgroup col").count()).toBe(4)
   expect(await toolsTable.getByRole("columnheader").count()).toBe(5)
-  await expect(
-    toolsSection.getByRole("button", { name: "Restore all to defaults" })
-  ).toBeVisible()
+  const restoreAllTools = toolsSection.getByRole("button", {
+    name: "Restore all to defaults",
+  })
+  await expect(restoreAllTools).toBeVisible()
+  await restoreAllTools.click()
+  const restoreAllDialog = page.getByRole("alertdialog", {
+    name: "Restore all Tool settings?",
+  })
+  await expect(restoreAllDialog).toContainText(
+    "This removes every administrator override"
+  )
+  await restoreAllDialog.getByRole("button", { name: "Cancel" }).click()
+  await expect(restoreAllDialog).not.toBeVisible()
   expect(
     await activeJobLimit.evaluate(
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
