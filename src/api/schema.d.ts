@@ -3366,6 +3366,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobView"];
                 };
             };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
             /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
