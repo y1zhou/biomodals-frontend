@@ -101,6 +101,13 @@ describe("Job lifecycle presentation", () => {
     expect(latestJob(collectionJob, detailJob).state).toBe("succeeded")
   })
 
+  test("does not hide terminal collection state behind an equal active detail", () => {
+    const detailJob = job("one", "running", "2026-07-17T00:00:00Z")
+    const collectionJob = { ...detailJob, state: "succeeded" as const }
+
+    expect(latestJob(collectionJob, detailJob).state).toBe("succeeded")
+  })
+
   test("treats malformed and inaccessible Job IDs as unavailable", () => {
     expect(isJobUnavailableError(new ApiError(403))).toBeTrue()
     expect(isJobUnavailableError(new ApiError(404))).toBeTrue()

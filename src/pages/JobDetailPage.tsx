@@ -121,6 +121,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
   const cancelMutation = useMutation({
     mutationFn: () => cancelJob(jobId),
     retry: false,
+    onMutate: () => queryClient.cancelQueries({ queryKey: jobKey(jobId) }),
     onSuccess(job) {
       queryClient.setQueryData(jobKey(jobId), job)
       queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
@@ -241,6 +242,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
           <RefreshButton
             disabled={jobQuery.isFetching}
             onRefresh={async () => {
+              await queryClient.cancelQueries({ queryKey: jobKey(jobId) })
               const refreshed = await refreshJob(jobId)
               queryClient.setQueryData(jobKey(jobId), refreshed)
               queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
@@ -421,7 +423,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       const queued = stage.state === "queued"
                       const canInspectLogs = Boolean(
                         job.can_view_logs &&
-                        active &&
                         stage.startedAt
                       )
                       const logsExpanded =

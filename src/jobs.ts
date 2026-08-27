@@ -58,6 +58,12 @@ export const activeJobStates = new Set<JobState>([
   ...progressingJobStates,
   "state_unknown",
 ])
+const terminalJobStates = new Set<JobState>([
+  "succeeded",
+  "partial",
+  "failed",
+  "cancelled",
+])
 
 export function isActiveJob(state: JobState) {
   return activeJobStates.has(state)
@@ -86,9 +92,14 @@ export function newestJobsFirst(jobs: readonly Job[]) {
 
 export function latestJob(collectionJob: Job, detailJob: Job | undefined) {
   if (!detailJob) return collectionJob
-  return Date.parse(detailJob.updated_at) >= Date.parse(collectionJob.updated_at)
-    ? detailJob
-    : collectionJob
+  const detailTime = Date.parse(detailJob.updated_at)
+  const collectionTime = Date.parse(collectionJob.updated_at)
+  if (detailTime !== collectionTime) {
+    return detailTime > collectionTime ? detailJob : collectionJob
+  }
+  return terminalJobStates.has(collectionJob.state) && !terminalJobStates.has(detailJob.state)
+    ? collectionJob
+    : detailJob
 }
 
 export function isJobUnavailableError(error: unknown) {
@@ -175,7 +186,7 @@ export const jobPresentation: Record<
   },
   blocked: {
     label: "Result temporarily unavailable",
-    description: "The job output is preserved while BioModals retries result preparation. An administrator may need to repair the service.",
+    description: "The job needs administrator attention before it can continue or provide a result.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
   succeeded: {
