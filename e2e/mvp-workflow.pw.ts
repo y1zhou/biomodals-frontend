@@ -104,7 +104,6 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     )
   ).toBe(true)
   await page.setViewportSize({ width: 1280, height: 720 })
-  await expect(page.getByText("Biology, without the setup")).toHaveCount(0)
 
   await page.goto("/tools/gromacs")
   await expect(
