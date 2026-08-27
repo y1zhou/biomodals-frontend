@@ -24,7 +24,6 @@ export interface AlphaFold3Draft {
   seeds: string
 }
 
-const DRAFT_KEY = "current"
 const DATABASE_NAME = "biomodals-alphafold3"
 export const MAX_ENTITY_COPIES = 5_120
 export const MAX_MODEL_SEEDS = 1_000
@@ -307,16 +306,20 @@ async function draftOperation<T>(
   }
 }
 
-export function loadAlphaFold3Draft() {
+function draftKey(userId: string) {
+  return `current:${userId}`
+}
+
+export function loadAlphaFold3Draft(userId: string) {
   return draftOperation<AlphaFold3Draft | undefined>("readonly", (store) =>
-    store.get(DRAFT_KEY)
+    store.get(draftKey(userId))
   )
 }
 
-export function saveAlphaFold3Draft(draft: AlphaFold3Draft) {
-  return draftOperation("readwrite", (store) => store.put(draft, DRAFT_KEY))
+export function saveAlphaFold3Draft(userId: string, draft: AlphaFold3Draft) {
+  return draftOperation("readwrite", (store) => store.put(draft, draftKey(userId)))
 }
 
-export function clearAlphaFold3Draft() {
-  return draftOperation("readwrite", (store) => store.delete(DRAFT_KEY))
+export function clearAlphaFold3Draft(userId: string) {
+  return draftOperation("readwrite", (store) => store.delete(draftKey(userId)))
 }

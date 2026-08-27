@@ -49,7 +49,11 @@ import {
   type LigandFormat,
   type PolymerRecord,
 } from "@/alphafold3"
-import { useExpireSession } from "@/auth-state"
+import {
+  authenticatedPrincipal,
+  useCurrentUser,
+  useExpireSession,
+} from "@/auth-state"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -59,8 +63,16 @@ import { SelectField } from "@/components/ui/select-field"
 import { cn } from "@/lib/utils"
 import { alphafold3Paths, alphafold3Tool } from "@/tools"
 
-const IDEMPOTENCY_PREFIX = "biomodals:alphafold3:submission:"
-const VALIDATION_KEY = "biomodals:alphafold3:validation"
+const IDEMPOTENCY_PREFIX = "biomodals:alphafold3:submission"
+const VALIDATION_PREFIX = "biomodals:alphafold3:validation"
+
+function validationStorageKey(userId: string) {
+  return `${VALIDATION_PREFIX}:${userId}`
+}
+
+function submissionStorageKey(userId: string, validationId: string) {
+  return `${IDEMPOTENCY_PREFIX}:${userId}:${validationId}`
+}
 const entityOptions = [
   { label: "Protein", value: "protein" },
   { label: "DNA", value: "dna" },
@@ -327,13 +339,15 @@ function Confirmation({
 
 export default function AlphaFold3SubmissionPage() {
   const navigate = useNavigate()
+  const ownerUserId = authenticatedPrincipal(useCurrentUser().data)?.user_id
   const [draft, setDraftState] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
-  const [draftLoaded, setDraftLoaded] = useState(false)
+  const [draftOwner, setDraftOwner] = useState<string | null>(null)
   const [validation, setValidation] = useState<AlphaFold3Validation | null>(null)
   const [formError, setFormError] = useState("")
   const validationController = useRef<AbortController | null>(null)
   const draftChanged = useRef(false)
   const expertFileSelection = useRef(0)
+  const recoveryAttempt = useRef("")
 
   function setDraft(update: SetStateAction<AlphaFold3Draft>) {
     draftChanged.current = true
@@ -341,29 +355,30 @@ export default function AlphaFold3SubmissionPage() {
   }
 
   useEffect(() => {
-    loadAlphaFold3Draft().then((saved) => {
+    if (!ownerUserId) return
+    let active = true
+    draftChanged.current = false
+    setDraftOwner(null)
+    setDraftState(newAlphaFold3Draft())
+    setValidation(null)
+    loadAlphaFold3Draft(ownerUserId).then((saved) => {
+      if (!active) return
       if (saved && !draftChanged.current) {
         setDraftState({ ...saved, entities: reindexEntities(saved.entities) })
       }
-      setDraftLoaded(true)
-    }).catch(() => setDraftLoaded(true))
-  }, [])
-  useEffect(() => {
-    const validationId = window.sessionStorage.getItem(VALIDATION_KEY)
-    if (!validationId) return
-    const controller = new AbortController()
-    inspectAlphaFold3Validation(validationId, controller.signal).then(setValidation).catch((error) => {
-      if (controller.signal.aborted) return
-      window.sessionStorage.removeItem(VALIDATION_KEY)
-      setFormError(errorMessage(error))
+      setDraftOwner(ownerUserId)
+    }).catch(() => {
+      if (active) setDraftOwner(ownerUserId)
     })
-    return () => controller.abort()
-  }, [])
+    return () => {
+      active = false
+    }
+  }, [ownerUserId])
   useEffect(() => {
-    if (!draftLoaded) return
-    const timeout = window.setTimeout(() => void saveAlphaFold3Draft(draft).catch(() => undefined), 250)
+    if (!ownerUserId || draftOwner !== ownerUserId) return
+    const timeout = window.setTimeout(() => void saveAlphaFold3Draft(ownerUserId, draft).catch(() => undefined), 250)
     return () => window.clearTimeout(timeout)
-  }, [draft, draftLoaded])
+  }, [draft, draftOwner, ownerUserId])
 
   const validationMutation = useMutation({
     mutationFn: ({ document, signal }: { document: object; signal: AbortSignal }) =>
@@ -381,30 +396,72 @@ export default function AlphaFold3SubmissionPage() {
     onSuccess: (result) => {
       validationController.current = null
       setValidation(result)
-      window.sessionStorage.setItem(VALIDATION_KEY, result.validation_id)
+      if (ownerUserId) {
+        window.sessionStorage.setItem(
+          validationStorageKey(ownerUserId),
+          result.validation_id
+        )
+      }
       setFormError("")
     },
   })
   useExpireSession(validationMutation.error)
 
   const submissionMutation = useMutation({
-    mutationFn: (current: AlphaFold3Validation) => {
-      const keyName = `${IDEMPOTENCY_PREFIX}${current.validation_id}`
+    mutationFn: ({ validationId }: { validationId: string }) => {
+      if (!ownerUserId) throw new Error("Authentication is required.")
+      const keyName = submissionStorageKey(ownerUserId, validationId)
       let key = window.sessionStorage.getItem(keyName)
       if (!key) {
         key = crypto.randomUUID()
         window.sessionStorage.setItem(keyName, key)
       }
-      return submitAlphaFold3Job(current.validation_id, key)
+      return submitAlphaFold3Job(validationId, key)
     },
-    onSuccess: (job) => {
-      window.sessionStorage.removeItem(`${IDEMPOTENCY_PREFIX}${validation?.validation_id}`)
-      window.sessionStorage.removeItem(VALIDATION_KEY)
-      void clearAlphaFold3Draft().catch(() => undefined)
+    onSuccess: (job, { validationId }) => {
+      if (ownerUserId) {
+        window.sessionStorage.removeItem(
+          submissionStorageKey(ownerUserId, validationId)
+        )
+        window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
+        void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
+      }
       navigate(alphafold3Paths.job(job.job_id), { replace: true })
     },
   })
+  const submitJob = submissionMutation.mutate
   useExpireSession(submissionMutation.error)
+
+  useEffect(() => {
+    if (!ownerUserId) return
+    const validationKey = validationStorageKey(ownerUserId)
+    const validationId = window.sessionStorage.getItem(validationKey)
+    if (!validationId) return
+    const controller = new AbortController()
+    inspectAlphaFold3Validation(validationId, controller.signal)
+      .then(setValidation)
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        const submissionKey = window.sessionStorage.getItem(
+          submissionStorageKey(ownerUserId, validationId)
+        )
+        if (
+          error instanceof ApiError &&
+          error.status === 404 &&
+          submissionKey &&
+          recoveryAttempt.current !== `${ownerUserId}:${validationId}`
+        ) {
+          recoveryAttempt.current = `${ownerUserId}:${validationId}`
+          submitJob({ validationId })
+          return
+        }
+        if (error instanceof ApiError && error.status === 404) {
+          window.sessionStorage.removeItem(validationKey)
+        }
+        setFormError(errorMessage(error))
+      })
+    return () => controller.abort()
+  }, [ownerUserId, submitJob])
 
   function updateEntity(index: number, entity: AlphaFold3Entity, copies?: number) {
     if (copies !== undefined && (!Number.isInteger(copies) || copies < 1 || copies > MAX_ENTITY_COPIES)) {
@@ -504,11 +561,13 @@ export default function AlphaFold3SubmissionPage() {
   }
 
   async function discardValidation(clear: boolean) {
-    if (!validation) return
+    if (!validation || !ownerUserId) return
     try {
       await deleteAlphaFold3Validation(validation.validation_id)
-      window.sessionStorage.removeItem(`${IDEMPOTENCY_PREFIX}${validation.validation_id}`)
-      window.sessionStorage.removeItem(VALIDATION_KEY)
+      window.sessionStorage.removeItem(
+        submissionStorageKey(ownerUserId, validation.validation_id)
+      )
+      window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
       setValidation(null)
       submissionMutation.reset()
       if (clear) reset()
@@ -521,10 +580,14 @@ export default function AlphaFold3SubmissionPage() {
   function reset() {
     validationController.current?.abort()
     expertFileSelection.current += 1
-    window.sessionStorage.removeItem(VALIDATION_KEY)
+    if (ownerUserId) {
+      window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
+    }
     setDraft(newAlphaFold3Draft())
     setFormError("")
-    void clearAlphaFold3Draft().catch(() => undefined)
+    if (ownerUserId) {
+      void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
+    }
   }
 
   if (validation) {
@@ -532,7 +595,9 @@ export default function AlphaFold3SubmissionPage() {
       <Confirmation
         onBack={() => void discardValidation(false)}
         onClear={() => void discardValidation(true)}
-        onSubmit={() => submissionMutation.mutate(validation)}
+        onSubmit={() => submitJob({
+          validationId: validation.validation_id,
+        })}
         pending={submissionMutation.isPending}
         submissionError={submissionMutation.error ? errorMessage(submissionMutation.error) : formError}
         validation={validation}
