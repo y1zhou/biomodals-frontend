@@ -1,6 +1,7 @@
 import { Menu } from "@base-ui/react/menu"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
+  BookOpenText,
   BriefcaseBusiness,
   LogOut,
   ShieldCheck,
@@ -89,6 +90,15 @@ export default function AppShell() {
         <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-4 px-6 lg:px-8">
           <Brand />
           <nav aria-label="Primary" className="flex items-center gap-1">
+            <a
+              aria-label="API Docs"
+              className={buttonVariants({ variant: "ghost" })}
+              href="/docs"
+              title="API Docs"
+            >
+              <BookOpenText aria-hidden="true" data-icon="inline-start" />
+              <span className="hidden sm:inline">API Docs</span>
+            </a>
             <Link
               aria-label="Tools"
               className={buttonVariants({ variant: "ghost" })}

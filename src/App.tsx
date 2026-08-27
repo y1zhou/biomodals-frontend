@@ -41,9 +41,6 @@ function LandingPage() {
     <main className="min-h-[calc(100svh-73px)] bg-[radial-gradient(circle_at_top_left,var(--color-muted),transparent_34rem)]">
       <div className="mx-auto max-w-6xl px-6 pb-20 pt-16 lg:px-8 lg:pt-24">
         <section className="max-w-3xl">
-          <Badge className="mb-5" variant="secondary">
-            Biology, without the setup
-          </Badge>
           <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             Useful biology tools, ready in your browser.
           </h1>

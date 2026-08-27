@@ -55,7 +55,8 @@ biomodals.example.com {
 	root * /srv/biomodals.example.com
 
 	route {
-		reverse_proxy /api/* 127.0.0.1:4100
+		@backend path /api/* /docs* /openapi.json /redoc*
+		reverse_proxy @backend 127.0.0.1:4100
 		try_files {path} /index.html
 		file_server
 	}
@@ -121,6 +122,7 @@ native browser controls for simple interactions such as file selection.
 
 Vite's preview server is for local verification, not production hosting.
 
-Whether `/docs` is exposed in production is a deployment-proxy decision
-outside this repository.
+The primary navigation links power users to FastAPI's `/docs` interface, so a
+production deployment must proxy `/docs*` to the backend. `/redoc*` and
+`/openapi.json` are useful companion routes for API consumers.
 `BIOMODALS_API_PROXY_TARGET` only configures Vite's local development proxy.

@@ -91,6 +91,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(page).toHaveURL(`${origin}/`)
 
   await page.setViewportSize({ width: 360, height: 800 })
+  await expect(page.getByRole("link", { name: "API Docs" })).toHaveAttribute(
+    "href",
+    "/docs"
+  )
   await expect(page.getByRole("link", { name: "Tools" })).toBeVisible()
   await expect(page.getByRole("link", { name: "My Jobs" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Open user menu" })).toBeVisible()
@@ -100,6 +104,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     )
   ).toBe(true)
   await page.setViewportSize({ width: 1280, height: 720 })
+  await expect(page.getByText("Biology, without the setup")).toHaveCount(0)
 
   await page.goto("/tools/gromacs")
   await expect(
