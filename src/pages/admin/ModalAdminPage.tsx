@@ -229,7 +229,6 @@ const stateUnknownReasons: Record<string, string> = {
   submission_outcome_unknown: "Submission could not be confirmed",
   submission_in_progress: "Submission was interrupted before confirmation",
   provider_outcome_unknown: "Modal call status could not be confirmed",
-  cancellation_outcome_unknown: "Cancellation could not be confirmed",
 }
 
 function stateUnknownReason(reason: AdminStateUnknownJob["reason"]) {
