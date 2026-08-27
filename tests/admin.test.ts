@@ -3,7 +3,6 @@ import { describe, expect, test } from "bun:test"
 import {
   changedModalEnvironmentSettings,
   changedModalToolSettings,
-  latestModalToolFailure,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
   modalEnvironmentCost,
@@ -47,27 +46,6 @@ describe("Admin settings", () => {
       "Active job limit",
       "Job log access",
     ])
-  })
-
-  test("selects the newest failed Modal tool update", () => {
-    const older = {
-      error: new Error("old failure"),
-      submittedAt: 10,
-      variables: { active_job_limit: 1 },
-    }
-    const pending = {
-      error: null,
-      submittedAt: 30,
-      variables: { active_job_limit: 2 },
-    }
-    const newer = {
-      error: new Error("new failure"),
-      submittedAt: 20,
-      variables: { modal_app_version: 404 },
-    }
-
-    expect(latestModalToolFailure([older, pending, newer])).toBe(newer)
-    expect(latestModalToolFailure([pending])).toBeNull()
   })
 
   test("only explains configuration sources that need extra context", () => {

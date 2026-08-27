@@ -102,19 +102,6 @@ export function modalToolSettingLabels(
   return labels
 }
 
-export function latestModalToolFailure<
-  Attempt extends { error: unknown; submittedAt: number },
->(attempts: readonly Attempt[]) {
-  let latest: Attempt | null = null
-  for (const attempt of attempts) {
-    if (attempt.error == null) continue
-    if (latest === null || attempt.submittedAt > latest.submittedAt) {
-      latest = attempt
-    }
-  }
-  return latest
-}
-
 export function changedModalEnvironmentSettings(
   environment: AdminModalEnvironment,
   modalEnvironment: string,

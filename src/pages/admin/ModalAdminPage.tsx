@@ -25,7 +25,6 @@ import {
   adminModalKey,
   changedModalEnvironmentSettings,
   changedModalToolSettings,
-  latestModalToolFailure,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
   modalEnvironmentCost,
@@ -735,107 +734,53 @@ function ToolSettingErrorPopover({
   )
 }
 
-function ToolRow({ tool }: { tool: AdminModalTool }) {
-  const queryClient = useQueryClient()
-  const [saveButton, setSaveButton] = useState<HTMLButtonElement | null>(null)
-  const [appVersion, setAppVersion] = useState(String(tool.modal_app_version.value))
-  const [activeJobLimit, setActiveJobLimit] = useState(String(tool.active_job_limit.value))
-  const [jobLogsVisibleToOwner, setJobLogsVisibleToOwner] = useState(
-    tool.job_logs_visible_to_owner.value
-  )
-  const [versionDirty, setVersionDirty] = useState(false)
-  const [limitDirty, setLimitDirty] = useState(false)
-  const [jobLogAccessDirty, setJobLogAccessDirty] = useState(false)
+type ToolDraft = {
+  appVersion: string
+  activeJobLimit: string
+  jobLogsVisibleToOwner: boolean
+  versionDirty: boolean
+  limitDirty: boolean
+  jobLogAccessDirty: boolean
+}
 
-  function mutationOptions() {
-    return {
-      mutationFn: (input: UpdateAdminModalToolInput) =>
-        updateAdminModalTool(tool.tool, input),
-      scope: { id: `admin-modal-tool-${tool.tool}` },
-      onSuccess(result: AdminModalTool, input: UpdateAdminModalToolInput) {
-        queryClient.setQueryData<AdminModal>(adminModalKey, (modal) =>
-          modal ? mergeAdminModalTool(modal, result) : modal
-        )
-        if (Object.hasOwn(input, "modal_app_version")) {
-          setAppVersion(String(result.modal_app_version.value))
-          setVersionDirty(false)
-        }
-        if (Object.hasOwn(input, "active_job_limit")) {
-          setActiveJobLimit(String(result.active_job_limit.value))
-          setLimitDirty(false)
-        }
-        if (Object.hasOwn(input, "job_logs_visible_to_owner")) {
-          setJobLogsVisibleToOwner(result.job_logs_visible_to_owner.value)
-          setJobLogAccessDirty(false)
-        }
-        void queryClient.invalidateQueries({ queryKey: adminModalKey })
-      },
-    }
+type ToolUpdate = {
+  tool: string
+  input: UpdateAdminModalToolInput
+}
+
+type ToolFailure = ToolUpdate & {
+  error: unknown
+  toolName: string
+}
+
+function initialToolDraft(tool: AdminModalTool): ToolDraft {
+  return {
+    appVersion: String(tool.modal_app_version.value),
+    activeJobLimit: String(tool.active_job_limit.value),
+    jobLogsVisibleToOwner: tool.job_logs_visible_to_owner.value,
+    versionDirty: false,
+    limitDirty: false,
+    jobLogAccessDirty: false,
   }
+}
 
-  const versionUpdate = useMutation(mutationOptions())
-  const limitUpdate = useMutation(mutationOptions())
-  const jobLogAccessUpdate = useMutation(mutationOptions())
-  const toolUpdates = [
-    versionUpdate,
-    limitUpdate,
-    jobLogAccessUpdate,
-  ]
-  const resetMutationErrors = () => {
-    for (const update of toolUpdates) {
-      if (!update.isPending) update.reset()
-    }
-  }
-  useExpireSession(versionUpdate.error)
-  useExpireSession(limitUpdate.error)
-  useExpireSession(jobLogAccessUpdate.error)
-
-  const mutationIncludes = (
-    mutation: typeof versionUpdate,
-    field: keyof UpdateAdminModalToolInput
-  ) =>
-    mutation.isPending &&
-    Boolean(mutation.variables && Object.hasOwn(mutation.variables, field))
-  const versionPending = toolUpdates.some((update) =>
-    mutationIncludes(update, "modal_app_version")
-  )
-  const limitPending = toolUpdates.some((update) =>
-    mutationIncludes(update, "active_job_limit")
-  )
-  const jobLogAccessPending = toolUpdates.some((update) =>
-    mutationIncludes(update, "job_logs_visible_to_owner")
-  )
-  const mutationPending = toolUpdates.some((update) => update.isPending)
-  const failedMutation = latestModalToolFailure(toolUpdates)
-  const mutationError = failedMutation?.error ?? null
-  const failedFields = modalToolSettingLabels(failedMutation?.variables)
-
-  useEffect(() => {
-    if (!versionDirty) setAppVersion(String(tool.modal_app_version.value))
-  }, [tool.modal_app_version.source, tool.modal_app_version.value, versionDirty])
-  useEffect(() => {
-    if (!limitDirty) setActiveJobLimit(String(tool.active_job_limit.value))
-  }, [limitDirty, tool.active_job_limit.source, tool.active_job_limit.value])
-  useEffect(() => {
-    if (!jobLogAccessDirty) {
-      setJobLogsVisibleToOwner(tool.job_logs_visible_to_owner.value)
-    }
-  }, [
-    jobLogAccessDirty,
-    tool.job_logs_visible_to_owner.source,
-    tool.job_logs_visible_to_owner.value,
-  ])
-
-  const changedSettings = changedModalToolSettings(
-    tool,
-    appVersion,
-    activeJobLimit,
-    jobLogsVisibleToOwner
-  )
-  const normalizedVersion = positiveInteger(appVersion)
-  const normalizedLimit = nonnegativeInteger(activeJobLimit)
+function ToolRow({
+  draft,
+  onChange,
+  onRestore,
+  pendingFields,
+  tool,
+}: {
+  draft: ToolDraft
+  onChange: (draft: ToolDraft) => void
+  onRestore: (input: UpdateAdminModalToolInput) => void
+  pendingFields: ReadonlySet<keyof UpdateAdminModalToolInput>
+  tool: AdminModalTool
+}) {
+  const versionPending = pendingFields.has("modal_app_version")
+  const limitPending = pendingFields.has("active_job_limit")
+  const jobLogAccessPending = pendingFields.has("job_logs_visible_to_owner")
   const displayName = tool.display_name
-  const hasChanges = Object.keys(changedSettings).length > 0
   const overLimit = tool.active_jobs > tool.active_job_limit.value
 
   return (
@@ -851,26 +796,24 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
           >
             {tool.active_jobs} /
           </span>
-          <div className="w-20 shrink-0 whitespace-normal">
+          <div className="w-24 shrink-0 whitespace-normal">
             <RuntimeSettingInput
               aria-label={`Active job limit for ${displayName}`}
               label={`active job limit for ${displayName}`}
               min={0}
               onChange={(value) => {
-                resetMutationErrors()
-                setActiveJobLimit(value)
-                setLimitDirty(
-                  nonnegativeInteger(value) !== tool.active_job_limit.value
-                )
+                onChange({
+                  ...draft,
+                  activeJobLimit: value,
+                  limitDirty:
+                    nonnegativeInteger(value) !== tool.active_job_limit.value,
+                })
               }}
-              onRestoreOverride={() => {
-                resetMutationErrors()
-                limitUpdate.mutate({ active_job_limit: null })
-              }}
+              onRestoreOverride={() => onRestore({ active_job_limit: null })}
               pending={limitPending}
               setting={tool.active_job_limit}
               type="number"
-              value={activeJobLimit}
+              value={draft.activeJobLimit}
             />
             {overLimit ? (
               <p className="mt-1 text-xs font-medium text-amber-700">
@@ -887,72 +830,38 @@ function ToolRow({ tool }: { tool: AdminModalTool }) {
             label={`Modal deployment version for ${displayName}`}
             min={1}
             onChange={(value) => {
-              resetMutationErrors()
-              setAppVersion(value)
-              setVersionDirty(positiveInteger(value) !== tool.modal_app_version.value)
-            }}
-            onRestoreOverride={() => {
-              resetMutationErrors()
-              versionUpdate.mutate({ modal_app_version: null })
-            }}
+                onChange({
+                  ...draft,
+                  appVersion: value,
+                  versionDirty:
+                    positiveInteger(value) !== tool.modal_app_version.value,
+                })
+              }}
+            onRestoreOverride={() => onRestore({ modal_app_version: null })}
             omitConfigurationFileNote
             pending={versionPending}
             setting={tool.modal_app_version}
             type="number"
-            value={appVersion}
+            value={draft.appVersion}
           />
         </div>
       </td>
       <td className="px-2 py-4 text-center align-middle">
         <JobLogAccessSetting
           onChange={(value) => {
-            resetMutationErrors()
-            setJobLogsVisibleToOwner(value)
-            setJobLogAccessDirty(
-              value !== tool.job_logs_visible_to_owner.value
-            )
+            onChange({
+              ...draft,
+              jobLogsVisibleToOwner: value,
+              jobLogAccessDirty:
+                value !== tool.job_logs_visible_to_owner.value,
+            })
           }}
-          onRestoreOverride={() => {
-            resetMutationErrors()
-            jobLogAccessUpdate.mutate({ job_logs_visible_to_owner: null })
-          }}
+          onRestoreOverride={() => onRestore({ job_logs_visible_to_owner: null })}
           pending={jobLogAccessPending}
           setting={tool.job_logs_visible_to_owner}
           toolName={displayName}
-          value={jobLogsVisibleToOwner}
+          value={draft.jobLogsVisibleToOwner}
         />
-      </td>
-      <td className="px-2 py-4 text-center align-middle">
-        {mutationError ? (
-          <ToolSettingErrorPopover
-            anchor={saveButton}
-            error={mutationError}
-            fields={failedFields}
-            onDismiss={resetMutationErrors}
-            toolName={displayName}
-          />
-        ) : null}
-        <Button
-          aria-label={`Save Modal settings for ${displayName}`}
-          disabled={
-            mutationPending ||
-            !hasChanges ||
-            normalizedLimit === null ||
-            (tool.modal_app_version.editable && normalizedVersion === null)
-          }
-          onClick={() => {
-            versionUpdate.mutate(changedSettings)
-          }}
-          ref={setSaveButton}
-          size="icon"
-          variant="outline"
-        >
-          {mutationPending ? (
-            <LoaderCircle aria-hidden="true" className="animate-spin" />
-          ) : (
-            <Save aria-hidden="true" />
-          )}
-        </Button>
       </td>
     </tr>
   )
@@ -973,6 +882,10 @@ export default function ModalAdminPage() {
   const [environmentDirty, setEnvironmentDirty] = useState(false)
   const [globalLimitDirty, setGlobalLimitDirty] = useState(false)
   const [tokenCopied, setTokenCopied] = useState(false)
+  const [toolDrafts, setToolDrafts] = useState<Record<string, ToolDraft>>({})
+  const [toolFailure, setToolFailure] = useState<ToolFailure | null>(null)
+  const [toolsSaveButton, setToolsSaveButton] =
+    useState<HTMLButtonElement | null>(null)
   function environmentMutationOptions() {
     return {
       mutationFn: updateAdminModalEnvironment,
@@ -998,6 +911,77 @@ export default function ModalAdminPage() {
   }
   const environmentUpdate = useMutation(environmentMutationOptions())
   const globalLimitUpdate = useMutation(environmentMutationOptions())
+  const toolsUpdate = useMutation({
+    mutationFn: async (updates: readonly ToolUpdate[]) => {
+      const results: { update: ToolUpdate; result: AdminModalTool }[] = []
+      for (const update of updates) {
+        try {
+          results.push({
+            update,
+            result: await updateAdminModalTool(update.tool, update.input),
+          })
+        } catch (error) {
+          const selected = modal.data?.tools.find(
+            (tool) => tool.tool === update.tool
+          )
+          setToolFailure({
+            ...update,
+            error,
+            toolName: selected?.display_name ?? update.tool,
+          })
+          throw error
+        }
+      }
+      return results
+    },
+    scope: { id: "admin-modal-tools" },
+    onMutate: () => setToolFailure(null),
+    onSuccess(results) {
+      queryClient.setQueryData<AdminModal>(adminModalKey, (current) => {
+        if (!current) return current
+        return results.reduce(
+          (next, { result }) => mergeAdminModalTool(next, result),
+          current
+        )
+      })
+      setToolDrafts((current) => {
+        const next = { ...current }
+        for (const { result, update } of results) {
+          const draft = next[result.tool] ?? initialToolDraft(result)
+          next[result.tool] = {
+            appVersion: Object.hasOwn(update.input, "modal_app_version")
+              ? String(result.modal_app_version.value)
+              : draft.appVersion,
+            activeJobLimit: Object.hasOwn(update.input, "active_job_limit")
+              ? String(result.active_job_limit.value)
+              : draft.activeJobLimit,
+            jobLogsVisibleToOwner: Object.hasOwn(
+              update.input,
+              "job_logs_visible_to_owner"
+            )
+              ? result.job_logs_visible_to_owner.value
+              : draft.jobLogsVisibleToOwner,
+            versionDirty: Object.hasOwn(update.input, "modal_app_version")
+              ? false
+              : draft.versionDirty,
+            limitDirty: Object.hasOwn(update.input, "active_job_limit")
+              ? false
+              : draft.limitDirty,
+            jobLogAccessDirty: Object.hasOwn(
+              update.input,
+              "job_logs_visible_to_owner"
+            )
+              ? false
+              : draft.jobLogAccessDirty,
+          }
+        }
+        return next
+      })
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: adminModalKey })
+    },
+  })
   const resetEnvironmentMutationErrors = () => {
     if (environmentUpdate.isPending || globalLimitUpdate.isPending) return
     environmentUpdate.reset()
@@ -1006,6 +990,7 @@ export default function ModalAdminPage() {
   useExpireSession(modal.error)
   useExpireSession(environmentUpdate.error)
   useExpireSession(globalLimitUpdate.error)
+  useExpireSession(toolsUpdate.error)
 
   const environment = modal.data?.environment
   useEffect(() => {
@@ -1018,6 +1003,34 @@ export default function ModalAdminPage() {
       setGlobalActiveJobLimit(String(environment.global_active_job_limit.value))
     }
   }, [environment, globalLimitDirty])
+  useEffect(() => {
+    if (!modal.data) return
+    setToolDrafts((current) =>
+      Object.fromEntries(
+        modal.data.tools.map((tool) => {
+          const draft = current[tool.tool]
+          if (!draft) return [tool.tool, initialToolDraft(tool)]
+          return [
+            tool.tool,
+            {
+              appVersion: draft.versionDirty
+                ? draft.appVersion
+                : String(tool.modal_app_version.value),
+              activeJobLimit: draft.limitDirty
+                ? draft.activeJobLimit
+                : String(tool.active_job_limit.value),
+              jobLogsVisibleToOwner: draft.jobLogAccessDirty
+                ? draft.jobLogsVisibleToOwner
+                : tool.job_logs_visible_to_owner.value,
+              versionDirty: draft.versionDirty,
+              limitDirty: draft.limitDirty,
+              jobLogAccessDirty: draft.jobLogAccessDirty,
+            },
+          ]
+        })
+      )
+    )
+  }, [modal.data])
 
   const changedEnvironmentSettings = environment
     ? changedModalEnvironmentSettings(
@@ -1043,6 +1056,42 @@ export default function ModalAdminPage() {
     environmentUpdate.isPending || globalLimitUpdate.isPending
   const environmentError = environmentUpdate.error ?? globalLimitUpdate.error
   const normalizedGlobalLimit = nonnegativeInteger(globalActiveJobLimit)
+  const changedToolUpdates: ToolUpdate[] = modal.data
+    ? modal.data.tools.flatMap((tool) => {
+        const draft = toolDrafts[tool.tool] ?? initialToolDraft(tool)
+        const input = changedModalToolSettings(
+          tool,
+          draft.appVersion,
+          draft.activeJobLimit,
+          draft.jobLogsVisibleToOwner
+        )
+        return Object.keys(input).length ? [{ tool: tool.tool, input }] : []
+      })
+    : []
+  const invalidToolDraft = modal.data?.tools.some((tool) => {
+    const draft = toolDrafts[tool.tool] ?? initialToolDraft(tool)
+    return (
+      nonnegativeInteger(draft.activeJobLimit) === null ||
+      (tool.modal_app_version.editable &&
+        positiveInteger(draft.appVersion) === null)
+    )
+  })
+  const canRestoreAllTools = Boolean(
+    modal.data?.tools.some(
+      (tool) =>
+        tool.modal_app_version.source === "database" ||
+        tool.active_job_limit.source === "database" ||
+        tool.job_logs_visible_to_owner.source === "database"
+    ) || changedToolUpdates.length
+  )
+  const pendingToolFields = (tool: string) =>
+    new Set<keyof UpdateAdminModalToolInput>(
+      (toolsUpdate.variables ?? [])
+        .filter((update) => update.tool === tool)
+        .flatMap((update) =>
+          Object.keys(update.input) as (keyof UpdateAdminModalToolInput)[]
+        )
+    )
 
   function saveEnvironment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1245,10 +1294,9 @@ export default function ModalAdminPage() {
             <table className="w-[calc(100%_-_1px)] min-w-[42rem] table-fixed border-collapse text-center">
               <colgroup>
                 <col className="w-[28%]" />
-                <col className="w-[30%]" />
-                <col className="w-[20%]" />
-                <col className="w-[14%]" />
-                <col className="w-[8%]" />
+                <col className="w-[34%]" />
+                <col className="w-[22%]" />
+                <col className="w-[16%]" />
               </colgroup>
               <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -1269,9 +1317,6 @@ export default function ModalAdminPage() {
                   >
                     Modal
                   </th>
-                  <th className="px-2 py-3" rowSpan={2} scope="col">
-                    <span className="sr-only">Save changes</span>
-                  </th>
                 </tr>
                 <tr>
                   <th className="whitespace-nowrap px-2 py-2.5 font-medium" scope="col">
@@ -1284,11 +1329,94 @@ export default function ModalAdminPage() {
               </thead>
               <tbody>
                 {modal.data.tools.map((tool) => (
-                  <ToolRow key={tool.tool} tool={tool} />
+                  <ToolRow
+                    draft={toolDrafts[tool.tool] ?? initialToolDraft(tool)}
+                    key={tool.tool}
+                    onChange={(draft) => {
+                      if (!toolsUpdate.isPending) toolsUpdate.reset()
+                      setToolFailure(null)
+                      setToolDrafts((current) => ({
+                        ...current,
+                        [tool.tool]: draft,
+                      }))
+                    }}
+                    onRestore={(input) => {
+                      toolsUpdate.mutate([{ tool: tool.tool, input }])
+                    }}
+                    pendingFields={pendingToolFields(tool.tool)}
+                    tool={tool}
+                  />
                 ))}
               </tbody>
             </table>
           </Tooltip.Provider>
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t px-4 py-4">
+            <Button
+              disabled={toolsUpdate.isPending || !canRestoreAllTools}
+              onClick={() => {
+                toolsUpdate.mutate(
+                  modal.data.tools.flatMap((tool) => {
+                    const input: UpdateAdminModalToolInput = {
+                      ...(tool.active_job_limit.editable
+                        ? { active_job_limit: null }
+                        : {}),
+                      ...(tool.job_logs_visible_to_owner.editable
+                        ? { job_logs_visible_to_owner: null }
+                        : {}),
+                      ...(tool.modal_app_version.editable
+                        ? { modal_app_version: null }
+                        : {}),
+                    }
+                    return Object.keys(input).length
+                      ? [{ tool: tool.tool, input }]
+                      : []
+                  })
+                )
+              }}
+              type="button"
+              variant="destructive"
+            >
+              {toolsUpdate.isPending ? (
+                <RotateCcw
+                  aria-hidden="true"
+                  className="animate-[spin_700ms_linear_infinite_reverse] motion-reduce:animate-none"
+                />
+              ) : (
+                <RotateCcw aria-hidden="true" />
+              )}
+              Restore all to defaults
+            </Button>
+            {toolFailure ? (
+              <ToolSettingErrorPopover
+                anchor={toolsSaveButton}
+                error={toolFailure.error}
+                fields={modalToolSettingLabels(toolFailure.input)}
+                onDismiss={() => {
+                  setToolFailure(null)
+                  if (!toolsUpdate.isPending) toolsUpdate.reset()
+                }}
+                toolName={toolFailure.toolName}
+              />
+            ) : null}
+            <Button
+              disabled={
+                toolsUpdate.isPending ||
+                !changedToolUpdates.length ||
+                invalidToolDraft
+              }
+              onClick={() => toolsUpdate.mutate(changedToolUpdates)}
+              ref={setToolsSaveButton}
+              type="button"
+              variant="outline"
+            >
+              {toolsUpdate.isPending ? (
+                <LoaderCircle aria-hidden="true" className="animate-spin" />
+              ) : (
+                <Save aria-hidden="true" />
+              )}
+              Save
+            </Button>
+          </div>
         </div>
       </section>
     </div>
