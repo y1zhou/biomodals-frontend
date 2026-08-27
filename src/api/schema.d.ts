@@ -892,6 +892,16 @@ export interface components {
             readonly value: boolean;
         };
         /**
+         * CodedErrorResponse
+         * @description Recoverable error with a stable machine-readable code.
+         */
+        readonly CodedErrorResponse: {
+            /** Code */
+            readonly code: string;
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
          * CreateAdminUserRequest
          * @description Administrator-provisioned User fields.
          */
@@ -3406,15 +3416,48 @@ export interface operations {
         };
         readonly requestBody?: never;
         readonly responses: {
-            /** @description Successful Response */
+            /** @description Complete Result archive */
             readonly 200: {
+                headers: {
+                    readonly "Accept-Ranges"?: "bytes";
+                    readonly "Content-Disposition"?: string;
+                    readonly "Content-Length"?: number;
+                    readonly ETag?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/zip": string;
+                    readonly "application/zstd": string;
+                };
+            };
+            /** @description Requested Result archive byte range */
+            readonly 206: {
+                headers: {
+                    readonly "Accept-Ranges"?: "bytes";
+                    readonly "Content-Disposition"?: string;
+                    readonly "Content-Length"?: number;
+                    readonly "Content-Range"?: string;
+                    readonly ETag?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/zip": string;
+                    readonly "application/zstd": string;
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": unknown;
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3426,6 +3469,18 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Requested Range Not Satisfiable */
+            readonly 416: {
+                headers: {
+                    readonly "Content-Range"?: string;
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3528,15 +3583,18 @@ export interface operations {
         };
         readonly requestBody?: never;
         readonly responses: {
-            /** @description Successful Response */
+            /** @description Newline-delimited JSON Provider Call logs */
             readonly 200: {
                 headers: {
+                    readonly "Cache-Control"?: string;
+                    readonly "X-Accel-Buffering"?: "no";
+                    readonly "X-BioModals-Log-Mode"?: "live" | "historical";
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": unknown;
+                    readonly "application/x-ndjson": string;
                 };
             };
             /** @description Request Entity Too Large */
@@ -3589,14 +3647,23 @@ export interface operations {
         readonly requestBody?: never;
         readonly responses: {
             /** @description Successful Response */
-            readonly 200: {
+            readonly 204: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            readonly 409: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["JobView"];
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
