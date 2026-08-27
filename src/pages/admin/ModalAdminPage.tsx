@@ -1086,7 +1086,7 @@ export default function ModalAdminPage() {
   )
   const pendingToolFields = (tool: string) =>
     new Set<keyof UpdateAdminModalToolInput>(
-      (toolsUpdate.variables ?? [])
+      (toolsUpdate.isPending ? (toolsUpdate.variables ?? []) : [])
         .filter((update) => update.tool === tool)
         .flatMap((update) =>
           Object.keys(update.input) as (keyof UpdateAdminModalToolInput)[]

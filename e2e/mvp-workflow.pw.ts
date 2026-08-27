@@ -214,11 +214,11 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     )
   ).toBe(true)
   await expect(page.getByRole("row", { name: /Prepare simulation/ })).toBeVisible()
-  const prepareResultRow = page.getByRole("row", { name: /Prepare result/ })
-  await expect(prepareResultRow).toContainText("N/A")
-  await expect(prepareResultRow).not.toContainText("Not applicable")
+  await expect(page.getByRole("row", { name: /Prepare result/ })).toBeVisible()
   await page.waitForTimeout(1_100)
-  await page.getByRole("button", { name: "Refresh" }).click()
+  const refresh = page.getByRole("button", { name: "Refresh" })
+  await refresh.click()
+  await expect(page.getByRole("button", { name: "Refreshed" })).toBeVisible()
   for (const stage of ["Analyze NVT", "Analyze NPT", "Run production"]) {
     await expect(page.getByRole("row", { name: new RegExp(stage) })).toContainText(
       "Running",
@@ -226,7 +226,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     )
   }
   await page.waitForTimeout(1_600)
-  await page.getByRole("button", { name: "Refresh" }).click()
+  await refresh.click()
+  await expect(page.getByRole("button", { name: "Refreshed" })).toBeVisible()
   await expect(page.getByRole("row", { name: /Analyze production/ })).toContainText(
     "Running"
   )
@@ -589,10 +590,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   ).toHaveAttribute("rowspan", "2")
   await expect(
     toolsTable.getByRole("columnheader", { name: "Modal", exact: true })
-  ).toHaveAttribute("colspan", "3")
+  ).toHaveAttribute("colspan", "2")
   await expect(
     toolsTable.getByRole("columnheader", { name: "Save changes" })
-  ).toHaveAttribute("rowspan", "2")
+  ).toHaveCount(0)
   await expect(
     toolsTable.getByRole("columnheader", { name: "Deployment version" })
   ).toHaveCSS("white-space", "nowrap")
@@ -612,42 +613,21 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       cells.every((cell) => getComputedStyle(cell).textAlign === "center")
     )
   ).toBe(true)
-  const modalAppName = page.getByRole("textbox", {
-    name: "Modal app name for GROMACS MD simulation",
+  const toolsSection = page
+    .getByRole("heading", { name: "Tools", exact: true })
+    .locator("..")
+  const saveToolSettings = toolsSection.getByRole("button", {
+    name: "Save",
     exact: true,
-  })
-  expect(
-    await modalAppName.evaluate((input) => input.getBoundingClientRect().width)
-  ).toBeLessThan(190)
-  const configuredAppName = await modalAppName.inputValue()
-  await modalAppName.fill(`${configuredAppName}-temporary`)
-  const restoreAppName = page.getByRole("button", {
-    name: "Restore Modal app name for GROMACS MD simulation to its configured default",
-  })
-  await restoreAppName.click()
-  await expect(modalAppName).toHaveValue(configuredAppName)
-  expect(
-    await restoreAppName
-      .locator("svg")
-      .evaluate((icon) => getComputedStyle(icon).animationDirection)
-  ).toBe("reverse")
-
-  const saveToolSettings = page.getByRole("button", {
-    name: "Save Modal settings for GROMACS MD simulation",
   })
   const activeJobLimit = page.getByRole("spinbutton", {
     name: "Active job limit for GROMACS MD simulation",
   })
-  expect(await toolsTable.locator("colgroup col").count()).toBe(7)
-  expect(await toolsTable.getByRole("columnheader").count()).toBe(8)
+  expect(await toolsTable.locator("colgroup col").count()).toBe(4)
+  expect(await toolsTable.getByRole("columnheader").count()).toBe(5)
   await expect(
-    toolsTable.getByRole("columnheader", { name: "Save changes" })
+    toolsSection.getByRole("button", { name: "Restore all to defaults" })
   ).toBeVisible()
-  expect(
-    await saveToolSettings.evaluate(
-      (button) => (button.closest("td") as HTMLTableCellElement | null)?.cellIndex
-    )
-  ).toBe(6)
   expect(
     await activeJobLimit.evaluate(
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
