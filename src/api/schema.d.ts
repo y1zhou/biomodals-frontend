@@ -2458,7 +2458,7 @@ export interface operations {
             };
         };
         readonly responses: {
-            /** @description Successful Response */
+            /** @description Job durably admitted for asynchronous staging and launch */
             readonly 202: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -3138,7 +3138,7 @@ export interface operations {
             };
         };
         readonly responses: {
-            /** @description Successful Response */
+            /** @description Job durably admitted for asynchronous staging and launch */
             readonly 202: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
