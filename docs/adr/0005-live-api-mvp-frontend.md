@@ -35,6 +35,17 @@ with `Protein structure` and `Structure prediction` tags. It supports a guided
 protein, DNA, RNA, and simple ligand builder and native expert JSON through one
 retained server-validation and confirmation flow.
 
+The AlphaFold3 builder rejects invalid entity-copy counts instead of silently
+changing them and accepts values from `1` through `5120`. Seed expressions are
+validated for syntax, integer bounds, and the 1,000-seed UI ceiling before any
+range is expanded, so an enormous range cannot allocate browser memory first.
+Turning off MSA search also turns off and disables Protein template search
+because that search requires an MSA.
+
+Draft restoration never overwrites edits made after the page mounted. Expert
+JSON file reads follow latest-selection-wins semantics: completion of an older
+asynchronous read cannot replace a newer file or a cleared input.
+
 The public Tool overview explains its PDB Input, simulation options,
 downloadable Result, and durable remote execution before presenting the
 primary action. Its signed-out action is `Sign in to start`; its signed-in
@@ -356,22 +367,20 @@ visible without invented outcomes.
 
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.
-It also presents the fixed GROMACS stage display order and highlights every
-active stage and running Function reported by `JobView.active_stages`. The
-singular `JobView.stage` is a compatibility summary rather than the source of
-parallel state. The stage table shows Started and Finished columns from
-`JobView.stage_history`. A started entry has `started_at`, nullable `ended_at`,
-and a nullable outcome of `completed`, `failed`, or `cancelled`; active,
-state-unknown, and blocked stages have no end or outcome. The table displays the
-outcome explicitly and does not invent missing timestamps, durations, completed
-Functions, or numeric Progress. An unchanged `updated_at` is not treated as
-stale because the API does not provide a heartbeat contract.
+It also presents the fixed semantic stage display order and highlights every
+active stage reported by `JobView.active_stages`. The singular `JobView.stage`
+is a compatibility summary rather than the source of parallel state. The stage
+table shows Stage, Status, Started, and Finished from `JobView.stage_history`;
+provider Function names are intentionally omitted from the end-User table. A
+started entry has `started_at`, nullable `ended_at`, and a nullable outcome of
+`completed`, `failed`, or `cancelled`; active, state-unknown, and blocked stages
+have no end or outcome. The table displays the outcome explicitly and does not
+invent missing timestamps, durations, or numeric Progress. An unchanged
+`updated_at` is not treated as stale because the API does not provide a
+heartbeat contract.
 
-The rows are Prepare simulation (`prepare_tpr_cpu|gpu`), Analyze NVT
-(`collect_traj_stats`), Analyze NPT (`collect_traj_stats`), Run production
-(`production_run_cpu|gpu`), Analyze production (`collect_traj_stats`), and
-Prepare result (local service work, whose Running Function is shown as `N/A`).
-The interface
+The GROMACS rows are Prepare simulation, Analyze NVT, Analyze NPT, Run
+production, Analyze production, and Prepare result. The interface
 does not split preparation, minimization, NVT, or NPT execution out of the
 Prepare simulation row because they occur inside one deployed Function. It
 also does not expose nested App implementation calls as API stages.
@@ -394,15 +403,15 @@ collapsing the row or leaving the page also aborts it. When the capability is
 false, the page shows the ordinary stage table without log interactivity or
 log-access copy.
 
-The target API exposes safe Stage codes, Running Function names, operation
+The target API exposes safe Stage codes, diagnostic Function names, operation
 state, live-or-historical mode, start time, and nullable end time, but no Modal
 Function Call ID. The backend resolves the selected Stage to that private ID
-and redacts that exact value if provider output contains it. Active and
-state-unknown Stages stream plain-text output; completed, failed, and cancelled
-Stages fetch the retained output for their recorded time range without follow
-mode. Paired `since` and `until` parameters select a timezone-aware historical
-window of at most 15 minutes and are clamped to the Stage lifetime. The browser
-uses 10-minute windows so it can request older output only when needed.
+and redacts that exact value if provider output contains it. An active target
+streams newline-delimited JSON output. Any other started Stage fetches retained
+output for its recorded time range without follow mode. Paired `since` and
+`until` parameters select a timezone-aware historical window of at most one
+hour and are clamped to the Stage lifetime. The browser uses 10-minute windows
+so it can request older output only when needed.
 
 TanStack Query caches every successful terminal window indefinitely for the
 current browser page. Reopening a row refreshes the small target selector so a
@@ -493,10 +502,11 @@ collection are never periodically polled. When an individual Job becomes
 terminal or state-unknown, its interval polling stops.
 
 `updated_at` is display metadata rather than a strict Job version. When a
-collection snapshot and its detail snapshot have equal timestamps, the detail
-snapshot wins so a terminal observation cannot be hidden while its polling
-stops. A persistent Job revision is deferred until the system has more writers
-or update transports that require total ordering.
+collection snapshot and its detail snapshot have equal timestamps and exactly
+one is terminal, the terminal snapshot wins so a stale active response cannot
+hide completion after polling stops. Otherwise the detail snapshot wins. A
+persistent Job revision is deferred until the system has more writers or update
+transports that require total ordering.
 
 TanStack Query owns Job and User server state. Polling requests use their abort
 signals so navigation can stop unnecessary HTTP work; aborting a read never
@@ -601,14 +611,14 @@ persistent-data changes require an explicit migration and rollback plan.
 coded recovery; a possible integrity transition triggers a Job refetch. A
 successful `204` immediately starts the real authenticated same-origin link to
 `/api/v1/jobs/:jobId/download`. The browser handles the server-provided
-`Content-Disposition` filename and streams the `application/zip` Result,
-including the API's `206` byte-range support. The frontend neither buffers the
-archive into a JavaScript Blob nor depends on the optional `download_url` field.
-Aborting one page request does not cancel shared backend cache preparation.
+`Content-Disposition` filename and streams the Tool-specific `application/zip`
+or `application/zstd` Result, including the API's `206` byte-range support. The
+frontend neither buffers the archive into a JavaScript Blob nor depends on the
+optional `download_url` field. Aborting one page request does not cancel shared
+backend cache preparation.
 
-The server-provided filename is `<sanitized display name>-results.zip`, with
-`gromacs-results.zip` as the fallback. It contains no Job UUID, Modal run name,
-or storage path; the browser handles duplicate-download suffixes.
+The server-provided filename contains no Job UUID, Modal run name, or storage
+path; the browser handles duplicate-download suffixes.
 
 ## Visual and interaction direction
 
