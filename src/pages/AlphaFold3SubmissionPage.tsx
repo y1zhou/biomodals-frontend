@@ -343,11 +343,11 @@ export default function AlphaFold3SubmissionPage() {
   const [draft, setDraftState] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
   const [draftOwner, setDraftOwner] = useState<string | null>(null)
   const [validation, setValidation] = useState<AlphaFold3Validation | null>(null)
+  const [recoveryValidationId, setRecoveryValidationId] = useState<string | null>(null)
   const [formError, setFormError] = useState("")
   const validationController = useRef<AbortController | null>(null)
   const draftChanged = useRef(false)
   const expertFileSelection = useRef(0)
-  const recoveryAttempt = useRef("")
 
   function setDraft(update: SetStateAction<AlphaFold3Draft>) {
     draftChanged.current = true
@@ -361,6 +361,7 @@ export default function AlphaFold3SubmissionPage() {
     setDraftOwner(null)
     setDraftState(newAlphaFold3Draft())
     setValidation(null)
+    setRecoveryValidationId(null)
     loadAlphaFold3Draft(ownerUserId).then((saved) => {
       if (!active) return
       if (saved && !draftChanged.current) {
@@ -408,7 +409,7 @@ export default function AlphaFold3SubmissionPage() {
   useExpireSession(validationMutation.error)
 
   const submissionMutation = useMutation({
-    mutationFn: ({ validationId }: { validationId: string }) => {
+    mutationFn: ({ validationId }: { validationId: string; recovery?: boolean }) => {
       if (!ownerUserId) throw new Error("Authentication is required.")
       const keyName = submissionStorageKey(ownerUserId, validationId)
       let key = window.sessionStorage.getItem(keyName)
@@ -418,12 +419,33 @@ export default function AlphaFold3SubmissionPage() {
       }
       return submitAlphaFold3Job(validationId, key)
     },
+    onError: (error, { recovery, validationId }) => {
+      if (
+        recovery &&
+        ownerUserId &&
+        error instanceof ApiError &&
+        error.status === 404
+      ) {
+        const validationKey = validationStorageKey(ownerUserId)
+        if (window.sessionStorage.getItem(validationKey) === validationId) {
+          window.sessionStorage.removeItem(validationKey)
+        }
+        window.sessionStorage.removeItem(
+          submissionStorageKey(ownerUserId, validationId)
+        )
+        setRecoveryValidationId(null)
+        setFormError("The saved submission could not be recovered. Review and submit the job again.")
+      }
+    },
     onSuccess: (job, { validationId }) => {
       if (ownerUserId) {
         window.sessionStorage.removeItem(
           submissionStorageKey(ownerUserId, validationId)
         )
-        window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
+        const validationKey = validationStorageKey(ownerUserId)
+        if (window.sessionStorage.getItem(validationKey) === validationId) {
+          window.sessionStorage.removeItem(validationKey)
+        }
         void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
       }
       navigate(alphafold3Paths.job(job.job_id), { replace: true })
@@ -448,11 +470,10 @@ export default function AlphaFold3SubmissionPage() {
         if (
           error instanceof ApiError &&
           error.status === 404 &&
-          submissionKey &&
-          recoveryAttempt.current !== `${ownerUserId}:${validationId}`
+          submissionKey
         ) {
-          recoveryAttempt.current = `${ownerUserId}:${validationId}`
-          submitJob({ validationId })
+          setRecoveryValidationId(validationId)
+          submitJob({ recovery: true, validationId })
           return
         }
         if (error instanceof ApiError && error.status === 404) {
@@ -588,6 +609,44 @@ export default function AlphaFold3SubmissionPage() {
     if (ownerUserId) {
       void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
     }
+  }
+
+  if (recoveryValidationId) {
+    return (
+      <main className="mx-auto max-w-2xl px-6 py-10 lg:px-8 lg:py-14">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recovering submitted job</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm leading-6 text-muted-foreground">
+              BioModals is checking whether the previous submission already created a job.
+            </p>
+            {submissionMutation.error ? (
+              <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                {errorMessage(submissionMutation.error)}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                disabled={submissionMutation.isPending}
+                onClick={() => submitJob({
+                  recovery: true,
+                  validationId: recoveryValidationId,
+                })}
+                type="button"
+              >
+                {submissionMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
+                {submissionMutation.isPending ? "Recovering job…" : "Try again"}
+              </Button>
+              <Link className={buttonVariants({ variant: "outline" })} to="/jobs">
+                My Jobs
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    )
   }
 
   if (validation) {
