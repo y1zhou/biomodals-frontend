@@ -634,15 +634,6 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     name: "Restore all to defaults",
   })
   await expect(restoreAllTools).toBeVisible()
-  await restoreAllTools.click()
-  const restoreAllDialog = page.getByRole("alertdialog", {
-    name: "Restore all Tool settings?",
-  })
-  await expect(restoreAllDialog).toContainText(
-    "This removes every administrator override"
-  )
-  await restoreAllDialog.getByRole("button", { name: "Cancel" }).click()
-  await expect(restoreAllDialog).not.toBeVisible()
   expect(
     await activeJobLimit.evaluate(
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
@@ -682,6 +673,15 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   expect(ownerThumbX).toBeLessThan(ownerIconX)
   await jobLogAccessToggle.click()
   await expect(jobLogAccess).not.toBeChecked()
+  await restoreAllTools.click()
+  const restoreAllDialog = page.getByRole("alertdialog", {
+    name: "Restore all Tool settings?",
+  })
+  await expect(restoreAllDialog).toContainText(
+    "This removes every administrator override"
+  )
+  await restoreAllDialog.getByRole("button", { name: "Cancel" }).click()
+  await expect(restoreAllDialog).not.toBeVisible()
   await jobLogAccessToggle.hover()
   await expect(page.getByRole("tooltip")).toHaveText("Admins only")
   await expect(jobLogAccessTrack).toHaveCSS(
