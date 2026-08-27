@@ -16,6 +16,7 @@ import { Link, useParams } from "react-router"
 import {
   ApiError,
   SERVICE_CONFIGURATION_ERROR_MESSAGE,
+  alphaFold3JobDocumentUrl,
   apiErrorCode,
   apiRequestId,
   cancelJob,
@@ -310,6 +311,16 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                 </div>
               ) : null}
               <div className="mt-6 flex flex-wrap gap-3">
+                {job.tool === "alphafold3" ? (
+                  <a
+                    className={buttonVariants({ variant: "outline" })}
+                    download
+                    href={alphaFold3JobDocumentUrl(job.job_id)}
+                  >
+                    <Download aria-hidden="true" />
+                    Download JSON
+                  </a>
+                ) : null}
                 {canCancel ? (
                   <Button
                     onClick={() => {

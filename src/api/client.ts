@@ -436,6 +436,10 @@ export function alphaFold3DocumentUrl(validationId: string) {
   return `/api/v1/alphafold3/validations/${encodeURIComponent(validationId)}/document`
 }
 
+export function alphaFold3JobDocumentUrl(jobId: string) {
+  return `/api/v1/alphafold3/jobs/${encodeURIComponent(jobId)}/document`
+}
+
 export function submitAlphaFold3Job(
   validationId: string,
   idempotencyKey: string
