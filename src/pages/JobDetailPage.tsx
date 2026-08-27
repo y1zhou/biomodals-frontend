@@ -266,9 +266,21 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               <p className="text-sm font-medium text-muted-foreground">
                 {tool?.name ?? job.tool}
               </p>
-              <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-                {job.display_name}
-              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+                  {job.display_name}
+                </h1>
+                {job.tool === "alphafold3" ? (
+                  <a
+                    className={buttonVariants({ variant: "outline" })}
+                    download
+                    href={alphaFold3JobDocumentUrl(job.job_id)}
+                  >
+                    <Download aria-hidden="true" />
+                    Download input JSON
+                  </a>
+                ) : null}
+              </div>
             </div>
             <JobStatusBadge state={job.state} />
           </div>
@@ -319,16 +331,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                 </div>
               ) : null}
               <div className="mt-6 flex flex-wrap gap-3">
-                {job.tool === "alphafold3" ? (
-                  <a
-                    className={buttonVariants({ variant: "outline" })}
-                    download
-                    href={alphaFold3JobDocumentUrl(job.job_id)}
-                  >
-                    <Download aria-hidden="true" />
-                    Download JSON
-                  </a>
-                ) : null}
                 {canCancel ? (
                   <Button
                     onClick={() => {
