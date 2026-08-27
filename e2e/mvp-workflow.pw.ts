@@ -169,13 +169,25 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     name: "browser-input.pdb",
   })
   await page.getByLabel(/Display name/).fill("Browser success workflow")
+  const gromacsSubmissionRoute = "**/api/v1/gromacs/jobs"
+  let releaseSubmission = () => undefined
+  const heldSubmission = new Promise<void>((resolve) => {
+    releaseSubmission = resolve
+  })
+  await page.route(gromacsSubmissionRoute, async (route) => {
+    await heldSubmission
+    await route.continue()
+  })
   const submit = page.getByRole("button", { name: "Submit simulation" })
   await submit.evaluate((button: HTMLButtonElement) => {
     button.click()
     button.click()
   })
+  await expect(page.getByText("Uploading input")).toBeVisible()
+  releaseSubmission()
 
   await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
+  await page.unroute(gromacsSubmissionRoute)
   const completedJobId = page.url().split("/").at(-1)
   if (!completedJobId) throw new Error("Completed Job ID is missing")
   await expect(page.locator("details", { hasText: "Logs" })).toHaveCount(0)

@@ -528,6 +528,7 @@ export function submitGromacsJob(
     xhr.upload.addEventListener("progress", (event) => {
       onProgress(event.lengthComputable ? Math.round((event.loaded / event.total) * 100) : null)
     })
+    xhr.upload.addEventListener("load", () => onProgress(100))
     xhr.addEventListener("load", () => {
       signal.removeEventListener("abort", abort)
       const body = xhrBody(xhr)

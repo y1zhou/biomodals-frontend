@@ -112,6 +112,7 @@ export default function GromacsSubmissionPage() {
   })
   useExpireSession(mutation.error)
   const isSubmissionPending = mutation.isPending
+  const inputUploaded = progress === 100
   const shouldBlockNavigation = useCallback(
     () => isSubmissionPending && !allowNavigation.current,
     [isSubmissionPending]
@@ -422,8 +423,18 @@ export default function GromacsSubmissionPage() {
               {isSubmissionPending ? (
                 <div aria-live="polite" className="space-y-2 rounded-lg bg-muted p-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Uploading input</span>
-                    <span>{progress === null ? "…" : `${progress}%`}</span>
+                    <span className="font-medium">
+                      {inputUploaded
+                        ? "Preparing and queuing job"
+                        : "Uploading input"}
+                    </span>
+                    <span>
+                      {inputUploaded
+                        ? "Input uploaded"
+                        : progress === null
+                          ? "…"
+                          : `${progress}%`}
+                    </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-background">
                     <div

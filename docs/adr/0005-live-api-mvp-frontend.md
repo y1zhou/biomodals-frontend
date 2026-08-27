@@ -34,6 +34,9 @@ The Catalog also presents the available `AlphaFold3 structure prediction` Tool
 with `Protein structure` and `Structure prediction` tags. It supports a guided
 protein, DNA, RNA, and simple ligand builder and native expert JSON through one
 retained server-validation and confirmation flow.
+Submitting from the confirmation view immediately changes the action to a
+disabled `Submitting job…` state and announces that the Job is being prepared
+and queued until the API returns its durable queued Job.
 
 The AlphaFold3 builder rejects invalid entity-copy counts instead of silently
 changing them and accepts values from `1` through `5120`. Seed expressions are
@@ -221,6 +224,10 @@ been created. The inline result links to My Jobs, and the Submission intent
 retains its idempotency key in tab-scoped session storage until a definitive
 Job or idempotency conflict is returned. Upload progress and cancellation are
 separate from the Job lifecycle and Job Cancellation.
+Once transfer reaches 100%, the progress panel changes from `Uploading input`
+to `Preparing and queuing job` instead of implying that the transfer itself is
+still moving. A successful `202` redirects immediately to the queued Job; the
+background service reconciler owns subsequent remote staging and launch.
 
 The Submission response contract is:
 

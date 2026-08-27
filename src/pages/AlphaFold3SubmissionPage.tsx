@@ -308,10 +308,15 @@ function Confirmation({
             </label>
           ) : null}
           {submissionError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{submissionError}</p> : null}
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {pending ? (
+              <p aria-live="polite" className="text-sm text-muted-foreground" role="status">
+                Preparing and queuing your job…
+              </p>
+            ) : null}
             <Button disabled={pending || (requiresConfirmation && !confirmed)} onClick={onSubmit} size="lg">
               {pending ? <LoaderCircle className="animate-spin" /> : null}
-              Submit prediction
+              {pending ? "Submitting job…" : "Submit prediction"}
             </Button>
           </div>
         </CardContent>
