@@ -914,15 +914,49 @@ export default function ModalAdminPage() {
   }
   const environmentUpdate = useMutation(environmentMutationOptions())
   const globalLimitUpdate = useMutation(environmentMutationOptions())
+  function applyToolUpdate(update: ToolUpdate, result: AdminModalTool) {
+    queryClient.setQueryData<AdminModal>(adminModalKey, (current) =>
+      current ? mergeAdminModalTool(current, result) : current
+    )
+    setToolDrafts((current) => {
+      const draft = current[result.tool] ?? initialToolDraft(result)
+      return {
+        ...current,
+        [result.tool]: {
+          appVersion: Object.hasOwn(update.input, "modal_app_version")
+            ? String(result.modal_app_version.value)
+            : draft.appVersion,
+          activeJobLimit: Object.hasOwn(update.input, "active_job_limit")
+            ? String(result.active_job_limit.value)
+            : draft.activeJobLimit,
+          jobLogsVisibleToOwner: Object.hasOwn(
+            update.input,
+            "job_logs_visible_to_owner"
+          )
+            ? result.job_logs_visible_to_owner.value
+            : draft.jobLogsVisibleToOwner,
+          versionDirty: Object.hasOwn(update.input, "modal_app_version")
+            ? false
+            : draft.versionDirty,
+          limitDirty: Object.hasOwn(update.input, "active_job_limit")
+            ? false
+            : draft.limitDirty,
+          jobLogAccessDirty: Object.hasOwn(
+            update.input,
+            "job_logs_visible_to_owner"
+          )
+            ? false
+            : draft.jobLogAccessDirty,
+        },
+      }
+    })
+  }
   const toolsUpdate = useMutation({
     mutationFn: async (updates: readonly ToolUpdate[]) => {
-      const results: { update: ToolUpdate; result: AdminModalTool }[] = []
       for (const update of updates) {
         try {
-          results.push({
-            update,
-            result: await updateAdminModalTool(update.tool, update.input),
-          })
+          const result = await updateAdminModalTool(update.tool, update.input)
+          applyToolUpdate(update, result)
         } catch (error) {
           const selected = modal.data?.tools.find(
             (tool) => tool.tool === update.tool
@@ -935,52 +969,9 @@ export default function ModalAdminPage() {
           throw error
         }
       }
-      return results
     },
     scope: { id: "admin-modal-tools" },
     onMutate: () => setToolFailure(null),
-    onSuccess(results) {
-      queryClient.setQueryData<AdminModal>(adminModalKey, (current) => {
-        if (!current) return current
-        return results.reduce(
-          (next, { result }) => mergeAdminModalTool(next, result),
-          current
-        )
-      })
-      setToolDrafts((current) => {
-        const next = { ...current }
-        for (const { result, update } of results) {
-          const draft = next[result.tool] ?? initialToolDraft(result)
-          next[result.tool] = {
-            appVersion: Object.hasOwn(update.input, "modal_app_version")
-              ? String(result.modal_app_version.value)
-              : draft.appVersion,
-            activeJobLimit: Object.hasOwn(update.input, "active_job_limit")
-              ? String(result.active_job_limit.value)
-              : draft.activeJobLimit,
-            jobLogsVisibleToOwner: Object.hasOwn(
-              update.input,
-              "job_logs_visible_to_owner"
-            )
-              ? result.job_logs_visible_to_owner.value
-              : draft.jobLogsVisibleToOwner,
-            versionDirty: Object.hasOwn(update.input, "modal_app_version")
-              ? false
-              : draft.versionDirty,
-            limitDirty: Object.hasOwn(update.input, "active_job_limit")
-              ? false
-              : draft.limitDirty,
-            jobLogAccessDirty: Object.hasOwn(
-              update.input,
-              "job_logs_visible_to_owner"
-            )
-              ? false
-              : draft.jobLogAccessDirty,
-          }
-        }
-        return next
-      })
-    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: adminModalKey })
     },
