@@ -270,7 +270,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                 <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
                   {job.display_name}
                 </h1>
-                {job.tool === "alphafold3" ? (
+                {job.tool === "alphafold3" && job.state !== "cancelled" ? (
                   <a
                     className={buttonVariants({ variant: "outline" })}
                     download

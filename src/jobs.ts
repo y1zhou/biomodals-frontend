@@ -133,7 +133,6 @@ export function jobStageTimeline(job: Job) {
     return {
       code: stage.code,
       label: stage.label,
-      functionName: stage.running_functions?.[0] ?? null,
       startedAt: stage.started_at ?? null,
       endedAt: stage.ended_at ?? null,
       outcome: stage.outcome ?? null,

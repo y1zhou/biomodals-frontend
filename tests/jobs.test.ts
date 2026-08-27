@@ -152,7 +152,6 @@ describe("Job lifecycle presentation", () => {
         {
           code: "prepare_simulation",
           label: "Prepare simulation",
-          running_functions: ["prepare_tpr_gpu"],
           started_at: "2026-07-17T00:00:00Z",
           ended_at: "2026-07-17T00:02:00Z",
           outcome: "completed" as const,
@@ -160,19 +159,16 @@ describe("Job lifecycle presentation", () => {
         {
           code: "analyze_nvt",
           label: "Analyze NVT",
-          running_functions: ["collect_traj_stats"],
           started_at: "2026-07-17T00:02:00Z",
         },
         {
           code: "analyze_npt",
           label: "Analyze NPT",
-          running_functions: ["collect_traj_stats"],
           started_at: "2026-07-17T00:02:00Z",
         },
         {
           code: "run_production",
           label: "Run production",
-          running_functions: ["production_run_gpu"],
           started_at: "2026-07-17T00:02:00Z",
         },
         { code: "analyze_production", label: "Analyze production" },
@@ -191,15 +187,11 @@ describe("Job lifecycle presentation", () => {
     expect(jobStageTimeline(running)[0]?.label).toBe(
       "Prepare simulation"
     )
-    expect(jobStageTimeline(running)[1]?.functionName).toBe(
-      "collect_traj_stats"
-    )
     expect(jobStageTimeline(running)[0]).toMatchObject({
       startedAt: "2026-07-17T00:00:00Z",
       endedAt: "2026-07-17T00:02:00Z",
     })
     expect(jobStageTimeline(running)[3]).toMatchObject({
-      functionName: "production_run_gpu",
       startedAt: "2026-07-17T00:02:00Z",
       endedAt: null,
     })
@@ -212,7 +204,6 @@ describe("Job lifecycle presentation", () => {
         {
           code: "prepare_environment",
           label: "Prepare environment",
-          running_functions: ["prepare_alphafold3_environment_asset"],
           provider_state: "queued" as const,
           started_at: "2026-07-17T00:00:00Z",
         },
