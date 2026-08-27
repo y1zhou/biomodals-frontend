@@ -203,6 +203,9 @@ The Job Log toggle participates in the same row-wide Save action, and its
 adjacent restore control removes only its database override.
 The table-wide Restore all to defaults action confirms before removing every
 Tool-setting override and discarding unsaved Tool edits.
+Tool updates remain sequential. Each successful row is merged into the visible
+configuration and cleared from the dirty set immediately, so a later failed
+row does not make an already committed change appear unsaved.
 Toggle tracks and thumbs transition smoothly between states. Restore controls
 rotate their counter-clockwise arrow counter-clockwise when activated, while
 still replacing it with the ordinary pending spinner for a server mutation.
@@ -245,9 +248,9 @@ but before applying current limits.
 
 These policies reject excess Submissions with
 `409 active_job_limit_reached`. They are admission controls, not Capacity
-Limits: the backend still does not retain uploaded Input for later dispatch,
-and therefore does not claim to provide a durable execution queue or an exact
-cross-Tool running-call concurrency cap.
+Limits: accepted Jobs retain their Input for asynchronous staging and launch,
+but excess requests are rejected rather than waitlisted. The limits do not
+claim an exact cross-Tool running-call concurrency cap.
 
 All three limit types accept non-negative integers, including zero. A saved
 limit may be lower than its current Active Job count. Existing Jobs continue

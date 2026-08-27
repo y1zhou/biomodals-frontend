@@ -45,9 +45,13 @@ range is expanded, so an enormous range cannot allocate browser memory first.
 Turning off MSA search also turns off and disables Protein template search
 because that search requires an MSA.
 
-Draft restoration never overwrites edits made after the page mounted. Expert
-JSON file reads follow latest-selection-wins semantics: completion of an older
-asynchronous read cannot replace a newer file or a cleared input.
+Drafts, retained-validation pointers, and Submission idempotency keys are
+scoped by authenticated User. Draft restoration never overwrites edits made
+after the page mounted. If the Job-creation response is lost after the server
+consumes a validation, reloading replays the retained idempotency key and
+redirects to the existing Job. Expert JSON file reads follow
+latest-selection-wins semantics: completion of an older asynchronous read
+cannot replace a newer file or a cleared input.
 
 The public Tool overview explains its PDB Input, simulation options,
 downloadable Result, and durable remote execution before presenting the
@@ -272,8 +276,9 @@ The backend applies these semantics:
 - The same key and fingerprint returns the existing Job.
 - The same key with changed Input or settings returns `409` with
   `idempotency_conflict`.
-- A failed compute spawn returns `503`; retrying with the same key preserves
-  the Job and stable run name.
+- Exact deployment preflight may return `503` before admission. After durable
+  admission, staging and launch failures are reconciled through the Job rather
+  than the Submission response.
 
 `503 compute_unavailable` leaves the form intact and offers `Try again` with
 the same key. `409 idempotency_conflict` is treated as a defensive
@@ -293,10 +298,10 @@ Global Active Job Limits. A Submission beyond any limit is rejected before a
 Job is created with `409 active_job_limit_reached`. This is distinct from an
 execution Capacity Limit, where an accepted Job waits for capacity.
 
-A durable admission queue is deferred because the API does not yet retain Input
-for later dispatch. Until that storage and recovery path exists, the frontend
-explains the Active Job Limit and asks the User to retry after an existing Job
-becomes terminal.
+Accepted Jobs retain enough Input for asynchronous staging and launch. Active
+Job Limits still reject excess Submissions before admission; the durable queue
+therefore recovers admitted work but does not waitlist requests that exceed a
+User, Tool, or Global limit.
 
 ## Job states and actions
 
@@ -334,9 +339,10 @@ Only failed Jobs contain typed `error_code` and display-safe `error_message`
 fields; `JobView.detail` is removed. The frontend chooses the next action from
 the code, displays the safe message, and falls back to generic failure copy for
 an unknown code. It also shows a copyable Job identifier for support and links
-to a blank Submission form. Failed and cancelled Jobs do not offer Retry or
-reconstruct earlier settings because the API does not retain those values in
-`JobView`. The backend never sends a UI action field.
+to a blank Submission form. Failed and cancelled Jobs do not offer automatic
+Retry. Non-cancelled AlphaFold3 Jobs expose their retained native input JSON so
+the User can inspect or resubmit it; cancelled Jobs omit that action because
+input publication is not guaranteed. The backend never sends a UI action field.
 
 The typed Job Error codes are `compute_failed` and `result_invalid`. Each offers
 Start a new job and the Job identifier for support. Post-publication

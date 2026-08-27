@@ -232,7 +232,7 @@ export default function GromacsSubmissionPage() {
             Start a simulation
           </h1>
           <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-            Choose a PDB structure and configure one durable remote job. You can leave after the upload completes.
+            Choose a PDB structure and configure one durable remote job. You can leave after BioModals confirms it is queued.
           </p>
         </div>
 
