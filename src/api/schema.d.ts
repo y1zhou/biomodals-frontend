@@ -1081,6 +1081,8 @@ export interface components {
              * Format: uuid
              */
             readonly job_id: string;
+            /** Result Size Bytes */
+            readonly result_size_bytes?: number | null;
             /** Stages */
             readonly stages: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];

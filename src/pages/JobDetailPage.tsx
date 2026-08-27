@@ -52,6 +52,7 @@ import {
 } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
+import { formatBytes } from "@/storage"
 import {
   availableTools,
   toolSubmissionPath,
@@ -291,7 +292,12 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               </div>
             </CardHeader>
             <CardContent>
-              <p className="max-w-2xl leading-7">{stateDescription}</p>
+              <p className="max-w-2xl leading-7">
+                {stateDescription}
+                {canDownload && job.result_size_bytes ? (
+                  <> The downloadable result archive is {formatBytes(job.result_size_bytes)}.</>
+                ) : null}
+              </p>
               <p className="mt-2 text-xs opacity-80">
                 Job updated {formatTimestamp(job.updated_at)} · Last checked{" "}
                 {relativeLastChecked ? (
