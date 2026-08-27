@@ -5,6 +5,7 @@ import {
   expertAlphaFold3Document,
   expertAlphaFold3ModelSeeds,
   expandEntityRecords,
+  MAX_ENTITY_COPIES,
   newAlphaFold3Entity,
   parsePolymerRecords,
   parseModelSeeds,
@@ -72,8 +73,17 @@ describe("AlphaFold3 input builder", () => {
 
   test("expands compact model seed ranges", () => {
     expect(parseModelSeeds("1, 3-5, 3")).toEqual([1, 3, 4, 5])
-    expect(parseModelSeeds("0-5000")).toHaveLength(5001)
+    expect(parseModelSeeds("0-999")).toHaveLength(1000)
+    expect(() => parseModelSeeds("0-1000")).toThrow("1,000")
+    expect(() => parseModelSeeds("0-4294967295")).toThrow("1,000")
     expect(() => parseModelSeeds("5-3")).toThrow("ascending")
+  })
+
+  test("retains supported three-digit entity copy counts", () => {
+    expect(resizeEntityCopies(newAlphaFold3Entity("protein"), 100).copies).toBe(100)
+    expect(
+      resizeEntityCopies(newAlphaFold3Entity("protein"), MAX_ENTITY_COPIES + 1).copies
+    ).toBe(MAX_ENTITY_COPIES)
   })
 
   test("constructs a native regular-mode document", () => {

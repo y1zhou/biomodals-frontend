@@ -10,7 +10,13 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react"
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type SetStateAction,
+} from "react"
 import { Link, useNavigate } from "react-router"
 
 import {
@@ -29,6 +35,7 @@ import {
   expertAlphaFold3ModelSeeds,
   formatSequence,
   loadAlphaFold3Draft,
+  MAX_ENTITY_COPIES,
   newAlphaFold3Draft,
   newAlphaFold3Entity,
   parsePolymerRecords,
@@ -315,15 +322,24 @@ function Confirmation({
 
 export default function AlphaFold3SubmissionPage() {
   const navigate = useNavigate()
-  const [draft, setDraft] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
+  const [draft, setDraftState] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
   const [draftLoaded, setDraftLoaded] = useState(false)
   const [validation, setValidation] = useState<AlphaFold3Validation | null>(null)
   const [formError, setFormError] = useState("")
   const validationController = useRef<AbortController | null>(null)
+  const draftChanged = useRef(false)
+  const expertFileSelection = useRef(0)
+
+  function setDraft(update: SetStateAction<AlphaFold3Draft>) {
+    draftChanged.current = true
+    setDraftState(update)
+  }
 
   useEffect(() => {
     loadAlphaFold3Draft().then((saved) => {
-      if (saved) setDraft({ ...saved, entities: reindexEntities(saved.entities) })
+      if (saved && !draftChanged.current) {
+        setDraftState({ ...saved, entities: reindexEntities(saved.entities) })
+      }
       setDraftLoaded(true)
     }).catch(() => setDraftLoaded(true))
   }, [])
@@ -386,6 +402,11 @@ export default function AlphaFold3SubmissionPage() {
   useExpireSession(submissionMutation.error)
 
   function updateEntity(index: number, entity: AlphaFold3Entity, copies?: number) {
+    if (copies !== undefined && (!Number.isInteger(copies) || copies < 1 || copies > MAX_ENTITY_COPIES)) {
+      setFormError(`Copies must be an integer from 1 through ${MAX_ENTITY_COPIES.toLocaleString()}.`)
+      return
+    }
+    setFormError("")
     setDraft((current) => {
       const nextEntity = copies === undefined
         ? entity
@@ -436,11 +457,13 @@ export default function AlphaFold3SubmissionPage() {
 
   function chooseExpertJson(file: File | null) {
     if (!file) return
+    const selection = ++expertFileSelection.current
     if (file.size > 256 * 1024 * 1024) {
       setFormError("AlphaFold3 JSON files may not exceed 256 MiB.")
       return
     }
     file.text().then((text) => {
+      if (selection !== expertFileSelection.current) return
       try {
         const seeds = expertAlphaFold3ModelSeeds(text)
         setDraft((current) => ({
@@ -453,7 +476,11 @@ export default function AlphaFold3SubmissionPage() {
       } catch (error) {
         setFormError(errorMessage(error))
       }
-    }).catch(() => setFormError("The JSON file could not be read."))
+    }).catch(() => {
+      if (selection === expertFileSelection.current) {
+        setFormError("The JSON file could not be read.")
+      }
+    })
   }
 
   function validate(event: FormEvent) {
@@ -488,6 +515,7 @@ export default function AlphaFold3SubmissionPage() {
 
   function reset() {
     validationController.current?.abort()
+    expertFileSelection.current += 1
     window.sessionStorage.removeItem(VALIDATION_KEY)
     setDraft(newAlphaFold3Draft())
     setFormError("")
@@ -577,8 +605,8 @@ export default function AlphaFold3SubmissionPage() {
         <details className="rounded-xl border bg-card p-6">
           <summary className="cursor-pointer font-heading font-semibold">Advanced prediction settings</summary>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex items-center gap-2 text-sm"><input checked={draft.searchMsa} onChange={(event) => setDraft({ ...draft, searchMsa: event.target.checked })} type="checkbox" />Search MSAs</label>
-            <label className="flex items-center gap-2 text-sm"><input checked={draft.searchProteinTemplates} onChange={(event) => setDraft({ ...draft, searchProteinTemplates: event.target.checked })} type="checkbox" />Search protein templates</label>
+            <label className="flex items-center gap-2 text-sm"><input checked={draft.searchMsa} onChange={(event) => setDraft({ ...draft, searchMsa: event.target.checked, searchProteinTemplates: event.target.checked ? draft.searchProteinTemplates : false })} type="checkbox" />Search MSAs</label>
+            <label className="flex items-center gap-2 text-sm"><input checked={draft.searchProteinTemplates} disabled={!draft.searchMsa} onChange={(event) => setDraft({ ...draft, searchProteinTemplates: event.target.checked })} type="checkbox" />Search protein templates</label>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-recycle">Recycles</label><Input id="alphafold3-recycle" min={0} onChange={(event) => setDraft({ ...draft, recycle: Number(event.target.value) })} type="number" value={draft.recycle} /></div>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-sample">Samples per seed</label><Input id="alphafold3-sample" min={1} onChange={(event) => setDraft({ ...draft, sample: Number(event.target.value) })} type="number" value={draft.sample} /></div>
             <div className="sm:col-span-2 lg:col-span-4"><label className="mb-1 block text-sm" htmlFor="alphafold3-seeds">Model seeds</label><Input id="alphafold3-seeds" onChange={(event) => setDraft({ ...draft, seeds: event.target.value })} placeholder="1,2,4,8 or 1-10,42,1024" value={draft.seeds} /><p className="mt-1 text-xs text-muted-foreground">Comma-separated integers or ranges, e.g., &quot;1,2,4,8&quot; or &quot;1-10,42,1024&quot;.</p></div>

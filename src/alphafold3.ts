@@ -26,6 +26,8 @@ export interface AlphaFold3Draft {
 
 const DRAFT_KEY = "current"
 const DATABASE_NAME = "biomodals-alphafold3"
+export const MAX_ENTITY_COPIES = 5_120
+export const MAX_MODEL_SEEDS = 1_000
 
 export function newAlphaFold3Draft(): AlphaFold3Draft {
   return {
@@ -69,14 +71,17 @@ export function resizeEntityCopies(
   entity: AlphaFold3Entity,
   copies: number
 ): AlphaFold3Entity {
-  const bounded = Math.max(1, Math.min(99, Math.trunc(copies) || 1))
+  const bounded = Math.max(1, Math.min(MAX_ENTITY_COPIES, Math.trunc(copies) || 1))
   return { ...entity, copies: bounded }
 }
 
 export function reindexEntities(entities: AlphaFold3Entity[]) {
   let nextChainIndex = 0
   return entities.map((entity) => {
-    const copies = Math.max(1, Math.min(99, Math.trunc(entity.copies) || 1))
+    const copies = Math.max(
+      1,
+      Math.min(MAX_ENTITY_COPIES, Math.trunc(entity.copies) || 1)
+    )
     const chainIds = Array.from(
       { length: copies },
       () => chainId(nextChainIndex++)
@@ -158,7 +163,16 @@ export function expandEntityRecords(
 }
 
 export function parseModelSeeds(input: string) {
-  const seeds: number[] = []
+  const seeds = new Set<number>()
+  function addSeed(seed: number) {
+    if (!Number.isSafeInteger(seed) || seed < 0 || seed >= 2 ** 32) {
+      throw new Error("Seeds must be integers from 0 through 4,294,967,295.")
+    }
+    if (!seeds.has(seed) && seeds.size === MAX_MODEL_SEEDS) {
+      throw new Error(`At most ${MAX_MODEL_SEEDS.toLocaleString()} model seeds are allowed.`)
+    }
+    seeds.add(seed)
+  }
   for (const part of input.split(",").map((value) => value.trim())) {
     if (!part) continue
     const range = part.match(/^(\d+)-(\d+)$/)
@@ -166,18 +180,26 @@ export function parseModelSeeds(input: string) {
       const start = Number(range[1])
       const end = Number(range[2])
       if (start > end) throw new Error("Seed ranges must be ascending.")
-      for (let seed = start; seed <= end; seed += 1) seeds.push(seed)
+      if (
+        !Number.isSafeInteger(start) ||
+        !Number.isSafeInteger(end) ||
+        start < 0 ||
+        end >= 2 ** 32
+      ) {
+        throw new Error("Seeds must be integers from 0 through 4,294,967,295.")
+      }
+      if (end - start + 1 > MAX_MODEL_SEEDS) {
+        throw new Error(`At most ${MAX_MODEL_SEEDS.toLocaleString()} model seeds are allowed.`)
+      }
+      for (let seed = start; seed <= end; seed += 1) addSeed(seed)
     } else if (/^\d+$/.test(part)) {
-      seeds.push(Number(part))
+      addSeed(Number(part))
     } else {
       throw new Error("Use comma-separated seeds or ranges, such as 1,3-5.")
     }
   }
-  const unique = [...new Set(seeds)]
-  if (!unique.length || unique.some((seed) => seed < 0 || seed >= 2 ** 32)) {
-    throw new Error("Seeds must be integers from 0 through 4,294,967,295.")
-  }
-  return unique
+  if (!seeds.size) throw new Error("Enter at least one model seed.")
+  return [...seeds]
 }
 
 export function regularAlphaFold3Document(draft: AlphaFold3Draft) {
