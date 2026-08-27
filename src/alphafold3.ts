@@ -224,9 +224,7 @@ export function regularAlphaFold3Document(draft: AlphaFold3Draft) {
   }
 }
 
-export function expertAlphaFold3Document(input: string, jobName: string) {
-  const name = jobName.trim()
-  if (!name) throw new Error("Enter a job name.")
+function parseExpertAlphaFold3Document(input: string) {
   let document: unknown
   try {
     document = JSON.parse(input)
@@ -236,7 +234,26 @@ export function expertAlphaFold3Document(input: string, jobName: string) {
   if (!document || typeof document !== "object" || Array.isArray(document)) {
     throw new Error("The uploaded JSON must contain one AlphaFold3 job object.")
   }
-  return { ...document, name }
+  return document as Record<string, unknown>
+}
+
+export function expertAlphaFold3ModelSeeds(input: string) {
+  const seeds = parseExpertAlphaFold3Document(input).modelSeeds
+  if (!Array.isArray(seeds)) {
+    throw new Error("The uploaded JSON must contain a modelSeeds array.")
+  }
+  return parseModelSeeds(seeds.join(",")).join(",")
+}
+
+export function expertAlphaFold3Document(
+  input: string,
+  jobName: string,
+  modelSeeds: string
+) {
+  const name = jobName.trim()
+  if (!name) throw new Error("Enter a job name.")
+  const document = parseExpertAlphaFold3Document(input)
+  return { ...document, modelSeeds: parseModelSeeds(modelSeeds), name }
 }
 
 export function formatSequence(sequence: string) {

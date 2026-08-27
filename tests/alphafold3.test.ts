@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import {
   chainId,
   expertAlphaFold3Document,
+  expertAlphaFold3ModelSeeds,
   expandEntityRecords,
   newAlphaFold3Entity,
   parsePolymerRecords,
@@ -148,12 +149,16 @@ describe("AlphaFold3 input builder", () => {
     ])
   })
 
-  test("replaces an expert document name without changing other fields", () => {
+  test("loads and applies expert document model seeds", () => {
+    const input = '{"name":"old","modelSeeds":[7,11],"sequences":[]}'
+
+    expect(expertAlphaFold3ModelSeeds(input)).toBe("7,11")
     expect(
       expertAlphaFold3Document(
-        '{"name":"old","modelSeeds":[1],"sequences":[]}',
-        "New name"
+        input,
+        "New name",
+        "2-3"
       )
-    ).toEqual({ name: "New name", modelSeeds: [1], sequences: [] })
+    ).toEqual({ name: "New name", modelSeeds: [2, 3], sequences: [] })
   })
 })

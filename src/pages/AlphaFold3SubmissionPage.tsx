@@ -9,9 +9,8 @@ import {
   Plus,
   RotateCcw,
   Trash2,
-  Upload,
 } from "lucide-react"
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router"
 
 import {
@@ -27,6 +26,7 @@ import {
   clearAlphaFold3Draft,
   expandEntityRecords,
   expertAlphaFold3Document,
+  expertAlphaFold3ModelSeeds,
   formatSequence,
   loadAlphaFold3Draft,
   newAlphaFold3Draft,
@@ -46,6 +46,7 @@ import { useExpireSession } from "@/auth-state"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import FileDropZone from "@/components/FileDropZone"
 import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select-field"
 import { cn } from "@/lib/utils"
@@ -433,20 +434,25 @@ export default function AlphaFold3SubmissionPage() {
     }))
   }
 
-  function uploadExpertJson(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+  function chooseExpertJson(file: File | null) {
     if (!file) return
     if (file.size > 256 * 1024 * 1024) {
       setFormError("AlphaFold3 JSON files may not exceed 256 MiB.")
       return
     }
     file.text().then((text) => {
-      setDraft((current) => ({
-        ...current,
-        expertFilename: file.name,
-        expertJson: text,
-      }))
-      setFormError("")
+      try {
+        const seeds = expertAlphaFold3ModelSeeds(text)
+        setDraft((current) => ({
+          ...current,
+          expertFilename: file.name,
+          expertJson: text,
+          seeds,
+        }))
+        setFormError("")
+      } catch (error) {
+        setFormError(errorMessage(error))
+      }
     }).catch(() => setFormError("The JSON file could not be read."))
   }
 
@@ -455,7 +461,7 @@ export default function AlphaFold3SubmissionPage() {
     try {
       const document = draft.mode === "regular"
         ? regularAlphaFold3Document(draft)
-        : expertAlphaFold3Document(draft.expertJson, draft.jobName)
+        : expertAlphaFold3Document(draft.expertJson, draft.jobName, draft.seeds)
       const controller = new AbortController()
       validationController.current = controller
       setFormError("")
@@ -555,9 +561,15 @@ export default function AlphaFold3SubmissionPage() {
           <Card>
             <CardHeader><CardTitle>Native AlphaFold3 JSON</CardTitle><p className="text-sm text-muted-foreground">Use this mode for modifications, covalent bonds, custom CCD definitions, templates, or embedded MSAs. The job name above replaces the document name.</p></CardHeader>
             <CardContent>
-              <input accept=".json,application/json" className="sr-only" id="alphafold3-json" onChange={uploadExpertJson} type="file" />
-              <label className={cn(buttonVariants({ variant: "outline" }), "cursor-pointer")} htmlFor="alphafold3-json"><Upload />Upload JSON</label>
-              <span className="ml-3 text-sm text-muted-foreground">{draft.expertFilename || "No file selected · maximum 256 MiB"}</span>
+              <FileDropZone
+                accept=".json,application/json"
+                disabled={validationMutation.isPending}
+                fileName={draft.expertFilename}
+                help="You can also drag and drop a JSON file here · maximum 256 MiB."
+                id="alphafold3-json"
+                label="AlphaFold3 JSON file"
+                onSelect={chooseExpertJson}
+              />
             </CardContent>
           </Card>
         )}
