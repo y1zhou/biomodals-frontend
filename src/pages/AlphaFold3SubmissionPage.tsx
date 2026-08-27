@@ -574,6 +574,7 @@ export default function AlphaFold3SubmissionPage() {
         : expertAlphaFold3Document(draft.expertJson, draft.jobName, draft.seeds)
       const controller = new AbortController()
       validationController.current = controller
+      submissionMutation.reset()
       setFormError("")
       validationMutation.mutate({ document, signal: controller.signal })
     } catch (error) {
