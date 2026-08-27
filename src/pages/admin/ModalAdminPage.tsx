@@ -915,6 +915,12 @@ export default function ModalAdminPage() {
   const environmentUpdate = useMutation(environmentMutationOptions())
   const globalLimitUpdate = useMutation(environmentMutationOptions())
   function applyToolUpdate(update: ToolUpdate, result: AdminModalTool) {
+    const savedVersion = Object.hasOwn(update.input, "modal_app_version")
+    const savedLimit = Object.hasOwn(update.input, "active_job_limit")
+    const savedLogAccess = Object.hasOwn(
+      update.input,
+      "job_logs_visible_to_owner"
+    )
     queryClient.setQueryData<AdminModal>(adminModalKey, (current) =>
       current ? mergeAdminModalTool(current, result) : current
     )
@@ -923,30 +929,18 @@ export default function ModalAdminPage() {
       return {
         ...current,
         [result.tool]: {
-          appVersion: Object.hasOwn(update.input, "modal_app_version")
+          appVersion: savedVersion
             ? String(result.modal_app_version.value)
             : draft.appVersion,
-          activeJobLimit: Object.hasOwn(update.input, "active_job_limit")
+          activeJobLimit: savedLimit
             ? String(result.active_job_limit.value)
             : draft.activeJobLimit,
-          jobLogsVisibleToOwner: Object.hasOwn(
-            update.input,
-            "job_logs_visible_to_owner"
-          )
+          jobLogsVisibleToOwner: savedLogAccess
             ? result.job_logs_visible_to_owner.value
             : draft.jobLogsVisibleToOwner,
-          versionDirty: Object.hasOwn(update.input, "modal_app_version")
-            ? false
-            : draft.versionDirty,
-          limitDirty: Object.hasOwn(update.input, "active_job_limit")
-            ? false
-            : draft.limitDirty,
-          jobLogAccessDirty: Object.hasOwn(
-            update.input,
-            "job_logs_visible_to_owner"
-          )
-            ? false
-            : draft.jobLogAccessDirty,
+          versionDirty: savedVersion ? false : draft.versionDirty,
+          limitDirty: savedLimit ? false : draft.limitDirty,
+          jobLogAccessDirty: savedLogAccess ? false : draft.jobLogAccessDirty,
         },
       }
     })
