@@ -22,12 +22,13 @@ and `backend_sha`. Branches, tags, and abbreviated hashes are rejected. Record
 the successful workflow URL with that exact pair in the release notes. Its
 deterministic backend never resolves a deployed Function or contacts Modal.
 
-The reverse proxy must route same-origin `/api/*` to the one FastAPI process,
-fall back to `index.html` for browser routes, cache hashed `/assets/*`
-immutably, and prevent persistent caching of `index.html`. It must add the
-production headers recorded in the backend MVP runbook. Verify that the served
-site contains no `/@vite/client`, React Refresh, HMR websocket, or source-module
-requests.
+The reverse proxy must route same-origin `/api/*`, `/docs*`, `/redoc*`, and
+`/openapi.json` to the one FastAPI process, fall back to `index.html` for
+browser routes, cache hashed `/assets/*` immutably, and prevent persistent
+caching of `index.html`. The documentation routes support the API Docs link in
+the primary navigation. The proxy must add the production headers recorded in
+the backend MVP runbook. Verify that the served site contains no
+`/@vite/client`, React Refresh, HMR websocket, or source-module requests.
 
 The frontend has no runtime API-host setting: relative requests deliberately
 make the public origin the single browser configuration. The development and

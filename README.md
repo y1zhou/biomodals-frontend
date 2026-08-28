@@ -55,7 +55,8 @@ biomodals.example.com {
 	root * /srv/biomodals.example.com
 
 	route {
-		reverse_proxy /api/* 127.0.0.1:4100
+		@backend path /api/* /docs* /openapi.json /redoc*
+		reverse_proxy @backend 127.0.0.1:4100
 		try_files {path} /index.html
 		file_server
 	}
@@ -87,16 +88,23 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
-The MVP has one available Tool, `GROMACS MD simulation`, plus a muted
-`AlphaFold3 structure prediction` WIP placeholder. The Catalog is structured
-to add more typed Tools without making every Job a GROMACS simulation.
+The MVP has two available Tools: `GROMACS MD simulation` and `AlphaFold3
+structure prediction`. AlphaFold3 accepts a guided protein, DNA, RNA, and
+small-molecule entity builder or a native expert JSON document. Both paths
+validate on the server and present the same confirmation view before creating
+a Job.
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,
-per-stage Job Logs, My Jobs filtering, and direct Result downloads.
+per-stage Job Logs, My Jobs filtering, and direct Result downloads. AlphaFold3
+drafts remain in the browser while validated documents are retained briefly by
+the backend and never stored in the service database.
 
-Administrators can manage Users, admission limits, live non-secret Modal
-configuration, unknown remote states, and the local Result cache. API types in
+Administrators can manage Users, active-Job admission limits, the effective
+Modal Environment, exact Tool deployment versions, Job-log access, unknown
+remote states, the local Result cache, and optional Modal billing reports.
+Per-Job container ceilings are derived from each Tool's active-Job limit;
+deployed Modal App names remain backend startup configuration. API types in
 `src/api/schema.d.ts` come from the live FastAPI OpenAPI document.
 
 To add another Tool, add its metadata to `src/tools.ts` and introduce a
@@ -114,6 +122,7 @@ native browser controls for simple interactions such as file selection.
 
 Vite's preview server is for local verification, not production hosting.
 
-Whether `/docs` is exposed in production is a deployment-proxy decision
-outside this repository.
+The primary navigation links power users to FastAPI's `/docs` interface, so a
+production deployment must proxy `/docs*` to the backend. `/redoc*` and
+`/openapi.json` are useful companion routes for API consumers.
 `BIOMODALS_API_PROXY_TARGET` only configures Vite's local development proxy.

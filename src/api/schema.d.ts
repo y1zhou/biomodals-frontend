@@ -21,6 +21,26 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/admin/modal/costs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /**
+         * Modal Costs
+         * @description Return optional Modal billing without affecting service readiness.
+         */
+        readonly get: operations["modal_costs_api_v1_admin_modal_costs_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/admin/modal/environment": {
         readonly parameters: {
             readonly query?: never;
@@ -38,7 +58,7 @@ export interface paths {
         readonly patch: operations["update_modal_environment_api_v1_admin_modal_environment_patch"];
         readonly trace?: never;
     };
-    readonly "/api/v1/admin/modal/state-unknown-jobs/{job_id}/mark-failed": {
+    readonly "/api/v1/admin/modal/state-unknown-jobs/{job_id}/resolve": {
         readonly parameters: {
             readonly query?: never;
             readonly header?: never;
@@ -47,15 +67,15 @@ export interface paths {
         };
         readonly get?: never;
         readonly put?: never;
-        /** Mark State Unknown Job Failed */
-        readonly post: operations["mark_state_unknown_job_failed_api_v1_admin_modal_state_unknown_jobs__job_id__mark_failed_post"];
+        /** Resolve State Unknown Job */
+        readonly post: operations["resolve_state_unknown_job_api_v1_admin_modal_state_unknown_jobs__job_id__resolve_post"];
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
         readonly patch?: never;
         readonly trace?: never;
     };
-    readonly "/api/v1/admin/modal/tools/{workload}": {
+    readonly "/api/v1/admin/modal/tools/{tool}": {
         readonly parameters: {
             readonly query?: never;
             readonly header?: never;
@@ -69,7 +89,7 @@ export interface paths {
         readonly options?: never;
         readonly head?: never;
         /** Update Modal Tool */
-        readonly patch: operations["update_modal_tool_api_v1_admin_modal_tools__workload__patch"];
+        readonly patch: operations["update_modal_tool_api_v1_admin_modal_tools__tool__patch"];
         readonly trace?: never;
     };
     readonly "/api/v1/admin/storage": {
@@ -152,6 +172,92 @@ export interface paths {
         readonly put?: never;
         /** Create Password Link */
         readonly post: operations["create_password_link_api_v1_admin_users__user_id__password_link_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/jobs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Submit Job */
+        readonly post: operations["submit_job_api_v1_alphafold3_jobs_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/jobs/{job_id}/document": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Download Job Document */
+        readonly get: operations["download_job_document_api_v1_alphafold3_jobs__job_id__document_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/validations": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Validate Document */
+        readonly post: operations["validate_document_api_v1_alphafold3_validations_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/validations/{validation_id}": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Get Validation */
+        readonly get: operations["get_validation_api_v1_alphafold3_validations__validation_id__get"];
+        readonly put?: never;
+        readonly post?: never;
+        /** Delete Validation */
+        readonly delete: operations["delete_validation_api_v1_alphafold3_validations__validation_id__delete"];
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/validations/{validation_id}/document": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Download Document */
+        readonly get: operations["download_document_api_v1_alphafold3_validations__validation_id__document_get"];
+        readonly put?: never;
+        readonly post?: never;
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
@@ -284,8 +390,8 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** Inspect Job */
-        readonly get: operations["inspect_job_api_v1_jobs__job_id__get"];
+        /** Get Job */
+        readonly get: operations["get_job_api_v1_jobs__job_id__get"];
         readonly put?: never;
         readonly post?: never;
         readonly delete?: never;
@@ -318,8 +424,8 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** Download Job */
-        readonly get: operations["download_job_api_v1_jobs__job_id__download_get"];
+        /** Download */
+        readonly get: operations["download_api_v1_jobs__job_id__download_get"];
         readonly put?: never;
         readonly post?: never;
         readonly delete?: never;
@@ -335,8 +441,8 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** Job Log Targets */
-        readonly get: operations["job_log_targets_api_v1_jobs__job_id__log_targets_get"];
+        /** Targets */
+        readonly get: operations["targets_api_v1_jobs__job_id__log_targets_get"];
         readonly put?: never;
         readonly post?: never;
         readonly delete?: never;
@@ -352,8 +458,8 @@ export interface paths {
             readonly path?: never;
             readonly cookie?: never;
         };
-        /** Stream Job Logs */
-        readonly get: operations["stream_job_logs_api_v1_jobs__job_id__logs_get"];
+        /** Logs */
+        readonly get: operations["logs_api_v1_jobs__job_id__logs_get"];
         readonly put?: never;
         readonly post?: never;
         readonly delete?: never;
@@ -373,6 +479,23 @@ export interface paths {
         readonly put?: never;
         /** Prepare Download */
         readonly post: operations["prepare_download_api_v1_jobs__job_id__prepare_download_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/jobs/{job_id}/refresh": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Refresh Job */
+        readonly post: operations["refresh_job_api_v1_jobs__job_id__refresh_post"];
         readonly delete?: never;
         readonly options?: never;
         readonly head?: never;
@@ -409,7 +532,7 @@ export interface components {
              * Category
              * @enum {string}
              */
-            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity";
+            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity" | "result_preparation_failed";
             /** Count */
             readonly count: number;
             /**
@@ -427,6 +550,45 @@ export interface components {
             readonly removed_bytes: number;
             /** Removed Entries */
             readonly removed_entries: number;
+        };
+        /**
+         * AdminCostGroupView
+         * @description One Modal billing attribution group.
+         */
+        readonly AdminCostGroupView: {
+            /** Cost */
+            readonly cost: string;
+            /** Name */
+            readonly name: string;
+        };
+        /**
+         * AdminCostsView
+         * @description One explicit workspace billing interval.
+         */
+        readonly AdminCostsView: {
+            /**
+             * End
+             * Format: date-time
+             */
+            readonly end: string;
+            /** Environments */
+            readonly environments: readonly components["schemas"]["AdminCostGroupView"][];
+            /** Other Workspace Usage */
+            readonly other_workspace_usage: string;
+            /**
+             * Resolution
+             * @enum {string}
+             */
+            readonly resolution: "h" | "d";
+            /**
+             * Start
+             * Format: date-time
+             */
+            readonly start: string;
+            /** Tools */
+            readonly tools: readonly components["schemas"]["AdminCostGroupView"][];
+            /** Total */
+            readonly total: string;
         };
         /**
          * AdminForbiddenResponse
@@ -466,7 +628,7 @@ export interface components {
         };
         /**
          * AdminModalToolView
-         * @description One fixed workload's deployment and admission state.
+         * @description One fixed Tool's deployment, admission, and execution limits.
          */
         readonly AdminModalToolView: {
             readonly active_job_limit: components["schemas"]["IntegerSettingView"];
@@ -475,10 +637,9 @@ export interface components {
             /** Display Name */
             readonly display_name: string;
             readonly job_logs_visible_to_owner: components["schemas"]["BooleanSettingView"];
-            readonly modal_app_name: components["schemas"]["TextSettingView"];
             readonly modal_app_version: components["schemas"]["IntegerSettingView"];
-            /** Workload */
-            readonly workload: string;
+            /** Tool */
+            readonly tool: string;
         };
         /**
          * AdminModalView
@@ -537,6 +698,8 @@ export interface components {
          * @description Safe Job identity needed for manual Modal review.
          */
         readonly AdminStateUnknownJobView: {
+            /** Diagnostic Message */
+            readonly diagnostic_message: string | null;
             /** Display Name */
             readonly display_name: string;
             /**
@@ -544,16 +707,23 @@ export interface components {
              * Format: uuid
              */
             readonly job_id: string;
-            readonly reason: components["schemas"]["JobStateUnknownReason"];
-            /** Run Name */
-            readonly run_name: string | null;
+            /** Modal App Name */
+            readonly modal_app_name: string;
+            /** Modal App Version */
+            readonly modal_app_version: number;
+            /** Modal Environment */
+            readonly modal_environment: string;
+            /** Reason */
+            readonly reason: string;
+            /** Root Function Call Id */
+            readonly root_function_call_id: string | null;
             /**
              * State Unknown At
              * Format: date-time
              */
             readonly state_unknown_at: string;
-            /** Workload */
-            readonly workload: string;
+            /** Tool */
+            readonly tool: string;
         };
         /**
          * AdminStorageView
@@ -568,6 +738,10 @@ export interface components {
             readonly local_cache_entries: number;
             /** Over Warning Threshold */
             readonly over_warning_threshold: boolean;
+            /** Pending Request Bytes */
+            readonly pending_request_bytes: number;
+            /** Pending Request Entries */
+            readonly pending_request_entries: number;
             /** Published Result Bytes */
             readonly published_result_bytes: number;
             /** Published Result Entries */
@@ -580,6 +754,10 @@ export interface components {
             readonly staging_bytes: number;
             /** Staging Entries */
             readonly staging_entries: number;
+            /** Validation Bytes */
+            readonly validation_bytes: number;
+            /** Validation Entries */
+            readonly validation_entries: number;
             /** Warning Threshold Bytes */
             readonly warning_threshold_bytes: number;
         };
@@ -650,6 +828,17 @@ export interface components {
             readonly user_id: string;
         };
         /**
+         * AlphaFold3JobRequest
+         * @description Job creation consumes an already validated server resource.
+         */
+        readonly AlphaFold3JobRequest: {
+            /**
+             * Validation Id
+             * Format: uuid
+             */
+            readonly validation_id: string;
+        };
+        /**
          * AuthenticationBusyResponse
          * @description Bounded Argon2 capacity is temporarily exhausted.
          */
@@ -703,15 +892,12 @@ export interface components {
             readonly value: boolean;
         };
         /**
-         * ComputeUnavailableResponse
-         * @description Remote compute could not accept the durable Job.
+         * CodedErrorResponse
+         * @description Recoverable error with a stable machine-readable code.
          */
-        readonly ComputeUnavailableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "compute_unavailable";
+        readonly CodedErrorResponse: {
+            /** Code */
+            readonly code: string;
             /** Detail */
             readonly detail: string;
         };
@@ -799,34 +985,8 @@ export interface components {
             readonly value: number;
         };
         /**
-         * JobLogsForbiddenResponse
-         * @description The authenticated Job owner may not inspect this Tool's logs.
-         */
-        readonly JobLogsForbiddenResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_logs_forbidden";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * JobLogsUnavailableResponse
-         * @description The workload cannot start a provider log stream.
-         */
-        readonly JobLogsUnavailableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_logs_unavailable";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
          * JobLogTargetsView
-         * @description Safe selectors for a Job's currently inspectable provider calls.
+         * @description Provider Calls grouped by public semantic stage.
          */
         readonly JobLogTargetsView: {
             /**
@@ -834,25 +994,14 @@ export interface components {
              * Format: uuid
              */
             readonly job_id: string;
+            /** Next Cursor */
+            readonly next_cursor: string | null;
             /** Targets */
             readonly targets: readonly components["schemas"]["JobLogTargetView"][];
         };
         /**
-         * JobLogTargetUnavailableResponse
-         * @description The selected stage does not identify a retained provider call.
-         */
-        readonly JobLogTargetUnavailableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_log_target_unavailable";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
          * JobLogTargetView
-         * @description One provider operation whose logs the caller may inspect.
+         * @description Opaque selector for one inspectable remote Provider Call.
          */
         readonly JobLogTargetView: {
             /** Ended At */
@@ -866,42 +1015,15 @@ export interface components {
             readonly mode: "live" | "historical";
             /** Stage Code */
             readonly stage_code: string;
+            /** Started At */
+            readonly started_at: string | null;
+            /** Status */
+            readonly status: string;
             /**
-             * Started At
-             * Format: date-time
+             * Target Id
+             * Format: uuid
              */
-            readonly started_at: string;
-            /**
-             * State
-             * @enum {string}
-             */
-            readonly state: "running" | "state_unknown" | "completed" | "failed" | "cancelled";
-        };
-        /**
-         * JobLogWindowInvalidResponse
-         * @description The requested historical window is incomplete or too large.
-         */
-        readonly JobLogWindowInvalidResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_log_window_invalid";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * JobNotCancellableResponse
-         * @description Cancellation raced with a state that no longer accepts it.
-         */
-        readonly JobNotCancellableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "job_not_cancellable";
-            /** Detail */
-            readonly detail: string;
+            readonly target_id: string;
         };
         /**
          * JobPageView
@@ -915,35 +1037,22 @@ export interface components {
         };
         /**
          * JobStageView
-         * @description Safe execution stage timing without a provider call identifier.
+         * @description One Tool-owned semantic stage.
          */
         readonly JobStageView: {
-            /**
-             * Code
-             * @description Stable workload stage code.
-             */
+            /** Code */
             readonly code: string;
-            /**
-             * Ended At
-             * @description Time this stage ended; absent while the stage is active.
-             */
+            /** Ended At */
             readonly ended_at?: string | null;
-            /**
-             * Function Name
-             * @description Deployed provider function for this stage, when applicable.
-             */
-            readonly function_name?: string | null;
-            /**
-             * Outcome
-             * @description Terminal stage outcome; absent while the stage is active.
-             */
-            readonly outcome?: ("completed" | "failed" | "cancelled") | null;
-            /**
-             * Started At
-             * Format: date-time
-             * @description Time this stage began.
-             */
-            readonly started_at: string;
+            /** Label */
+            readonly label: string;
+            /** Outcome */
+            readonly outcome?: ("completed" | "partial" | "failed" | "cancelled") | null;
+            /** Provider State */
+            readonly provider_state?: ("queued" | "running") | null;
+            /** Started At */
+            readonly started_at?: string | null;
+            readonly task_counts?: components["schemas"]["StageTaskCounts"];
         };
         /**
          * JobState
@@ -952,40 +1061,15 @@ export interface components {
          */
         readonly JobState: "queued" | "running" | "finalizing" | "cancel_requested" | "state_unknown" | "blocked" | "succeeded" | "partial" | "failed" | "cancelled";
         /**
-         * JobStateUnknownReason
-         * @description Safe reason that remote execution can no longer be confirmed.
-         * @enum {string}
-         */
-        readonly JobStateUnknownReason: "submission_outcome_unknown" | "provider_outcome_unknown" | "cancellation_outcome_unknown";
-        /**
          * JobView
-         * @description Provider-neutral job details returned to a submitter.
+         * @description Owner-safe local projection of one remote execution Run.
          */
         readonly JobView: {
-            /**
-             * Active Stages
-             * @description All execution stages that are currently active.
-             */
-            readonly active_stages?: readonly components["schemas"]["JobStageView"][];
-            /**
-             * Blocked At
-             * @description Time recoverable finalization first became blocked.
-             */
-            readonly blocked_at?: string | null;
-            /**
-             * Can View Logs
-             * @description Whether the authenticated caller may inspect retained provider logs for started remote stages of this Job.
-             */
+            /** Can View Logs */
             readonly can_view_logs: boolean;
-            /**
-             * Cancel Requested At
-             * @description Time cancellation was requested, when applicable.
-             */
+            /** Cancel Requested At */
             readonly cancel_requested_at?: string | null;
-            /**
-             * Completed At
-             * @description Terminal completion time; absent for non-terminal Jobs.
-             */
+            /** Completed At */
             readonly completed_at?: string | null;
             /**
              * Created At
@@ -994,53 +1078,35 @@ export interface components {
             readonly created_at: string;
             /** Display Name */
             readonly display_name: string;
-            /**
-             * Download Url
-             * @description Result download path for succeeded or partial Jobs only.
-             */
+            /** Download Url */
             readonly download_url?: string | null;
-            /**
-             * Error Code
-             * @description Stable failure code; present only for failed Jobs.
-             */
-            readonly error_code?: ("compute_failed" | "result_invalid") | null;
-            /**
-             * Error Message
-             * @description Safe failure explanation; present only for failed Jobs.
-             */
+            /** Error Code */
+            readonly error_code?: string | null;
+            /** Error Message */
             readonly error_message?: string | null;
-            /** Job Id */
+            /**
+             * Job Id
+             * Format: uuid
+             */
             readonly job_id: string;
-            /**
-             * Next Retry At
-             * @description Scheduled time for the next recoverable finalization retry.
-             */
-            readonly next_retry_at?: string | null;
-            /** @description Representative active or most recently relevant execution stage; absent before execution starts or for an unknown workload. */
-            readonly stage?: components["schemas"]["JobStageView"] | null;
-            /**
-             * Stage History
-             * @description Recorded execution stages in lifecycle order.
-             */
-            readonly stage_history?: readonly components["schemas"]["JobStageView"][];
+            /** Result Size Bytes */
+            readonly result_size_bytes?: number | null;
+            /** Stages */
+            readonly stages: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];
-            /**
-             * State Unknown At
-             * @description Time remote execution state first became unknown; retained after administrator resolution.
-             */
-            readonly state_unknown_at?: string | null;
+            /** State Message */
+            readonly state_message?: string | null;
+            /** State Reason */
+            readonly state_reason?: string | null;
+            /** Tool */
+            readonly tool: string;
             /**
              * Updated At
              * Format: date-time
              */
             readonly updated_at: string;
-            /**
-             * Warnings
-             * @description Safe owner-visible lifecycle warnings.
-             */
+            /** Warnings */
             readonly warnings?: readonly string[];
-            /** Workload */
-            readonly workload: string;
         };
         /**
          * LastActiveAdminResponse
@@ -1131,19 +1197,6 @@ export interface components {
             readonly detail: string;
         };
         /**
-         * PdbInvalidResponse
-         * @description Semantic PDB validation failure.
-         */
-        readonly PdbInvalidResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "pdb_invalid";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
          * PrincipalView
          * @description The small identity document needed by the separate frontend.
          */
@@ -1161,56 +1214,17 @@ export interface components {
             readonly user_id: string;
         };
         /**
-         * ResultDownloadConflictResponse
-         * @description A prepared Result is not currently downloadable.
+         * ResolveStateUnknownJobRequest
+         * @description One explicit safe outcome after an Administrator checks Modal.
          */
-        readonly ResultDownloadConflictResponse: {
+        readonly ResolveStateUnknownJobRequest: {
+            /** Function Call Id */
+            readonly function_call_id?: string | null;
             /**
-             * Code
+             * Resolution
              * @enum {string}
              */
-            readonly code: "result_not_prepared" | "result_not_ready";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * ResultInvalidResponse
-         * @description A Result failed its immutable identity check.
-         */
-        readonly ResultInvalidResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "result_invalid";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * ResultPrepareConflictResponse
-         * @description A Result cannot currently be prepared.
-         */
-        readonly ResultPrepareConflictResponse: {
-            /**
-             * Code
-             * @enum {string}
-             */
-            readonly code: "result_invalid" | "result_not_ready";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * ResultStorageUnavailableResponse
-         * @description Local or authoritative Result storage is temporarily unavailable.
-         */
-        readonly ResultStorageUnavailableResponse: {
-            /**
-             * Code
-             * @constant
-             */
-            readonly code: "result_storage_unavailable";
-            /** Detail */
-            readonly detail: string;
+            readonly resolution: "resume" | "requeue" | "cancel";
         };
         /**
          * SetPasswordRequest
@@ -1223,30 +1237,40 @@ export interface components {
             readonly token: string;
         };
         /**
-         * SubmissionConflictResponse
-         * @description Submission conflicts with idempotency or active-job state.
+         * StageTaskCounts
+         * @description Bounded Task counts aggregated across one semantic stage.
          */
-        readonly SubmissionConflictResponse: {
+        readonly StageTaskCounts: {
             /**
-             * Code
-             * @enum {string}
+             * Cancelled
+             * @default 0
              */
-            readonly code: "idempotency_conflict" | "active_job_limit_reached";
-            /** Detail */
-            readonly detail: string;
-        };
-        /**
-         * SubmissionForbiddenResponse
-         * @description Account state changed after browser Session authentication.
-         */
-        readonly SubmissionForbiddenResponse: {
+            readonly cancelled: number;
             /**
-             * Code
-             * @enum {string}
+             * Failed
+             * @default 0
              */
-            readonly code: "account_disabled" | "csrf_invalid" | "origin_not_allowed";
-            /** Detail */
-            readonly detail: string;
+            readonly failed: number;
+            /**
+             * Pending
+             * @default 0
+             */
+            readonly pending: number;
+            /**
+             * Running
+             * @default 0
+             */
+            readonly running: number;
+            /**
+             * Skipped
+             * @default 0
+             */
+            readonly skipped: number;
+            /**
+             * Succeeded
+             * @default 0
+             */
+            readonly succeeded: number;
         };
         /**
          * TextSettingView
@@ -1295,11 +1319,6 @@ export interface components {
              */
             readonly job_logs_visible_to_owner?: boolean | null;
             /**
-             * Modal App Name
-             * @description Omit to keep unchanged; null restores the configured default.
-             */
-            readonly modal_app_name?: string | null;
-            /**
              * Modal App Version
              * @description Exact Modal deployment version used for new Jobs. Omit to keep unchanged; null restores the configured default.
              */
@@ -1337,6 +1356,33 @@ export interface components {
             readonly msg: string;
             /** Error Type */
             readonly type: string;
+        };
+        /**
+         * ValidationView
+         * @description Bounded confirmation data for one retained native document.
+         */
+        readonly ValidationView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            readonly created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            readonly expires_at: string;
+            /** Preview */
+            readonly preview: {
+                readonly [key: string]: unknown;
+            };
+            /** Request Digest */
+            readonly request_digest: string;
+            /**
+             * Validation Id
+             * Format: uuid
+             */
+            readonly validation_id: string;
         };
     };
     responses: never;
@@ -1398,6 +1444,65 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly modal_costs_api_v1_admin_modal_costs_get: {
+        readonly parameters: {
+            readonly query: {
+                readonly end: string;
+                readonly refresh?: boolean;
+                readonly start: string;
+            };
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AdminCostsView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
             /** @description Internal Server Error */
@@ -1519,7 +1624,7 @@ export interface operations {
             };
         };
     };
-    readonly mark_state_unknown_job_failed_api_v1_admin_modal_state_unknown_jobs__job_id__mark_failed_post: {
+    readonly resolve_state_unknown_job_api_v1_admin_modal_state_unknown_jobs__job_id__resolve_post: {
         readonly parameters: {
             readonly query?: never;
             readonly header: {
@@ -1531,7 +1636,11 @@ export interface operations {
             };
             readonly cookie?: never;
         };
-        readonly requestBody?: never;
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["ResolveStateUnknownJobRequest"];
+            };
+        };
         readonly responses: {
             /** @description Successful Response */
             readonly 200: {
@@ -1623,7 +1732,7 @@ export interface operations {
             };
         };
     };
-    readonly update_modal_tool_api_v1_admin_modal_tools__workload__patch: {
+    readonly update_modal_tool_api_v1_admin_modal_tools__tool__patch: {
         readonly parameters: {
             readonly query?: never;
             readonly header: {
@@ -1631,7 +1740,7 @@ export interface operations {
                 readonly "X-CSRF-Token": string;
             };
             readonly path: {
-                readonly workload: string;
+                readonly tool: string;
             };
             readonly cookie?: never;
         };
@@ -2330,6 +2439,361 @@ export interface operations {
             };
         };
     };
+    readonly submit_job_api_v1_alphafold3_jobs_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["AlphaFold3JobRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Job durably admitted for asynchronous staging and launch */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly download_job_document_api_v1_alphafold3_jobs__job_id__document_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": unknown;
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly validate_document_api_v1_alphafold3_validations_post: {
+        readonly parameters: {
+            readonly query?: {
+                readonly recycle?: number;
+                readonly sample?: number;
+                readonly search_msa?: boolean;
+                readonly search_protein_templates?: boolean;
+            };
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 201: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ValidationView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly get_validation_api_v1_alphafold3_validations__validation_id__get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly validation_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ValidationView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly delete_validation_api_v1_alphafold3_validations__validation_id__delete: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly validation_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 204: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly download_document_api_v1_alphafold3_validations__validation_id__document_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly validation_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": unknown;
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     readonly login_api_v1_auth_login_post: {
         readonly parameters: {
             readonly query?: never;
@@ -2672,7 +3136,7 @@ export interface operations {
             };
         };
         readonly responses: {
-            /** @description Successful Response */
+            /** @description Job durably admitted for asynchronous staging and launch */
             readonly 202: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -2681,50 +3145,6 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["JobView"];
-                };
-            };
-            /** @description Bad Request */
-            readonly 400: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["PdbInvalidResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["SubmissionForbiddenResponse"];
-                };
-            };
-            /** @description Conflict */
-            readonly 409: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["SubmissionConflictResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -2758,17 +3178,6 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Service Unavailable */
-            readonly 503: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ComputeUnavailableResponse"];
                 };
             };
         };
@@ -2840,28 +3249,6 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobPageView"];
                 };
             };
-            /** @description Bad Request */
-            readonly 400: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
@@ -2897,7 +3284,7 @@ export interface operations {
             };
         };
     };
-    readonly inspect_job_api_v1_jobs__job_id__get: {
+    readonly get_job_api_v1_jobs__job_id__get: {
         readonly parameters: {
             readonly query?: never;
             readonly header?: never;
@@ -2917,28 +3304,6 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["JobView"];
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3001,39 +3366,6 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobView"];
                 };
             };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Conflict */
             readonly 409: {
                 headers: {
@@ -3042,7 +3374,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["JobNotCancellableResponse"];
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3080,11 +3412,10 @@ export interface operations {
             };
         };
     };
-    readonly download_job_api_v1_jobs__job_id__download_get: {
+    readonly download_api_v1_jobs__job_id__download_get: {
         readonly parameters: {
             readonly query?: never;
             readonly header?: {
-                /** @description Optional single byte range for a prepared Result archive. */
                 readonly Range?: string | null;
             };
             readonly path: {
@@ -3094,18 +3425,12 @@ export interface operations {
         };
         readonly requestBody?: never;
         readonly responses: {
-            /** @description Complete ZIP result archive. */
+            /** @description Complete Result archive */
             readonly 200: {
                 headers: {
-                    /** @description Supported range unit for resumable downloads. */
                     readonly "Accept-Ranges"?: "bytes";
-                    /** @description Prevents shared or browser caching of private Results. */
-                    readonly "Cache-Control"?: string;
-                    /** @description Browser attachment using the server-provided result filename. */
                     readonly "Content-Disposition"?: string;
-                    /** @description Number of archive bytes in this response. */
                     readonly "Content-Length"?: number;
-                    /** @description Immutable archive identity derived from its SHA-256 digest. */
                     readonly ETag?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
@@ -3113,22 +3438,16 @@ export interface operations {
                 };
                 content: {
                     readonly "application/zip": string;
+                    readonly "application/zstd": string;
                 };
             };
-            /** @description Requested byte range of the ZIP result archive. */
+            /** @description Requested Result archive byte range */
             readonly 206: {
                 headers: {
-                    /** @description Supported range unit for resumable downloads. */
                     readonly "Accept-Ranges"?: "bytes";
-                    /** @description Prevents shared or browser caching of private Results. */
-                    readonly "Cache-Control"?: string;
-                    /** @description Browser attachment using the server-provided result filename. */
                     readonly "Content-Disposition"?: string;
-                    /** @description Number of archive bytes in this response. */
                     readonly "Content-Length"?: number;
-                    /** @description Byte range returned from the complete archive. */
                     readonly "Content-Range"?: string;
-                    /** @description Immutable archive identity derived from its SHA-256 digest. */
                     readonly ETag?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
@@ -3136,28 +3455,7 @@ export interface operations {
                 };
                 content: {
                     readonly "application/zip": string;
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    readonly "application/zstd": string;
                 };
             };
             /** @description Conflict */
@@ -3168,7 +3466,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ResultDownloadConflictResponse"];
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3182,10 +3480,9 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description The requested byte range is invalid. */
+            /** @description Requested Range Not Satisfiable */
             readonly 416: {
                 headers: {
-                    /** @description Unsatisfied range and complete archive size. */
                     readonly "Content-Range"?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
@@ -3217,33 +3514,15 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Bad Gateway */
-            readonly 502: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ResultInvalidResponse"];
-                };
-            };
-            /** @description Service Unavailable */
-            readonly 503: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ResultStorageUnavailableResponse"];
-                };
-            };
         };
     };
-    readonly job_log_targets_api_v1_jobs__job_id__log_targets_get: {
+    readonly targets_api_v1_jobs__job_id__log_targets_get: {
         readonly parameters: {
-            readonly query?: never;
+            readonly query?: {
+                readonly cursor?: string | null;
+                readonly limit?: number;
+                readonly stage_code?: string | null;
+            };
             readonly header?: never;
             readonly path: {
                 readonly job_id: string;
@@ -3263,39 +3542,6 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobLogTargetsView"];
                 };
             };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["JobLogsForbiddenResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
@@ -3331,11 +3577,11 @@ export interface operations {
             };
         };
     };
-    readonly stream_job_logs_api_v1_jobs__job_id__logs_get: {
+    readonly logs_api_v1_jobs__job_id__logs_get: {
         readonly parameters: {
             readonly query: {
                 readonly since?: string | null;
-                readonly stage: string;
+                readonly target: string;
                 readonly until?: string | null;
             };
             readonly header?: never;
@@ -3346,80 +3592,18 @@ export interface operations {
         };
         readonly requestBody?: never;
         readonly responses: {
-            /** @description Logs for the selected remote stage */
+            /** @description Newline-delimited JSON Provider Call logs */
             readonly 200: {
                 headers: {
-                    /** @description Disables storage and response transformation for logs. */
                     readonly "Cache-Control"?: string;
-                    /** @description Requests that compatible reverse proxies stream immediately. */
                     readonly "X-Accel-Buffering"?: "no";
-                    /** @description Whether the response is a live stream or historical window. */
                     readonly "X-BioModals-Log-Mode"?: "live" | "historical";
-                    /** @description Inclusive beginning of a selected historical window. */
-                    readonly "X-BioModals-Log-Since"?: string;
-                    /** @description Exclusive end of a selected historical window. */
-                    readonly "X-BioModals-Log-Until"?: string;
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "text/plain": string;
-                };
-            };
-            /** @description Bad Request */
-            readonly 400: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["JobLogWindowInvalidResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["JobLogsForbiddenResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Conflict */
-            readonly 409: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["JobLogTargetUnavailableResponse"];
+                    readonly "application/x-ndjson": string;
                 };
             };
             /** @description Request Entity Too Large */
@@ -3453,17 +3637,6 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Service Unavailable */
-            readonly 503: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["JobLogsUnavailableResponse"];
                 };
             };
         };
@@ -3491,39 +3664,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Unauthorized */
-            readonly 401: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Forbidden */
-            readonly 403: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["MutationForbiddenResponse"];
-                };
-            };
-            /** @description Not Found */
-            readonly 404: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Conflict */
             readonly 409: {
                 headers: {
@@ -3532,7 +3672,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ResultPrepareConflictResponse"];
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -3568,15 +3708,64 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Service Unavailable */
-            readonly 503: {
+        };
+    };
+    readonly refresh_job_api_v1_jobs__job_id__refresh_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
                     readonly "X-Request-ID"?: string;
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ResultStorageUnavailableResponse"];
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

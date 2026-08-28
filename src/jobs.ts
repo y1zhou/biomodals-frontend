@@ -58,6 +58,12 @@ export const activeJobStates = new Set<JobState>([
   ...progressingJobStates,
   "state_unknown",
 ])
+const terminalJobStates = new Set<JobState>([
+  "succeeded",
+  "partial",
+  "failed",
+  "cancelled",
+])
 
 export function isActiveJob(state: JobState) {
   return activeJobStates.has(state)
@@ -86,9 +92,14 @@ export function newestJobsFirst(jobs: readonly Job[]) {
 
 export function latestJob(collectionJob: Job, detailJob: Job | undefined) {
   if (!detailJob) return collectionJob
-  return Date.parse(detailJob.updated_at) >= Date.parse(collectionJob.updated_at)
-    ? detailJob
-    : collectionJob
+  const detailTime = Date.parse(detailJob.updated_at)
+  const collectionTime = Date.parse(collectionJob.updated_at)
+  if (detailTime !== collectionTime) {
+    return detailTime > collectionTime ? detailJob : collectionJob
+  }
+  return terminalJobStates.has(collectionJob.state) && !terminalJobStates.has(detailJob.state)
+    ? collectionJob
+    : detailJob
 }
 
 export function isJobUnavailableError(error: unknown) {
@@ -105,70 +116,40 @@ export function isJobNotCancellableError(error: unknown) {
   return apiErrorCode(error) === "job_not_cancellable"
 }
 
-const jobErrorCodes = new Set(["compute_failed", "result_invalid"])
-
 export function jobFailureMessage(job: Job) {
   if (
     job.state === "failed" &&
-    typeof job.error_code === "string" &&
-    jobErrorCodes.has(job.error_code) &&
     typeof job.error_message === "string" &&
     job.error_message.trim()
   ) {
     return job.error_message
   }
-  return "This simulation could not be completed."
+  return "This job could not be completed."
 }
 
-const gromacsStageDefinitions: readonly {
-  code: JobStage["code"]
-  label: string
-}[] = [
-  { code: "prepare_simulation", label: "Prepare simulation" },
-  { code: "analyze_nvt", label: "Analyze NVT" },
-  { code: "analyze_npt", label: "Analyze NPT" },
-  { code: "run_production", label: "Run production" },
-  { code: "analyze_production", label: "Analyze production" },
-  { code: "prepare_result", label: "Prepare result" },
-]
-
-export function gromacsStageLabel(code: string) {
-  return gromacsStageDefinitions.find((stage) => stage.code === code)?.label ?? code
-}
-
-export function gromacsStageTimeline(job: Job) {
-  const activeStages = new Map(
-    (job.active_stages ?? (job.stage ? [job.stage] : [])).map((stage) => [
-      stage.code,
-      stage,
-    ])
-  )
-  const stageHistory = new Map(
-    (job.stage_history ?? []).map((stage) => [stage.code, stage])
-  )
-
-  return gromacsStageDefinitions.map((stage) => {
-    const timing = stageHistory.get(stage.code)
-    const active = activeStages.get(stage.code)
+export function jobStageTimeline(job: Job) {
+  return job.stages.map((stage: JobStage) => {
+    const active = Boolean(stage.started_at && !stage.outcome)
     return {
-      ...stage,
-      functionName:
-        timing?.function_name ??
-        active?.function_name ??
-        null,
-      startedAt: timing?.started_at ?? active?.started_at ?? null,
-      endedAt: timing?.ended_at ?? null,
-      outcome: timing?.outcome ?? null,
+      code: stage.code,
+      label: stage.label,
+      startedAt: stage.started_at ?? null,
+      endedAt: stage.ended_at ?? null,
+      outcome: stage.outcome ?? null,
       state:
-        timing?.outcome === "completed"
+        stage.outcome === "completed"
           ? ("completed" as const)
-          : timing?.outcome === "failed"
-            ? ("failed" as const)
-          : timing?.outcome === "cancelled"
+          : stage.outcome === "partial"
+            ? ("partial" as const)
+            : stage.outcome === "failed"
+              ? ("failed" as const)
+              : stage.outcome === "cancelled"
               ? ("cancelled" as const)
-          : active
-            ? ("active" as const)
-            : ("upcoming" as const),
+                : active && stage.provider_state === "queued"
+                  ? ("queued" as const)
+                  : active
+                    ? ("active" as const)
+                    : ("upcoming" as const),
     }
   })
 }
@@ -184,17 +165,17 @@ export const jobPresentation: Record<
   },
   running: {
     label: "Running",
-    description: "The molecular dynamics simulation is running remotely.",
+    description: "The job is running remotely.",
     className: "border-blue-300 bg-blue-50 text-blue-800",
   },
   finalizing: {
     label: "Preparing result",
-    description: "The simulation finished and BioModals is preparing the result archive.",
+    description: "The job finished and BioModals is preparing the result archive.",
     className: "border-blue-300 bg-blue-50 text-blue-800",
   },
   cancel_requested: {
     label: "Cancellation requested",
-    description: "BioModals asked the remote work to stop. The simulation may still complete first.",
+    description: "BioModals asked the remote work to stop. The job may still complete first.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
   state_unknown: {
@@ -204,7 +185,7 @@ export const jobPresentation: Record<
   },
   blocked: {
     label: "Result temporarily unavailable",
-    description: "The simulation output is preserved while BioModals retries result preparation. An administrator may need to repair the service.",
+    description: "The job needs administrator attention before it can continue or provide a result.",
     className: "border-amber-300 bg-amber-50 text-amber-900",
   },
   succeeded: {
@@ -219,7 +200,7 @@ export const jobPresentation: Record<
   },
   failed: {
     label: "Failed",
-    description: "This simulation could not be completed.",
+    description: "This job could not be completed.",
     className: "border-red-300 bg-red-50 text-red-800",
   },
   cancelled: {
@@ -337,7 +318,7 @@ function jobSortValue(
     case "job":
       return job.display_name
     case "tool":
-      return toolName(job.workload)
+      return toolName(job.tool)
     case "status":
       return jobPresentation[job.state].label
     case "created":
@@ -376,7 +357,7 @@ export function filterAndSortJobs(
     }
     if (
       normalized.tool &&
-      !`${toolName(job.workload)} ${job.workload}`
+      !`${toolName(job.tool)} ${job.tool}`
         .toLocaleLowerCase()
         .includes(normalized.tool)
     ) {

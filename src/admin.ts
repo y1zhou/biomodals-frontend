@@ -1,4 +1,5 @@
 import type {
+  AdminCosts,
   AdminModal,
   AdminModalEnvironment,
   AdminModalTool,
@@ -10,6 +11,13 @@ import type {
 export const adminUsersKey = ["admin", "users"] as const
 export const adminModalKey = ["admin", "modal"] as const
 export const adminStorageKey = ["admin", "storage"] as const
+
+export function modalEnvironmentCost(
+  report: AdminCosts,
+  environmentName: string
+) {
+  return report.environments.find((group) => group.name === environmentName)?.cost ?? "0"
+}
 
 export function upsertAdminUser(
   users: AdminUser[] | undefined,
@@ -46,7 +54,7 @@ export function mergeAdminModalTool(
   return {
     ...modal,
     tools: modal.tools.map((tool) =>
-      tool.workload === updated.workload ? updated : tool
+      tool.tool === updated.tool ? updated : tool
     ),
   }
 }
@@ -82,9 +90,6 @@ export function modalToolSettingLabels(
 ) {
   if (!input) return []
   const labels: string[] = []
-  if (Object.hasOwn(input, "modal_app_name")) {
-    labels.push("Deployed Modal app name")
-  }
   if (Object.hasOwn(input, "modal_app_version")) {
     labels.push("Modal deployment version")
   }
@@ -95,19 +100,6 @@ export function modalToolSettingLabels(
     labels.push("Job log access")
   }
   return labels
-}
-
-export function latestModalToolFailure<
-  Attempt extends { error: unknown; submittedAt: number },
->(attempts: readonly Attempt[]) {
-  let latest: Attempt | null = null
-  for (const attempt of attempts) {
-    if (attempt.error == null) continue
-    if (latest === null || attempt.submittedAt > latest.submittedAt) {
-      latest = attempt
-    }
-  }
-  return latest
 }
 
 export function changedModalEnvironmentSettings(
@@ -132,18 +124,13 @@ export function changedModalEnvironmentSettings(
 
 export function changedModalToolSettings(
   tool: AdminModalTool,
-  modalAppName: string,
   modalAppVersion: string,
   activeJobLimit: string,
   jobLogsVisibleToOwner: boolean
 ): UpdateAdminModalToolInput {
-  const normalizedAppName = modalAppName.trim()
   const normalizedVersion = positiveInteger(modalAppVersion)
   const normalizedLimit = nonnegativeInteger(activeJobLimit)
   return {
-    ...(tool.modal_app_name.editable && normalizedAppName !== tool.modal_app_name.value
-      ? { modal_app_name: normalizedAppName }
-      : {}),
     ...(normalizedVersion !== null &&
     tool.modal_app_version.editable &&
     normalizedVersion !== tool.modal_app_version.value

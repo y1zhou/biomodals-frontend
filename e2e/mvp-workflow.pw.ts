@@ -14,7 +14,6 @@ interface BrowserStats {
   preflight_versions: number[]
   submit_calls: number
   submit_versions: number[]
-  provider_calls: number
   cancel_calls: number
   log_fetches: number
 }
@@ -61,7 +60,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     origin,
   })
   await expect.poll(async () => (await browserStats()).password_link).not.toBe("")
-  await expect.poll(async () => (await browserStats()).preflight_versions).toEqual([7])
+  await expect.poll(async () => (await browserStats()).preflight_versions).toEqual([7, 1])
   const setup = (await browserStats()).password_link
 
   await page.goto(setup)
@@ -92,6 +91,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(page).toHaveURL(`${origin}/`)
 
   await page.setViewportSize({ width: 360, height: 800 })
+  await expect(page.getByRole("link", { name: "API Docs" })).toHaveAttribute(
+    "href",
+    "/docs"
+  )
   await expect(page.getByRole("link", { name: "Tools" })).toBeVisible()
   await expect(page.getByRole("link", { name: "My Jobs" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Open user menu" })).toBeVisible()
@@ -165,13 +168,25 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     name: "browser-input.pdb",
   })
   await page.getByLabel(/Display name/).fill("Browser success workflow")
+  const gromacsSubmissionRoute = "**/api/v1/gromacs/jobs"
+  let releaseSubmission = () => undefined
+  const heldSubmission = new Promise<void>((resolve) => {
+    releaseSubmission = resolve
+  })
+  await page.route(gromacsSubmissionRoute, async (route) => {
+    await heldSubmission
+    await route.continue()
+  })
   const submit = page.getByRole("button", { name: "Submit simulation" })
   await submit.evaluate((button: HTMLButtonElement) => {
     button.click()
     button.click()
   })
+  await expect(page.getByText("Uploading input")).toBeVisible()
+  releaseSubmission()
 
   await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
+  await page.unroute(gromacsSubmissionRoute)
   const completedJobId = page.url().split("/").at(-1)
   if (!completedJobId) throw new Error("Completed Job ID is missing")
   await expect(page.locator("details", { hasText: "Logs" })).toHaveCount(0)
@@ -208,28 +223,27 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
   const statusMetadata = page.locator("p", { hasText: "Job updated" }).first()
   await expect(statusMetadata).toContainText(/Last checked \d+s ago/)
-  const stagesTable = page.getByRole("table", { name: "GROMACS execution stages" })
+  const stagesTable = page.getByRole("table", { name: "Execution stages" })
   expect(
     await stagesTable.evaluate(
       (table) => table.scrollWidth <= (table.parentElement?.clientWidth ?? 0)
     )
   ).toBe(true)
   await expect(page.getByRole("row", { name: /Prepare simulation/ })).toBeVisible()
-  const prepareResultRow = page.getByRole("row", { name: /Prepare result/ })
-  await expect(prepareResultRow).toContainText("N/A")
-  await expect(prepareResultRow).not.toContainText("Not applicable")
-  await expect.poll(async () => (await browserStats()).provider_calls).toBeGreaterThanOrEqual(4)
-  await page.getByRole("button", { name: "Refresh" }).click()
+  await expect(page.getByRole("row", { name: /Prepare result/ })).toBeVisible()
+  await page.waitForTimeout(1_100)
+  const refresh = page.getByRole("button", { name: "Refresh" })
+  await refresh.click()
+  await expect(page.getByRole("button", { name: "Refreshed" })).toBeVisible()
   for (const stage of ["Analyze NVT", "Analyze NPT", "Run production"]) {
     await expect(page.getByRole("row", { name: new RegExp(stage) })).toContainText(
       "Running",
       { timeout: 5_000 }
     )
   }
-  await expect
-    .poll(async () => (await browserStats()).provider_calls)
-    .toBeGreaterThanOrEqual(5)
-  await page.getByRole("button", { name: "Refresh" }).click()
+  await page.waitForTimeout(1_600)
+  await refresh.click()
+  await expect(page.getByRole("button", { name: "Refreshed" })).toBeVisible()
   await expect(page.getByRole("row", { name: /Analyze production/ })).toContainText(
     "Running"
   )
@@ -268,7 +282,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
 
   const historicalEnd = Date.now() - 60_000
   const historicalStart = historicalEnd - 20 * 60_000
-  const targetsRoute = `**/api/v1/jobs/${completedJobId}/log-targets`
+  let analysisTarget = ""
+  const targetsRoute = `**/api/v1/jobs/${completedJobId}/log-targets?*`
   const logsRoute = `**/api/v1/jobs/${completedJobId}/logs?*`
   await page.route(targetsRoute, async (route) => {
     const response = await route.fetch()
@@ -278,10 +293,12 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
         ended_at: string | null
         stage_code: string
         started_at: string
+        target_id: string
       }>
     }
     for (const target of body.targets) {
       if (target.stage_code !== "analyze_production") continue
+      analysisTarget = target.target_id
       target.started_at = new Date(historicalStart).toISOString()
       target.ended_at = new Date(historicalEnd).toISOString()
     }
@@ -289,16 +306,20 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   })
   await page.route(logsRoute, async (route) => {
     const url = new URL(route.request().url())
-    if (url.searchParams.get("stage") !== "analyze_production") {
+    if (url.searchParams.get("target") !== analysisTarget) {
       await route.continue()
       return
     }
     const since = Date.parse(url.searchParams.get("since") ?? "")
     await route.fulfill({
-      contentType: "text/plain",
+      contentType: "application/x-ndjson",
       status: 200,
       body: since < historicalEnd - 10 * 60_000
-        ? "2026-07-22 10:00:00 Older retained log\n"
+        ? `${JSON.stringify({
+            timestamp: "2026-07-22T10:00:00Z",
+            message: "Older retained log\n",
+            source: "stdout",
+          })}\n`
         : "",
     })
   })
@@ -320,7 +341,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const downloadEvent = page.waitForEvent("download")
   await page.getByRole("button", { name: "Download result" }).click()
   const download = await downloadEvent
-  expect(download.suggestedFilename()).toBe("browser-success-workflow-results.zip")
+  expect(download.suggestedFilename()).toBe("result.zip")
   const stream = await download.createReadStream()
   const firstChunk = await new Promise<Buffer>((resolve, reject) => {
     stream.once("data", resolve)
@@ -548,10 +569,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     const response = await route.fetch()
     const document = await response.json()
     document.tools = document.tools.map((tool: {
-      workload: string
+      tool: string
       modal_app_version: Record<string, unknown>
     }) =>
-      tool.workload === "gromacs"
+      tool.tool === "gromacs"
         ? {
             ...tool,
             modal_app_version: {
@@ -585,10 +606,10 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   ).toHaveAttribute("rowspan", "2")
   await expect(
     toolsTable.getByRole("columnheader", { name: "Modal", exact: true })
-  ).toHaveAttribute("colspan", "3")
+  ).toHaveAttribute("colspan", "2")
   await expect(
     toolsTable.getByRole("columnheader", { name: "Save changes" })
-  ).toHaveAttribute("rowspan", "2")
+  ).toHaveCount(0)
   await expect(
     toolsTable.getByRole("columnheader", { name: "Deployment version" })
   ).toHaveCSS("white-space", "nowrap")
@@ -608,42 +629,22 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       cells.every((cell) => getComputedStyle(cell).textAlign === "center")
     )
   ).toBe(true)
-  const modalAppName = page.getByRole("textbox", {
-    name: "Modal app name for GROMACS MD simulation",
+  const toolsSection = page
+    .getByRole("heading", { name: "Tools", exact: true })
+    .locator("..")
+  const saveToolSettings = toolsSection.getByRole("button", {
+    name: "Save",
     exact: true,
-  })
-  expect(
-    await modalAppName.evaluate((input) => input.getBoundingClientRect().width)
-  ).toBeLessThan(190)
-  const configuredAppName = await modalAppName.inputValue()
-  await modalAppName.fill(`${configuredAppName}-temporary`)
-  const restoreAppName = page.getByRole("button", {
-    name: "Restore Modal app name for GROMACS MD simulation to its configured default",
-  })
-  await restoreAppName.click()
-  await expect(modalAppName).toHaveValue(configuredAppName)
-  expect(
-    await restoreAppName
-      .locator("svg")
-      .evaluate((icon) => getComputedStyle(icon).animationDirection)
-  ).toBe("reverse")
-
-  const saveToolSettings = page.getByRole("button", {
-    name: "Save Modal settings for GROMACS MD simulation",
   })
   const activeJobLimit = page.getByRole("spinbutton", {
     name: "Active job limit for GROMACS MD simulation",
   })
-  expect(await toolsTable.locator("colgroup col").count()).toBe(6)
-  expect(await toolsTable.getByRole("columnheader").count()).toBe(7)
-  await expect(
-    toolsTable.getByRole("columnheader", { name: "Save changes" })
-  ).toBeVisible()
-  expect(
-    await saveToolSettings.evaluate(
-      (button) => (button.closest("td") as HTMLTableCellElement | null)?.cellIndex
-    )
-  ).toBe(5)
+  expect(await toolsTable.locator("colgroup col").count()).toBe(4)
+  expect(await toolsTable.getByRole("columnheader").count()).toBe(5)
+  const restoreAllTools = toolsSection.getByRole("button", {
+    name: "Restore all to defaults",
+  })
+  await expect(restoreAllTools).toBeVisible()
   expect(
     await activeJobLimit.evaluate(
       (input) => (input.closest("td") as HTMLTableCellElement | null)?.cellIndex
@@ -652,7 +653,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const jobLogAccess = page.getByRole("checkbox", {
     name: "Allow Job owners to view logs for GROMACS MD simulation",
   })
-  const jobLogAccessToggle = page.locator(
+  const jobLogAccessToggle = jobLogAccess.locator("xpath=ancestor::tr").locator(
     '[data-slot="job-log-access-toggle"]'
   )
   const jobLogAccessTrack = jobLogAccessToggle.locator(
@@ -683,6 +684,15 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   expect(ownerThumbX).toBeLessThan(ownerIconX)
   await jobLogAccessToggle.click()
   await expect(jobLogAccess).not.toBeChecked()
+  await restoreAllTools.click()
+  const restoreAllDialog = page.getByRole("alertdialog", {
+    name: "Restore all Tool settings?",
+  })
+  await expect(restoreAllDialog).toContainText(
+    "This removes every administrator override"
+  )
+  await restoreAllDialog.getByRole("button", { name: "Cancel" }).click()
+  await expect(restoreAllDialog).not.toBeVisible()
   await jobLogAccessToggle.hover()
   await expect(page.getByRole("tooltip")).toHaveText("Admins only")
   await expect(jobLogAccessTrack).toHaveCSS(
@@ -714,9 +724,11 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
       status: 400,
     })
   })
-  await page.getByRole("spinbutton", {
+  const modalDeploymentVersion = page.getByRole("spinbutton", {
     name: "Modal deployment version for GROMACS MD simulation",
-  }).fill("999999")
+  })
+  await expect(modalDeploymentVersion).toBeEnabled()
+  await modalDeploymentVersion.fill("999999")
   await saveToolSettings.click()
   const toolError = page.getByRole("alert", {
     name: "Could not save GROMACS MD simulation settings",

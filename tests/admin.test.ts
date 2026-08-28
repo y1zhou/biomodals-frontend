@@ -3,9 +3,9 @@ import { describe, expect, test } from "bun:test"
 import {
   changedModalEnvironmentSettings,
   changedModalToolSettings,
-  latestModalToolFailure,
   mergeAdminModalEnvironment,
   mergeAdminModalTool,
+  modalEnvironmentCost,
   modalToolSettingLabels,
   settingSourceNote,
   sortAdminUsersByCreatedAt,
@@ -13,47 +13,39 @@ import {
 } from "../src/admin"
 
 describe("Admin settings", () => {
+  test("finds the configured environment cost", () => {
+    const report = {
+      start: "2026-08-25T00:00:00Z",
+      end: "2026-08-26T00:00:00Z",
+      total: "7.50",
+      tools: [],
+      environments: [
+        { name: "main", cost: "2.25" },
+        { name: "production", cost: "5.25" },
+      ],
+      other_workspace_usage: "0",
+      fetched_at: "2026-08-26T00:00:00Z",
+    }
+
+    expect(modalEnvironmentCost(report, "production")).toBe("5.25")
+    expect(modalEnvironmentCost(report, "missing")).toBe("0")
+  })
+
   test("labels the Modal tool fields included in a failed save", () => {
-    expect(modalToolSettingLabels({ modal_app_name: "Missing app" })).toEqual([
-      "Deployed Modal app name",
-    ])
     expect(modalToolSettingLabels({ modal_app_version: 404 })).toEqual([
       "Modal deployment version",
     ])
     expect(
       modalToolSettingLabels({
-        modal_app_name: "Missing app",
         modal_app_version: 404,
         active_job_limit: 2,
         job_logs_visible_to_owner: false,
       })
     ).toEqual([
-      "Deployed Modal app name",
       "Modal deployment version",
       "Active job limit",
       "Job log access",
     ])
-  })
-
-  test("selects the newest failed Modal tool update", () => {
-    const older = {
-      error: new Error("old failure"),
-      submittedAt: 10,
-      variables: { modal_app_name: "Missing app" },
-    }
-    const pending = {
-      error: null,
-      submittedAt: 30,
-      variables: { active_job_limit: 2 },
-    }
-    const newer = {
-      error: new Error("new failure"),
-      submittedAt: 20,
-      variables: { modal_app_version: 404 },
-    }
-
-    expect(latestModalToolFailure([older, pending, newer])).toBe(newer)
-    expect(latestModalToolFailure([pending])).toBeNull()
   })
 
   test("only explains configuration sources that need extra context", () => {
@@ -69,13 +61,8 @@ describe("Admin settings", () => {
 
   test("only submits Modal fields whose values changed", () => {
     const tool = {
-      workload: "gromacs",
+      tool: "gromacs",
       display_name: "GROMACS MD simulation",
-      modal_app_name: {
-        value: "Gromacs",
-        source: "default" as const,
-        editable: true,
-      },
       modal_app_version: {
         value: 2,
         source: "default" as const,
@@ -107,26 +94,23 @@ describe("Admin settings", () => {
       },
     }
 
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "3", true)).toEqual({
+    expect(changedModalToolSettings(tool, "2", "3", true)).toEqual({
       active_job_limit: 3,
     })
-    expect(changedModalToolSettings(tool, "Gromacs Test", "2", "2", true)).toEqual({
-      modal_app_name: "Gromacs Test",
-    })
-    expect(changedModalToolSettings(tool, "Gromacs", "3", "2", true)).toEqual({
+    expect(changedModalToolSettings(tool, "3", "2", true)).toEqual({
       modal_app_version: 3,
     })
     expect(
       changedModalEnvironmentSettings(environment, "department-a", "10")
     ).toEqual({ modal_environment: "department-a" })
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "", "2", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "0", "2", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "", true)).toEqual({})
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "0", true)).toEqual({
+    expect(changedModalToolSettings(tool, "2", "2", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "", "2", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "0", "2", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "2", "", true)).toEqual({})
+    expect(changedModalToolSettings(tool, "2", "0", true)).toEqual({
       active_job_limit: 0,
     })
-    expect(changedModalToolSettings(tool, "Gromacs", "2", "2", false)).toEqual({
+    expect(changedModalToolSettings(tool, "2", "2", false)).toEqual({
       job_logs_visible_to_owner: false,
     })
     expect(
@@ -197,13 +181,8 @@ describe("Admin settings", () => {
       },
     }
     const tool = {
-      workload: "gromacs",
+      tool: "gromacs",
       display_name: "GROMACS MD simulation",
-      modal_app_name: {
-        value: "Gromacs",
-        source: "default" as const,
-        editable: true,
-      },
       modal_app_version: {
         value: 2,
         source: "default" as const,

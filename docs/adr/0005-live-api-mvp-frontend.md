@@ -4,6 +4,12 @@ status: accepted
 
 # Build the MVP frontend against the live API
 
+> The execution-ownership, Job-shape, unknown-state, stage-table, and
+> provider-log sections below record the original GROMACS MVP. Backend ADR 0007,
+> the backend API Tool service spec, and the generated OpenAPI document supersede
+> those details. The Tool catalog, account, routing, and visual interaction
+> decisions remain current unless updated explicitly below.
+
 BioModals will build its first end-to-end remote Tool against the live FastAPI
 OpenAPI document. That document is the API source of truth, while the glossary
 and owning ADRs record the product and architecture decisions that shape it.
@@ -14,9 +20,9 @@ its backend contract tests, and the generated TypeScript contract agree.
 
 ## Tool and route structure
 
-The typed frontend Tool Catalog remains public and keeps its search interface,
-even though the MVP launches with one real Tool. The three placeholder Tools
-and all `Starter`, `Example`, and `Example route` labels are removed.
+The typed frontend Tool Catalog remains public and keeps its search interface.
+The three generic placeholder Tools and all `Starter`, `Example`, and `Example
+route` labels are removed.
 
 The first Tool has this catalog identity:
 
@@ -24,9 +30,28 @@ The first Tool has this catalog identity:
 - Slug and API workload: `gromacs`
 - Tags: `PDB`, `Molecular dynamics`, and `Protein structure`
 
-The Catalog also presents `AlphaFold3 structure prediction` as a muted `WIP`
-placeholder with `Protein structure` and `Structure prediction` tags. It has no
-route or Submission action until the backend registers that workload.
+The Catalog also presents the available `AlphaFold3 structure prediction` Tool
+with `Protein structure` and `Structure prediction` tags. It supports a guided
+protein, DNA, RNA, and simple ligand builder and native expert JSON through one
+retained server-validation and confirmation flow.
+Submitting from the confirmation view immediately changes the action to a
+disabled `Submitting job…` state and announces that the Job is being prepared
+and queued until the API returns its durable queued Job.
+
+The AlphaFold3 builder rejects invalid entity-copy counts instead of silently
+changing them and accepts values from `1` through `5120`. Seed expressions are
+validated for syntax, integer bounds, and the 1,000-seed UI ceiling before any
+range is expanded, so an enormous range cannot allocate browser memory first.
+Turning off MSA search also turns off and disables Protein template search
+because that search requires an MSA.
+
+Drafts, retained-validation pointers, and Submission idempotency keys are
+scoped by authenticated User. Draft restoration never overwrites edits made
+after the page mounted. If the Job-creation response is lost after the server
+consumes a validation, reloading replays the retained idempotency key and
+redirects to the existing Job. Expert JSON file reads follow
+latest-selection-wins semantics: completion of an older asynchronous read
+cannot replace a newer file or a cleared input.
 
 The public Tool overview explains its PDB Input, simulation options,
 downloadable Result, and durable remote execution before presenting the
@@ -43,6 +68,9 @@ Routes have stable, separate purposes:
 - `/tools/gromacs` is the public Tool overview.
 - `/tools/gromacs/new` is the protected Submission form.
 - `/tools/gromacs/jobs/:jobId` is the protected Job detail.
+- `/tools/alphafold3` is the public AlphaFold3 overview.
+- `/tools/alphafold3/new` is the protected AlphaFold3 builder and confirmation.
+- `/tools/alphafold3/jobs/:jobId` uses the shared protected Job detail.
 - `/jobs` is the protected cross-Tool Job History.
 - `/login` and `/set-password` own authentication entry points.
 
@@ -200,6 +228,10 @@ been created. The inline result links to My Jobs, and the Submission intent
 retains its idempotency key in tab-scoped session storage until a definitive
 Job or idempotency conflict is returned. Upload progress and cancellation are
 separate from the Job lifecycle and Job Cancellation.
+Once transfer reaches 100%, the progress panel changes from `Uploading input`
+to `Preparing and queuing job` instead of implying that the transfer itself is
+still moving. A successful `202` redirects immediately to the queued Job; the
+background service reconciler owns subsequent remote staging and launch.
 
 The Submission response contract is:
 
@@ -244,8 +276,9 @@ The backend applies these semantics:
 - The same key and fingerprint returns the existing Job.
 - The same key with changed Input or settings returns `409` with
   `idempotency_conflict`.
-- A failed compute spawn returns `503`; retrying with the same key preserves
-  the Job and stable run name.
+- Exact deployment preflight may return `503` before admission. After durable
+  admission, staging and launch failures are reconciled through the Job rather
+  than the Submission response.
 
 `503 compute_unavailable` leaves the form intact and offers `Try again` with
 the same key. `409 idempotency_conflict` is treated as a defensive
@@ -265,10 +298,10 @@ Global Active Job Limits. A Submission beyond any limit is rejected before a
 Job is created with `409 active_job_limit_reached`. This is distinct from an
 execution Capacity Limit, where an accepted Job waits for capacity.
 
-A durable admission queue is deferred because the API does not yet retain Input
-for later dispatch. Until that storage and recovery path exists, the frontend
-explains the Active Job Limit and asks the User to retry after an existing Job
-becomes terminal.
+Accepted Jobs retain enough Input for asynchronous staging and launch. Active
+Job Limits still reject excess Submissions before admission; the durable queue
+therefore recovers admitted work but does not waitlist requests that exceed a
+User, Tool, or Global limit.
 
 ## Job states and actions
 
@@ -285,8 +318,8 @@ labels and actions as follows:
 | `state_unknown` | Status unknown | Active, Admin review required | None |
 | `succeeded` | Completed | Terminal | Download result |
 | `partial` | Completed with warnings | Terminal | Download result |
-| `failed` | Failed | Terminal | Start a new simulation |
-| `cancelled` | Cancelled | Terminal | Start a new simulation |
+| `failed` | Failed | Terminal | Start a new job |
+| `cancelled` | Cancelled | Terminal | Start a new job |
 
 `partial` always means that a useful, downloadable Result exists. Succeeded and
 partial are terminal in the ordinary compute lifecycle, but either may become
@@ -295,16 +328,24 @@ be restored exactly. Exact recovery returns the prior completed state. API
 warnings are shown whenever present, regardless of state, but never change the
 authoritative state.
 
+A queued AlphaFold3 Job may include the owner-safe
+`state_reason=waiting_for_shared_publication` and a `state_message` while an
+earlier identical API Job may still be active. The status panel and empty-stage
+copy show that message instead of the generic waiting-to-start description.
+The frontend does not infer whether the earlier Job completed or whether the
+new Job can repair its cache.
+
 Only failed Jobs contain typed `error_code` and display-safe `error_message`
 fields; `JobView.detail` is removed. The frontend chooses the next action from
 the code, displays the safe message, and falls back to generic failure copy for
 an unknown code. It also shows a copyable Job identifier for support and links
-to a blank Submission form. Failed and cancelled Jobs do not offer Retry or
-reconstruct earlier settings because the API does not retain those values in
-`JobView`. The backend never sends a UI action field.
+to a blank Submission form. Failed and cancelled Jobs do not offer automatic
+Retry. Non-cancelled AlphaFold3 Jobs expose their retained native input JSON so
+the User can inspect or resubmit it; cancelled Jobs omit that action because
+input publication is not guaranteed. The backend never sends a UI action field.
 
 The typed Job Error codes are `compute_failed` and `result_invalid`. Each offers
-Start a new simulation and the Job identifier for support. Post-publication
+Start a new job and the Job identifier for support. Post-publication
 Result loss uses blocked category `result_integrity`, not a terminal
 `result_unavailable` Job Error. `result_expired` is not used because `expired`
 is a separate planned Job Status tied to Result retention.
@@ -339,22 +380,20 @@ visible without invented outcomes.
 
 The Job page presents one prominent current-status panel containing the label,
 plain-language explanation, last update time, warnings, and available action.
-It also presents the fixed GROMACS stage display order and highlights every
-active stage and running Function reported by `JobView.active_stages`. The
-singular `JobView.stage` is a compatibility summary rather than the source of
-parallel state. The stage table shows Started and Finished columns from
-`JobView.stage_history`. A started entry has `started_at`, nullable `ended_at`,
-and a nullable outcome of `completed`, `failed`, or `cancelled`; active,
-state-unknown, and blocked stages have no end or outcome. The table displays the
-outcome explicitly and does not invent missing timestamps, durations, completed
-Functions, or numeric Progress. An unchanged `updated_at` is not treated as
-stale because the API does not provide a heartbeat contract.
+It also presents the fixed semantic stage display order and highlights every
+active stage reported by `JobView.active_stages`. The singular `JobView.stage`
+is a compatibility summary rather than the source of parallel state. The stage
+table shows Stage, Status, Started, and Finished from `JobView.stage_history`;
+provider Function names are intentionally omitted from the end-User table. A
+started entry has `started_at`, nullable `ended_at`, and a nullable outcome of
+`completed`, `failed`, or `cancelled`; active, state-unknown, and blocked stages
+have no end or outcome. The table displays the outcome explicitly and does not
+invent missing timestamps, durations, or numeric Progress. An unchanged
+`updated_at` is not treated as stale because the API does not provide a
+heartbeat contract.
 
-The rows are Prepare simulation (`prepare_tpr_cpu|gpu`), Analyze NVT
-(`collect_traj_stats`), Analyze NPT (`collect_traj_stats`), Run production
-(`production_run_cpu|gpu`), Analyze production (`collect_traj_stats`), and
-Prepare result (local service work, whose Running Function is shown as `N/A`).
-The interface
+The GROMACS rows are Prepare simulation, Analyze NVT, Analyze NPT, Run
+production, Analyze production, and Prepare result. The interface
 does not split preparation, minimization, NVT, or NPT execution out of the
 Prepare simulation row because they occur inside one deployed Function. It
 also does not expose nested App implementation calls as API stages.
@@ -377,15 +416,15 @@ collapsing the row or leaving the page also aborts it. When the capability is
 false, the page shows the ordinary stage table without log interactivity or
 log-access copy.
 
-The target API exposes safe Stage codes, Running Function names, operation
+The target API exposes safe Stage codes, diagnostic Function names, operation
 state, live-or-historical mode, start time, and nullable end time, but no Modal
 Function Call ID. The backend resolves the selected Stage to that private ID
-and redacts that exact value if provider output contains it. Active and
-state-unknown Stages stream plain-text output; completed, failed, and cancelled
-Stages fetch the retained output for their recorded time range without follow
-mode. Paired `since` and `until` parameters select a timezone-aware historical
-window of at most 15 minutes and are clamped to the Stage lifetime. The browser
-uses 10-minute windows so it can request older output only when needed.
+and redacts that exact value if provider output contains it. An active target
+streams newline-delimited JSON output. Any other started Stage fetches retained
+output for its recorded time range without follow mode. Paired `since` and
+`until` parameters select a timezone-aware historical window of at most one
+hour and are clamped to the Stage lifetime. The browser uses 10-minute windows
+so it can request older output only when needed.
 
 TanStack Query caches every successful terminal window indefinitely for the
 current browser page. Reopening a row refreshes the small target selector so a
@@ -476,10 +515,11 @@ collection are never periodically polled. When an individual Job becomes
 terminal or state-unknown, its interval polling stops.
 
 `updated_at` is display metadata rather than a strict Job version. When a
-collection snapshot and its detail snapshot have equal timestamps, the detail
-snapshot wins so a terminal observation cannot be hidden while its polling
-stops. A persistent Job revision is deferred until the system has more writers
-or update transports that require total ordering.
+collection snapshot and its detail snapshot have equal timestamps and exactly
+one is terminal, the terminal snapshot wins so a stale active response cannot
+hide completion after polling stops. Otherwise the detail snapshot wins. A
+persistent Job revision is deferred until the system has more writers or update
+transports that require total ordering.
 
 TanStack Query owns Job and User server state. Polling requests use their abort
 signals so navigation can stop unnecessary HTTP work; aborting a read never
@@ -584,14 +624,14 @@ persistent-data changes require an explicit migration and rollback plan.
 coded recovery; a possible integrity transition triggers a Job refetch. A
 successful `204` immediately starts the real authenticated same-origin link to
 `/api/v1/jobs/:jobId/download`. The browser handles the server-provided
-`Content-Disposition` filename and streams the `application/zip` Result,
-including the API's `206` byte-range support. The frontend neither buffers the
-archive into a JavaScript Blob nor depends on the optional `download_url` field.
-Aborting one page request does not cancel shared backend cache preparation.
+`Content-Disposition` filename and streams the Tool-specific `application/zip`
+or `application/zstd` Result, including the API's `206` byte-range support. The
+frontend neither buffers the archive into a JavaScript Blob nor depends on the
+optional `download_url` field. Aborting one page request does not cancel shared
+backend cache preparation.
 
-The server-provided filename is `<sanitized display name>-results.zip`, with
-`gromacs-results.zip` as the fallback. It contains no Job UUID, Modal run name,
-or storage path; the browser handles duplicate-download suffixes.
+The server-provided filename contains no Job UUID, Modal run name, or storage
+path; the browser handles duplicate-download suffixes.
 
 ## Visual and interaction direction
 

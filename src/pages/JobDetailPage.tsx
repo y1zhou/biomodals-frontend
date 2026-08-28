@@ -16,6 +16,7 @@ import { Link, useParams } from "react-router"
 import {
   ApiError,
   SERVICE_CONFIGURATION_ERROR_MESSAGE,
+  alphaFold3JobDocumentUrl,
   apiErrorCode,
   apiRequestId,
   cancelJob,
@@ -23,6 +24,7 @@ import {
   isServiceConfigurationError,
   jobDownloadUrl,
   prepareJobDownload,
+  refreshJob,
   type Job,
 } from "@/api/client"
 import { adminStorageKey } from "@/admin"
@@ -35,7 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   formatTimestamp,
   formatRelativeTimestamp,
-  gromacsStageTimeline,
+  jobStageTimeline,
   isProgressingJob,
   isPollableJob,
   isJobNotCancellableError,
@@ -50,7 +52,11 @@ import {
 } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
-import { gromacsPaths, gromacsTool } from "@/tools"
+import { formatBytes } from "@/storage"
+import {
+  availableTools,
+  toolSubmissionPath,
+} from "@/tools"
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -67,7 +73,8 @@ function RelativeTimestamp({ value }: { value: number }) {
   )
 }
 
-function JobUnavailable() {
+function JobUnavailable({ tool }: { tool: string }) {
+  const selected = availableTools.find((candidate) => candidate.slug === tool)
   return (
     <main className="mx-auto max-w-xl px-6 py-24 text-center">
       <XCircle aria-hidden="true" className="mx-auto size-9 text-muted-foreground" />
@@ -79,15 +86,15 @@ function JobUnavailable() {
         <Link className={buttonVariants()} to="/jobs">
           My Jobs
         </Link>
-        <Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.overview}>
-          GROMACS tool
+        <Link className={buttonVariants({ variant: "outline" })} to={selected ? `/tools/${selected.slug}` : "/"}>
+          {selected?.name ?? "Tools"}
         </Link>
       </div>
     </main>
   )
 }
 
-export default function JobDetailPage() {
+export default function JobDetailPage({ tool: expectedTool }: { tool: string }) {
   const { jobId = "" } = useParams()
   const queryClient = useQueryClient()
   const confirmationDialog = useRef<HTMLDialogElement>(null)
@@ -114,6 +121,7 @@ export default function JobDetailPage() {
   const cancelMutation = useMutation({
     mutationFn: () => cancelJob(jobId),
     retry: false,
+    onMutate: () => queryClient.cancelQueries({ queryKey: jobKey(jobId) }),
     onSuccess(job) {
       queryClient.setQueryData(jobKey(jobId), job)
       queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
@@ -164,7 +172,7 @@ export default function JobDetailPage() {
 
   const queryError = jobQuery.error
   if (isJobUnavailableError(queryError)) {
-    return <JobUnavailable />
+    return <JobUnavailable tool={expectedTool} />
   }
 
   if (!jobQuery.data) {
@@ -190,6 +198,8 @@ export default function JobDetailPage() {
   }
 
   const job = jobQuery.data
+  if (job.tool !== expectedTool) return <JobUnavailable tool={expectedTool} />
+  const tool = availableTools.find((candidate) => candidate.slug === job.tool)
   const presentation = jobPresentation[job.state]
   const canCancel = job.state === "queued" || job.state === "running"
   const canDownload = job.state === "succeeded" || job.state === "partial"
@@ -199,17 +209,17 @@ export default function JobDetailPage() {
     job.state !== "partial" &&
     job.state !== "cancelled"
   const stateDescription =
-    job.state === "failed" ? jobFailureMessage(job) : presentation.description
-  const stages = gromacsStageTimeline(job)
+    job.state === "failed"
+      ? jobFailureMessage(job)
+      : job.state_message ?? presentation.description
+  const stages = jobStageTimeline(job)
+  const currentStages = stages.filter((stage) =>
+    stage.state === "active" || stage.state === "queued"
+  )
   const activeStages = stages.filter((stage) => stage.state === "active")
-  const runningFunctions = job.state === "running"
-    ? Array.from(new Set(activeStages.flatMap((stage) =>
-        stage.functionName ? [stage.functionName] : []
-      )))
-    : []
   const downloadError = downloadMutation.error
     ? apiErrorCode(downloadMutation.error) === "result_invalid"
-      ? "The result could not be verified. BioModals will keep the simulation output for an administrator to recover."
+      ? "The result could not be verified. BioModals will keep the job output for an administrator to recover."
       : apiErrorCode(downloadMutation.error) === "result_storage_unavailable"
         ? "Result storage is temporarily unavailable. Try again shortly."
         : downloadMutation.error instanceof ApiError && downloadMutation.error.status === 409
@@ -232,8 +242,14 @@ export default function JobDetailPage() {
           <RefreshButton
             disabled={jobQuery.isFetching}
             onRefresh={async () => {
-              const result = await jobQuery.refetch()
-              if (result.isError) throw result.error
+              await queryClient.cancelQueries({ queryKey: jobKey(jobId) })
+              const refreshed = await refreshJob(jobId)
+              queryClient.setQueryData(jobKey(jobId), refreshed)
+              queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
+                jobs?.map((candidate) =>
+                  candidate.job_id === refreshed.job_id ? refreshed : candidate
+                )
+              )
             }}
           />
         </div>
@@ -241,19 +257,30 @@ export default function JobDetailPage() {
         <section className="mt-8">
           <p aria-atomic="true" aria-live="polite" className="sr-only">
             Job status: {presentation.label}.
-            {activeStages.length
-              ? ` Active stages: ${activeStages.map((stage) => stage.label).join(", ")}.`
-              : ""}
-            {runningFunctions.length
-              ? ` Running functions: ${runningFunctions.join(", ")}.`
+            {currentStages.length
+              ? ` Current stages: ${currentStages.map((stage) => stage.label).join(", ")}.`
               : ""}
           </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">{gromacsTool.name}</p>
-              <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-                {job.display_name}
-              </h1>
+              <p className="text-sm font-medium text-muted-foreground">
+                {tool?.name ?? job.tool}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+                  {job.display_name}
+                </h1>
+                {job.tool === "alphafold3" && job.state !== "cancelled" ? (
+                  <a
+                    className={buttonVariants({ variant: "outline" })}
+                    download
+                    href={alphaFold3JobDocumentUrl(job.job_id)}
+                  >
+                    <Download aria-hidden="true" />
+                    Download input JSON
+                  </a>
+                ) : null}
+              </div>
             </div>
             <JobStatusBadge state={job.state} />
           </div>
@@ -279,7 +306,12 @@ export default function JobDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="max-w-2xl leading-7">{stateDescription}</p>
+              <p className="max-w-2xl leading-7">
+                {stateDescription}
+                {canDownload && job.result_size_bytes ? (
+                  <> The downloadable result archive is {formatBytes(job.result_size_bytes)}.</>
+                ) : null}
+              </p>
               <p className="mt-2 text-xs opacity-80">
                 Job updated {formatTimestamp(job.updated_at)} · Last checked{" "}
                 {relativeLastChecked ? (
@@ -329,9 +361,9 @@ export default function JobDetailPage() {
                   </Button>
                 ) : null}
                 {canStartAgain ? (
-                  <Link className={buttonVariants()} to={gromacsPaths.submission}>
+                  <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
-                    Start a new simulation
+                    Start a new job
                   </Link>
                 ) : null}
               </div>
@@ -340,29 +372,11 @@ export default function JobDetailPage() {
                   {downloadError}
                 </p>
               ) : null}
-              {job.state === "blocked" ? (
-                <dl className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-muted-foreground">Attention needed since</dt>
-                    <dd className="font-medium">{formatTimestamp(job.blocked_at)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Next automatic retry</dt>
-                    <dd className="font-medium">{formatTimestamp(job.next_retry_at)}</dd>
-                  </div>
-                </dl>
-              ) : null}
               {job.state === "state_unknown" ? (
                 <div className="mt-5 text-sm">
                   <p>
                     This job continues to use an active-job slot until an administrator resolves it.
                   </p>
-                  <dl className="mt-2">
-                    <dt className="text-muted-foreground">Administrator review required since</dt>
-                    <dd className="font-medium">
-                      {formatTimestamp(job.state_unknown_at)}
-                    </dd>
-                  </dl>
                 </div>
               ) : null}
             </CardContent>
@@ -372,7 +386,7 @@ export default function JobDetailPage() {
             <CardHeader>
               <CardTitle>Execution stages</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Highlighted rows are the active stages last reported by BioModals.
+                Highlighted rows are queued or active stages last reported by BioModals.
                 Timestamps show when BioModals recorded each transition.
                 {job.can_view_logs
                   ? " Click a started remote stage to view its logs."
@@ -381,14 +395,13 @@ export default function JobDetailPage() {
             </CardHeader>
             <CardContent className="px-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[58rem] table-fixed text-left text-sm">
-                  <caption className="sr-only">GROMACS execution stages</caption>
+                <table className="w-full min-w-[44rem] table-fixed text-left text-sm">
+                  <caption className="sr-only">Execution stages</caption>
                   <colgroup>
-                    <col className="w-[24%]" />
-                    <col className="w-[14%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[22%]" />
+                    <col className="w-[30%]" />
                     <col className="w-[18%]" />
+                    <col className="w-[26%]" />
+                    <col className="w-[26%]" />
                   </colgroup>
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
                     <tr>
@@ -397,9 +410,6 @@ export default function JobDetailPage() {
                       </th>
                       <th className="px-6 py-3 font-medium" scope="col">
                         Status
-                      </th>
-                      <th className="px-6 py-3 font-medium" scope="col">
-                        Running function
                       </th>
                       <th className="px-3 py-3 font-medium" scope="col">
                         Started
@@ -412,9 +422,9 @@ export default function JobDetailPage() {
                   <tbody className="divide-y">
                     {stages.map((stage, index) => {
                       const active = stage.state === "active"
+                      const queued = stage.state === "queued"
                       const canInspectLogs = Boolean(
                         job.can_view_logs &&
-                        stage.functionName &&
                         stage.startedAt
                       )
                       const logsExpanded =
@@ -428,19 +438,23 @@ export default function JobDetailPage() {
                       const statusLabel =
                         stage.state === "completed"
                           ? "Completed"
-                          : stage.state === "failed"
-                            ? "Failed"
+                          : stage.state === "partial"
+                            ? "Partial"
+                            : stage.state === "failed"
+                              ? "Failed"
                             : stage.state === "cancelled"
                               ? "Cancelled"
-                          : stage.state === "upcoming"
-                            ? "Not started"
-                            : presentation.label
+                              : stage.state === "upcoming"
+                                ? "Not started"
+                                : stage.state === "queued"
+                                  ? "Queued"
+                                  : presentation.label
 
                       return (
                         <Fragment key={stage.code}>
                           <tr
                             className={cn(
-                              active && "bg-muted/50",
+                              (active || queued) && "bg-muted/50",
                               canInspectLogs &&
                                 "cursor-pointer transition-colors hover:bg-muted/60 active:bg-muted",
                               logsExpanded && "bg-muted/60"
@@ -485,6 +499,8 @@ export default function JobDetailPage() {
                                 "px-6 py-4",
                                 stage.state === "completed"
                                   ? "text-emerald-700"
+                                  : stage.state === "partial"
+                                    ? "text-amber-700"
                                   : stage.state === "failed"
                                     ? "text-destructive"
                                     : stage.state === "cancelled"
@@ -495,17 +511,6 @@ export default function JobDetailPage() {
                               )}
                             >
                               {statusLabel}
-                            </td>
-                            <td className="px-6 py-4">
-                              {stage.code === "prepare_result" ? (
-                                <span className="text-muted-foreground">N/A</span>
-                              ) : stage.functionName ? (
-                                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                                  {stage.functionName}
-                                </code>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
                             </td>
                             <td className="px-3 py-4 text-muted-foreground">
                               {formatTimestamp(stage.startedAt)}
@@ -518,13 +523,13 @@ export default function JobDetailPage() {
                             <tr>
                               <td
                                 className="max-w-0 bg-muted/20 px-6 py-4"
-                                colSpan={5}
+                                colSpan={4}
                               >
                                 <StageLogs
                                   jobId={job.job_id}
                                   stageCode={stage.code}
                                   stageLabel={stage.label}
-                                  toolSlug={gromacsTool.slug}
+                                  toolSlug={job.tool}
                                 />
                               </td>
                             </tr>
@@ -538,7 +543,8 @@ export default function JobDetailPage() {
               {!activeStages.length && isProgressingJob(job.state) ? (
                 <p className="px-6 pt-4 text-sm text-muted-foreground">
                   {job.state === "queued"
-                    ? "BioModals accepted this job and is waiting to start the first stage."
+                    ? job.state_message ??
+                      "BioModals accepted this job and is waiting to start the first stage."
                     : job.state === "cancel_requested"
                       ? "No remote function is currently recorded while cancellation is being resolved."
                       : "BioModals is moving to the next stage. No running function is currently recorded."}
@@ -611,7 +617,7 @@ export default function JobDetailPage() {
             Cancel this job?
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Cancellation is best effort. The simulation may complete before the remote work stops.
+            Cancellation is best effort. The job may complete before the remote work stops.
           </p>
           {cancelMutation.isError && !isJobNotCancellableError(cancelMutation.error) ? (
             <p aria-live="polite" className="mt-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
