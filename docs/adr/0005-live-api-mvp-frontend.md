@@ -210,6 +210,12 @@ the same size at the trust boundary. The MVP does not direct Users to the API
 for larger files because the service currently buffers the complete Input in
 memory before submitting it to remote compute.
 
+The GROMACS Tool is explicitly protein-only. Its overview and Submission form
+state that ligands, cofactors, ions, waters, nucleic acids, and other
+non-protein atoms are removed during preparation and are not part of the
+simulated system. The interface must not imply that uploading a holo or mixed
+biomolecular PDB preserves unsupported chemistry.
+
 The native Choose file button receives a light neutral rounded treatment that
 separates it from the selected-name text. Drag entry visibly changes the whole
 drop zone to a ready-to-drop state; drag leave restores it, and a valid drop

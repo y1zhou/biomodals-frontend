@@ -232,7 +232,7 @@ export default function GromacsSubmissionPage() {
             Start a simulation
           </h1>
           <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-            Choose a PDB structure and configure one durable remote job. You can leave after BioModals confirms it is queued.
+            Choose a protein PDB structure and configure one durable remote job. You can leave after BioModals confirms it is queued.
           </p>
         </div>
 
@@ -242,7 +242,9 @@ export default function GromacsSubmissionPage() {
               <CardHeader>
                 <CardTitle>Structure</CardTitle>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Choose one .pdb file. The web uploader supports up to {WEB_UPLOAD_LIMIT_LABEL}.
+                  Choose one protein .pdb file up to {WEB_UPLOAD_LIMIT_LABEL}.
+                  Ligands, cofactors, ions, waters, nucleic acids, and other
+                  non-protein atoms are removed during preparation.
                 </p>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -360,7 +362,8 @@ export default function GromacsSubmissionPage() {
                   <span>
                     <span className="block text-sm font-medium">Repair common issues with PDBFixer</span>
                     <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                      Attempt to prepare incomplete or inconsistent structures before simulation.
+                      Attempt to repair common protein-structure issues after
+                      non-protein atoms are removed.
                     </span>
                   </span>
                 </label>

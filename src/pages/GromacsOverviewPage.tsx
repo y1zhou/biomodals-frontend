@@ -19,8 +19,8 @@ import { gromacsPaths, gromacsTool } from "@/tools"
 const features = [
   {
     icon: FileUp,
-    title: "Bring one PDB structure",
-    description: `Choose a Protein Data Bank structure from your computer. The web uploader supports files up to ${WEB_UPLOAD_LIMIT_LABEL}.`,
+    title: "Bring one protein structure",
+    description: `Choose a protein PDB structure up to ${WEB_UPLOAD_LIMIT_LABEL}. Non-protein atoms are removed during preparation.`,
   },
   {
     icon: SlidersHorizontal,
@@ -69,6 +69,11 @@ export default function GromacsOverviewPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
             {gromacsTool.description}
+          </p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            This workflow is protein-only. Ligands, cofactors, ions, waters,
+            nucleic acids, and other non-protein atoms are not included in the
+            prepared simulation.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {gromacsTool.tags.map((tag) => (

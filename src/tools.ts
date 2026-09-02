@@ -21,7 +21,7 @@ export type ToolCatalogEntry = AvailableTool | ToolCatalogPlaceholder
 export const gromacsTool = {
   slug: "gromacs",
   name: "GROMACS MD simulation",
-  description: "Prepare a PDB structure and run a configurable molecular dynamics simulation remotely.",
+  description: "Prepare a protein PDB structure and run a configurable molecular dynamics simulation remotely.",
   tags: ["PDB", "Molecular dynamics", "Protein structure"],
   icon: Atom,
   status: "available",
