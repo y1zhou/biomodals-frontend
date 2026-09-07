@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient, QueryObserver } from "@tanstack/react-query"
 
 import {
   ApiError,
@@ -23,6 +23,28 @@ import {
 } from "../src/auth-state"
 
 describe("authenticated principal cache", () => {
+  test("a late session check cannot overwrite a newly authenticated principal", async () => {
+    const client = new QueryClient()
+    let finish!: (value: null) => void
+    const request = client.fetchQuery({ queryKey: currentUserKey, queryFn: () => new Promise<null>((resolve) => { finish = resolve }) }).catch(() => undefined)
+    const principal: Principal = { user_id: "user", display_name: "Researcher", email: "test@example.com", is_admin: false }
+    installAuthenticatedPrincipal(client, principal)
+    finish(null)
+    await request
+    expect(client.getQueryData(currentUserKey)).toEqual(principal)
+    client.clear()
+  })
+  test("reattaches every mounted session observer after reauthentication", () => {
+    const client = new QueryClient()
+    client.setQueryData(currentUserKey, REAUTHENTICATION_REQUIRED)
+    const observers = [0, 1].map(() => new QueryObserver(client, { queryKey: currentUserKey, enabled: false }))
+    const unsubscribe = observers.map((observer) => observer.subscribe(() => {}))
+    const principal: Principal = { user_id: "user", display_name: "Researcher", email: "test@example.com", is_admin: false }
+    installAuthenticatedPrincipal(client, principal)
+    for (const observer of observers) expect(observer.getCurrentResult().data).toEqual(principal)
+    unsubscribe.forEach((stop) => stop())
+    client.clear()
+  })
   test("discards data cached for the previous principal", () => {
     const queryClient = new QueryClient()
     queryClient.setQueryData(currentUserKey, {
