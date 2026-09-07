@@ -88,11 +88,20 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
-The MVP has two available Tools: `GROMACS MD simulation` and `AlphaFold3
-structure prediction`. AlphaFold3 accepts a guided protein, DNA, RNA, and
+The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
+prediction`, and `Antibody humanization`. AlphaFold3 accepts a guided protein, DNA, RNA, and
 small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating
 a Job.
+
+Antibody humanization accepts an editable ID/VH/VL batch through manual entry
+or CSV import, with one set of scientific settings for the batch. The backend
+supplies defaults and the pair limit. Drafts remain in memory; explicit Check
+submission replays the unchanged request and idempotency key after a lost
+response. Finished Jobs show bounded server-filtered, server-sorted candidate
+pages and offer direct CSV and archive downloads. The table never fetches the
+whole CSV to sort it in the browser. See the
+[accepted service specification](../biomodals/docs/specs/humanization-service.md).
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,

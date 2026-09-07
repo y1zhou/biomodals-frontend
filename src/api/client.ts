@@ -1,4 +1,5 @@
 import type { components } from "@/api/schema"
+import type { HumanizationOptions, HumanizationSubmission, HumanizationSelection, SelectionQuery } from "@/humanization"
 
 export type Job = components["schemas"]["JobView"]
 export type JobPage = components["schemas"]["JobPageView"]
@@ -486,6 +487,45 @@ export function prepareJobDownload(jobId: string) {
       headers: { "X-CSRF-Token": csrfToken() },
     }
   )
+}
+
+export function humanizationOptions(signal?: AbortSignal) {
+  return requestJson<HumanizationOptions>("/api/v1/humanization/options", { signal })
+}
+
+export function submitHumanizationJob(input: HumanizationSubmission, idempotencyKey: string) {
+  return requestJson<Job>("/api/v1/humanization/jobs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify(input),
+  })
+}
+
+export async function humanizationSelection(jobId: string, query: SelectionQuery, signal?: AbortSignal) {
+  const params = new URLSearchParams({ offset: String(query.offset), limit: String(query.limit) })
+  if (query.parentId) params.set("parent_id", query.parentId)
+  if (query.sortBy) {
+    params.set("sort_by", query.sortBy)
+    params.set("descending", String(query.descending))
+  }
+  const path = `/api/v1/humanization/jobs/${encodeURIComponent(jobId)}/selection?${params}`
+  try {
+    return await requestJson<HumanizationSelection>(path, { signal })
+  } catch (error) {
+    if (apiErrorCode(error) !== "result_not_cached") throw error
+    signal?.throwIfAborted()
+    await prepareJobDownload(jobId)
+    signal?.throwIfAborted()
+    return requestJson<HumanizationSelection>(path, { signal })
+  }
+}
+
+export function humanizationCsvUrl(jobId: string) {
+  return `/api/v1/humanization/jobs/${encodeURIComponent(jobId)}/selection.csv`
 }
 
 export function jobDownloadUrl(jobId: string) {

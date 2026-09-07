@@ -1,0 +1,208 @@
+{
+  "max_pairs": 100,
+  "defaults": {
+    "sapiens_iterations": 1,
+    "sapiens_numbering_scheme": "kabat",
+    "sapiens_cdr_definition": "kabat",
+    "sapiens_mutate_cdrs": false,
+    "humatch_vh_target_family": "auto",
+    "humatch_vl_target_family": "auto",
+    "humatch_germline_likeness_target": 0.4,
+    "humatch_vh_classifier_target": 0.95,
+    "humatch_vl_classifier_target": 0.95,
+    "humatch_pair_classifier_target": 0.95,
+    "humatch_max_edits": 60,
+    "humatch_mutate_cdrs": false,
+    "humatch_fixed_vh_positions": "",
+    "humatch_fixed_vl_positions": "",
+    "pabnativ2_mutate_cdrs": false,
+    "pabnativ2_fixed_vh_positions": "",
+    "pabnativ2_fixed_vl_positions": "",
+    "pabnativ2_residue_score_threshold": 0.98,
+    "pabnativ2_rasa_threshold": 0.15,
+    "pabnativ2_max_relative_pairing_score_decrease": 0.1,
+    "pabnativ2_forbidden_residues": "C,M",
+    "pabnativ2_seed": 0,
+    "hudiff_ab_candidate_count": 10,
+    "hudiff_ab_seed": 42,
+    "hudiff_ab_sampling_order": "shuffle",
+    "hudiff_ab_upstream_inference_dropout": true
+  },
+  "settings_schema": {
+    "properties": {
+      "sapiens_iterations": {
+        "type": "integer",
+        "maximum": 5.0,
+        "minimum": 1.0,
+        "title": "Sapiens Iterations",
+        "default": 1
+      },
+      "sapiens_numbering_scheme": {
+        "type": "string",
+        "enum": [
+          "kabat",
+          "chothia",
+          "imgt"
+        ],
+        "title": "Sapiens Numbering Scheme",
+        "default": "kabat"
+      },
+      "sapiens_cdr_definition": {
+        "type": "string",
+        "enum": [
+          "kabat",
+          "chothia",
+          "imgt",
+          "north"
+        ],
+        "title": "Sapiens Cdr Definition",
+        "default": "kabat"
+      },
+      "sapiens_mutate_cdrs": {
+        "type": "boolean",
+        "title": "Sapiens Mutate Cdrs",
+        "default": false
+      },
+      "humatch_vh_target_family": {
+        "type": "string",
+        "title": "Humatch Vh Target Family",
+        "default": "auto"
+      },
+      "humatch_vl_target_family": {
+        "type": "string",
+        "title": "Humatch Vl Target Family",
+        "default": "auto"
+      },
+      "humatch_germline_likeness_target": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Humatch Germline Likeness Target",
+        "default": 0.4
+      },
+      "humatch_vh_classifier_target": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Humatch Vh Classifier Target",
+        "default": 0.95
+      },
+      "humatch_vl_classifier_target": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Humatch Vl Classifier Target",
+        "default": 0.95
+      },
+      "humatch_pair_classifier_target": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Humatch Pair Classifier Target",
+        "default": 0.95
+      },
+      "humatch_max_edits": {
+        "type": "integer",
+        "maximum": 400.0,
+        "minimum": 0.0,
+        "title": "Humatch Max Edits",
+        "default": 60
+      },
+      "humatch_mutate_cdrs": {
+        "type": "boolean",
+        "title": "Humatch Mutate Cdrs",
+        "default": false
+      },
+      "humatch_fixed_vh_positions": {
+        "type": "string",
+        "title": "Humatch Fixed Vh Positions",
+        "default": ""
+      },
+      "humatch_fixed_vl_positions": {
+        "type": "string",
+        "title": "Humatch Fixed Vl Positions",
+        "default": ""
+      },
+      "pabnativ2_mutate_cdrs": {
+        "type": "boolean",
+        "title": "Pabnativ2 Mutate Cdrs",
+        "default": false
+      },
+      "pabnativ2_fixed_vh_positions": {
+        "type": "string",
+        "title": "Pabnativ2 Fixed Vh Positions",
+        "default": ""
+      },
+      "pabnativ2_fixed_vl_positions": {
+        "type": "string",
+        "title": "Pabnativ2 Fixed Vl Positions",
+        "default": ""
+      },
+      "pabnativ2_residue_score_threshold": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Pabnativ2 Residue Score Threshold",
+        "default": 0.98
+      },
+      "pabnativ2_rasa_threshold": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Pabnativ2 Rasa Threshold",
+        "default": 0.15
+      },
+      "pabnativ2_max_relative_pairing_score_decrease": {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Pabnativ2 Max Relative Pairing Score Decrease",
+        "default": 0.1
+      },
+      "pabnativ2_forbidden_residues": {
+        "type": "string",
+        "title": "Pabnativ2 Forbidden Residues",
+        "default": "C,M"
+      },
+      "pabnativ2_seed": {
+        "type": "integer",
+        "maximum": 4294967295.0,
+        "minimum": 0.0,
+        "title": "Pabnativ2 Seed",
+        "default": 0
+      },
+      "hudiff_ab_candidate_count": {
+        "type": "integer",
+        "maximum": 25.0,
+        "minimum": 1.0,
+        "title": "Hudiff Ab Candidate Count",
+        "default": 10
+      },
+      "hudiff_ab_seed": {
+        "type": "integer",
+        "maximum": 4294967295.0,
+        "minimum": 0.0,
+        "title": "Hudiff Ab Seed",
+        "default": 42
+      },
+      "hudiff_ab_sampling_order": {
+        "type": "string",
+        "enum": [
+          "shuffle",
+          "left_to_right"
+        ],
+        "title": "Hudiff Ab Sampling Order",
+        "default": "shuffle"
+      },
+      "hudiff_ab_upstream_inference_dropout": {
+        "type": "boolean",
+        "title": "Hudiff Ab Upstream Inference Dropout",
+        "default": true
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "HumanizationSettings",
+    "description": "Namespaced controls map directly to the standalone generators."
+  }
+}

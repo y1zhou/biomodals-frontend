@@ -18,6 +18,7 @@ import {
   alphafold3Paths,
   filterToolCatalog,
   gromacsPaths,
+  humanizationPaths,
   toolCatalog,
   toolOverviewPath,
 } from "@/tools"
@@ -27,6 +28,8 @@ const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage")
 const AlphaFold3OverviewPage = lazy(() => import("@/pages/AlphaFold3OverviewPage"))
 const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3SubmissionPage"))
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
+const HumanizationOverviewPage = lazy(() => import("@/pages/HumanizationOverviewPage"))
+const HumanizationSubmissionPage = lazy(() => import("@/pages/HumanizationSubmissionPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
 const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
@@ -168,12 +171,15 @@ export default function App() {
           <Route element={<LandingPage />} path="/" />
           <Route element={<GromacsOverviewPage />} path={gromacsPaths.overview} />
           <Route element={<AlphaFold3OverviewPage />} path={alphafold3Paths.overview} />
+          <Route element={<HumanizationOverviewPage />} path={humanizationPaths.overview} />
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
             <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
+            <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
+            <Route element={<JobDetailPage tool="humanization" />} path={humanizationPaths.jobRoute} />
             <Route
               element={<JobDetailPage tool="gromacs" />}
               path={gromacsPaths.jobRoute}

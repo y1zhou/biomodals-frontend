@@ -15,7 +15,7 @@ describe("filterToolCatalog", () => {
     expect(
       filterToolCatalog(toolCatalog, "molecular").map((tool) => tool.slug)
     ).toEqual(["gromacs", "alphafold3"])
-    expect(filterToolCatalog(toolCatalog, "csv")).toEqual([])
+    expect(filterToolCatalog(toolCatalog, "csv").map((tool) => tool.slug)).toEqual(["humanization"])
   })
 
   test("returns all tools for blank input", () => {
@@ -35,6 +35,7 @@ describe("filterToolCatalog", () => {
     expect(availableTools.map((tool) => tool.slug)).toEqual([
       "gromacs",
       "alphafold3",
+      "humanization",
     ])
   })
 

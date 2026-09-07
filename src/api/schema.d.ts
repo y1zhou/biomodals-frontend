@@ -366,6 +366,74 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/humanization/jobs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Submit */
+        readonly post: operations["submit_api_v1_humanization_jobs_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/humanization/jobs/{job_id}/selection": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Selection */
+        readonly get: operations["selection_api_v1_humanization_jobs__job_id__selection_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/humanization/jobs/{job_id}/selection.csv": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Selection Download */
+        readonly get: operations["selection_download_api_v1_humanization_jobs__job_id__selection_csv_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/humanization/options": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Options */
+        readonly get: operations["options_api_v1_humanization_options_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/jobs": {
         readonly parameters: {
             readonly query?: never;
@@ -532,7 +600,7 @@ export interface components {
              * Category
              * @enum {string}
              */
-            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "result_integrity" | "result_preparation_failed";
+            readonly category: "internal_service" | "local_storage" | "modal_configuration" | "modal_unavailable" | "remote_execution_suspended" | "result_integrity" | "result_preparation_failed";
             /** Count */
             readonly count: number;
             /**
@@ -957,6 +1025,172 @@ export interface components {
             readonly detail?: readonly components["schemas"]["ValidationError"][];
         };
         /**
+         * HumanizationOptions
+         * @description Server-owned admission limit and native scientific settings metadata.
+         */
+        readonly HumanizationOptions: {
+            readonly defaults?: components["schemas"]["HumanizationSettings"];
+            /** Max Pairs */
+            readonly max_pairs: number;
+            /** Settings Schema */
+            readonly settings_schema: {
+                readonly [key: string]: unknown;
+            };
+        };
+        /**
+         * HumanizationSettings
+         * @description Namespaced controls map directly to the standalone generators.
+         */
+        readonly HumanizationSettings: {
+            /**
+             * Hudiff Ab Candidate Count
+             * @default 10
+             */
+            readonly hudiff_ab_candidate_count: number;
+            /**
+             * Hudiff Ab Sampling Order
+             * @default shuffle
+             * @enum {string}
+             */
+            readonly hudiff_ab_sampling_order: "shuffle" | "left_to_right";
+            /**
+             * Hudiff Ab Seed
+             * @default 42
+             */
+            readonly hudiff_ab_seed: number;
+            /**
+             * Hudiff Ab Upstream Inference Dropout
+             * @default true
+             */
+            readonly hudiff_ab_upstream_inference_dropout: boolean;
+            /**
+             * Humatch Fixed Vh Positions
+             * @default
+             */
+            readonly humatch_fixed_vh_positions: string;
+            /**
+             * Humatch Fixed Vl Positions
+             * @default
+             */
+            readonly humatch_fixed_vl_positions: string;
+            /**
+             * Humatch Germline Likeness Target
+             * @default 0.4
+             */
+            readonly humatch_germline_likeness_target: number;
+            /**
+             * Humatch Max Edits
+             * @default 60
+             */
+            readonly humatch_max_edits: number;
+            /**
+             * Humatch Mutate Cdrs
+             * @default false
+             */
+            readonly humatch_mutate_cdrs: boolean;
+            /**
+             * Humatch Pair Classifier Target
+             * @default 0.95
+             */
+            readonly humatch_pair_classifier_target: number;
+            /**
+             * Humatch Vh Classifier Target
+             * @default 0.95
+             */
+            readonly humatch_vh_classifier_target: number;
+            /**
+             * Humatch Vh Target Family
+             * @default auto
+             */
+            readonly humatch_vh_target_family: string;
+            /**
+             * Humatch Vl Classifier Target
+             * @default 0.95
+             */
+            readonly humatch_vl_classifier_target: number;
+            /**
+             * Humatch Vl Target Family
+             * @default auto
+             */
+            readonly humatch_vl_target_family: string;
+            /**
+             * Pabnativ2 Fixed Vh Positions
+             * @default
+             */
+            readonly pabnativ2_fixed_vh_positions: string;
+            /**
+             * Pabnativ2 Fixed Vl Positions
+             * @default
+             */
+            readonly pabnativ2_fixed_vl_positions: string;
+            /**
+             * Pabnativ2 Forbidden Residues
+             * @default C,M
+             */
+            readonly pabnativ2_forbidden_residues: string;
+            /**
+             * Pabnativ2 Max Relative Pairing Score Decrease
+             * @default 0.1
+             */
+            readonly pabnativ2_max_relative_pairing_score_decrease: number;
+            /**
+             * Pabnativ2 Mutate Cdrs
+             * @default false
+             */
+            readonly pabnativ2_mutate_cdrs: boolean;
+            /**
+             * Pabnativ2 Rasa Threshold
+             * @default 0.15
+             */
+            readonly pabnativ2_rasa_threshold: number;
+            /**
+             * Pabnativ2 Residue Score Threshold
+             * @default 0.98
+             */
+            readonly pabnativ2_residue_score_threshold: number;
+            /**
+             * Pabnativ2 Seed
+             * @default 0
+             */
+            readonly pabnativ2_seed: number;
+            /**
+             * Sapiens Cdr Definition
+             * @default kabat
+             * @enum {string}
+             */
+            readonly sapiens_cdr_definition: "kabat" | "chothia" | "imgt" | "north";
+            /**
+             * Sapiens Iterations
+             * @default 1
+             */
+            readonly sapiens_iterations: number;
+            /**
+             * Sapiens Mutate Cdrs
+             * @default false
+             */
+            readonly sapiens_mutate_cdrs: boolean;
+            /**
+             * Sapiens Numbering Scheme
+             * @default kabat
+             * @enum {string}
+             */
+            readonly sapiens_numbering_scheme: "kabat" | "chothia" | "imgt";
+        };
+        /**
+         * HumanizationSubmission
+         * @description One scientific configuration shared by every explicitly identified pair.
+         */
+        readonly HumanizationSubmission: {
+            /**
+             * Display Name
+             * @default Antibody humanization
+             */
+            readonly display_name: string;
+            /** Pairs */
+            readonly pairs: readonly components["schemas"]["PairInput"][];
+            readonly settings?: components["schemas"]["HumanizationSettings"];
+        };
+        /**
          * InactiveUserResponse
          * @description A Password Link was requested for a disabled User.
          */
@@ -968,6 +1202,39 @@ export interface components {
             readonly code: "user_inactive";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * InputErrors
+         * @description Semantic validation errors for correction in the editable batch.
+         */
+        readonly InputErrors: {
+            /**
+             * Code
+             * @default humanization_input_invalid
+             * @constant
+             */
+            readonly code: "humanization_input_invalid";
+            /**
+             * Detail
+             * @default Correct or remove invalid rows before submitting
+             */
+            readonly detail: string;
+            /** Errors */
+            readonly errors: readonly components["schemas"]["InputIssue"][];
+        };
+        /**
+         * InputIssue
+         * @description Address one invalid field without echoing antibody sequence contents.
+         */
+        readonly InputIssue: {
+            /** Code */
+            readonly code: string;
+            /** Field */
+            readonly field: string;
+            /** Message */
+            readonly message: string;
+            /** Row Index */
+            readonly row_index: number | null;
         };
         /**
          * IntegerSettingView
@@ -1158,6 +1425,18 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * PairInput
+         * @description One editable row, retained even when its biological values are invalid.
+         */
+        readonly PairInput: {
+            /** Id */
+            readonly id: string;
+            /** Vh */
+            readonly vh: string;
+            /** Vl */
+            readonly vl: string;
+        };
+        /**
          * PasswordErrorResponse
          * @description Password Setup errors with distinct recovery behavior.
          */
@@ -1225,6 +1504,39 @@ export interface components {
              * @enum {string}
              */
             readonly resolution: "resume" | "requeue" | "cancel";
+        };
+        /**
+         * SelectionColumn
+         * @description Scalar column type independent of the values on the requested page.
+         */
+        readonly SelectionColumn: {
+            /** Name */
+            readonly name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            readonly type: "string" | "integer" | "number" | "boolean";
+        };
+        /**
+         * SelectionPage
+         * @description One bounded page with the full table's available parent filters.
+         */
+        readonly SelectionPage: {
+            /** Columns */
+            readonly columns: readonly components["schemas"]["SelectionColumn"][];
+            /** Limit */
+            readonly limit: number;
+            /** Offset */
+            readonly offset: number;
+            /** Parent Ids */
+            readonly parent_ids: readonly string[];
+            /** Rows */
+            readonly rows: readonly {
+                readonly [key: string]: string | number | boolean | null;
+            }[];
+            /** Total Rows */
+            readonly total_rows: number;
         };
         /**
          * SetPasswordRequest
@@ -2609,6 +2921,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description Too Many Requests */
+            readonly 429: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
             /** @description Internal Server Error */
             readonly 500: {
                 headers: {
@@ -2618,6 +2941,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient Storage */
+            readonly 507: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -3226,6 +3560,233 @@ export interface operations {
             };
         };
     };
+    readonly submit_api_v1_humanization_jobs_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["HumanizationSubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["InputErrors"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly selection_api_v1_humanization_jobs__job_id__selection_get: {
+        readonly parameters: {
+            readonly query?: {
+                readonly descending?: boolean;
+                readonly limit?: number;
+                readonly offset?: number;
+                readonly parent_id?: string | null;
+                readonly sort_by?: string | null;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SelectionPage"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly selection_download_api_v1_humanization_jobs__job_id__selection_csv_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "text/csv": string;
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly options_api_v1_humanization_options_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HumanizationOptions"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     readonly list_jobs_api_v1_jobs_get: {
         readonly parameters: {
             readonly query?: {
@@ -3626,6 +4187,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            readonly 429: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Internal Server Error */

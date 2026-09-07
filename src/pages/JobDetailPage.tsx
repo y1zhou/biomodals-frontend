@@ -10,7 +10,7 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
 import {
@@ -57,6 +57,8 @@ import {
   availableTools,
   toolSubmissionPath,
 } from "@/tools"
+
+const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -602,6 +604,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             </Card>
           </div>
         </section>
+        {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults jobId={job.job_id} /></Suspense> : null}
       </main>
 
       <dialog
