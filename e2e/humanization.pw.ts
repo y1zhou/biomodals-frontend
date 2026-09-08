@@ -12,7 +12,7 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "score"].map((name) => ({ name, type: ["quality_tier", "panel_order", "score"].includes(name) ? "number" : "string" }))
 
-async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100 } = {}) {
+async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0 } = {}) {
   const submissions: { body: unknown; key: string | undefined }[] = []
   const selections: URL[] = []
   const requests: string[] = []
@@ -37,6 +37,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
     if (url.pathname.endsWith("/selection.csv")) return route.fulfill({ contentType: "text/csv", headers: { "Content-Disposition": 'attachment; filename="selection.csv"' }, body: "parent_id,candidate_id\nab_001,candidate-0\n" })
     if (url.pathname.endsWith("/selection")) {
       selections.push(url)
+      if (url.searchParams.has("sort_by") && selectionDelay) await new Promise((resolve) => setTimeout(resolve, selectionDelay))
       const offset = Number(url.searchParams.get("offset"))
       const limit = Number(url.searchParams.get("limit"))
       const total = url.searchParams.has("parent_id") ? 1 : 51
@@ -146,7 +147,7 @@ test("reauthentication keeps the batch mounted and never automatically submits",
   expect(api.submissions[1]).toEqual(api.submissions[0])
 })
 
-test("Result table fetches one page, delegates sorting/filtering, and downloads CSV natively", async ({ page }) => {
+test("Result table delegates paging and sorting and lets readers choose columns", async ({ page }) => {
   const api = await mockApi(page)
   await page.setViewportSize({ width: 360, height: 800 })
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
@@ -159,7 +160,7 @@ test("Result table fetches one page, delegates sorting/filtering, and downloads 
   await expect(page.getByText("1–50 of 51 rows")).toBeVisible()
   expect(api.selections).toHaveLength(1)
   expect(api.selections[0].search).toBe("?offset=0&limit=50")
-  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await page.getByRole("button", { name: "Next page", exact: true }).click()
   await expect(page.getByText("51–51 of 51 rows")).toBeVisible()
   await page.getByRole("button", { name: "score", exact: true }).click()
   await expect.poll(() => api.selections.at(-1)?.searchParams.get("sort_by")).toBe("score")
@@ -170,10 +171,31 @@ test("Result table fetches one page, delegates sorting/filtering, and downloads 
   await expect(page.getByText("1–1 of 1 rows")).toBeVisible()
   await page.getByRole("button", { name: "Restore scientific order" }).click()
   await expect.poll(() => api.selections.at(-1)?.searchParams.has("sort_by")).toBe(false)
-  const downloadEvent = page.waitForEvent("download")
-  await page.getByRole("button", { name: "Download selection.csv" }).click()
-  expect((await downloadEvent).suggestedFilename()).toBe("selection.csv")
-  expect(api.prepared()).toBe(1)
+  await expect(page.getByRole("button", { name: "Download selection.csv" })).toHaveCount(0)
+  expect(api.prepared()).toBe(0)
+  const table = page.getByRole("table", { name: "Humanization selection.csv, page 1" })
+  await expect(table.getByRole("columnheader")).toHaveCount(columns.length)
+  const queryCount = api.selections.length
+  await page.getByRole("button", { name: "Columns", exact: true }).click()
+  await page.getByRole("menuitemcheckbox", { name: "vh", exact: true }).click()
+  await page.getByRole("menuitemcheckbox", { name: "vl", exact: true }).click()
+  await expect(page.getByRole("menuitemcheckbox", { name: "vh", exact: true })).not.toBeChecked()
+  await page.keyboard.press("Escape")
+  await expect(table.getByRole("columnheader")).toHaveCount(columns.length - 2)
+  expect(api.selections).toHaveLength(queryCount)
+  await page.getByRole("button", { name: "Columns", exact: true }).click()
+  await page.getByRole("menuitem", { name: "Show all columns" }).click()
+  await page.keyboard.press("Escape")
+  await expect(table.getByRole("columnheader")).toHaveCount(columns.length)
+  await page.getByLabel("Parent", { exact: true }).selectOption("")
+  await expect(page.getByText("1–50 of 51 rows")).toBeVisible()
+  await page.getByLabel("Rows per page", { exact: true }).selectOption("25")
+  await expect(page.getByText("1–25 of 51 rows")).toBeVisible()
+  await page.getByLabel("Page", { exact: true }).selectOption("3")
+  await expect(page.getByText("51–51 of 51 rows")).toBeVisible()
+  expect(api.selections.at(-1)?.searchParams.get("offset")).toBe("50")
+  expect(api.selections.at(-1)?.searchParams.get("limit")).toBe("25")
+  await expect(page.getByRole("button", { name: "Next page" })).toBeDisabled()
   expect(api.requests.some((request) => request.startsWith("POST") && request.includes("/selection"))).toBe(false)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: test.info().outputPath("humanization-results-mobile.png"), fullPage: true })
@@ -186,6 +208,10 @@ test("humanization overview explains inputs and results with route-specific tab 
   await expect(page).toHaveTitle("Tools | BioModals")
   const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole("link", { name: "Antibody humanization", exact: true }) })
   for (const tag of ["Antibody", "Humanization", "Sequence"]) await expect(card.getByText(tag, { exact: true })).toBeVisible()
+  expect(await page.locator("main p").evaluateAll((nodes) => nodes.every((node) => parseFloat(getComputedStyle(node).fontSize) >= 16))).toBe(true)
+  const tagStyle = await card.getByText("Antibody", { exact: true }).evaluate((node) => ({ padding: parseFloat(getComputedStyle(node).paddingTop), background: getComputedStyle(node).backgroundColor }))
+  expect(tagStyle.padding).toBeGreaterThanOrEqual(4)
+  expect(tagStyle.background).not.toBe("rgba(0, 0, 0, 0)")
   await card.getByRole("link", { name: "Antibody humanization", exact: true }).click()
   await expect(page).toHaveTitle("Antibody humanization | BioModals")
   await expect(page.getByRole("link", { name: "Configure humanization", exact: true })).toBeVisible()
@@ -237,4 +263,25 @@ test("manual pair and CSV entry share a responsive layout and accept up to 10 Mi
   await page.setViewportSize({ width: 360, height: 800 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: test.info().outputPath("humanization-entry-mobile.png"), fullPage: true })
+})
+
+
+for (const width of [360, 1280]) test(`sorting preserves the table and scroll position at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 800 })
+  await mockApi(page, { selectionDelay: 800 })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await expect(page.getByText("1–50 of 51 rows")).toBeVisible()
+  const header = page.getByRole("button", { name: "score", exact: true })
+  await header.scrollIntoViewIfNeeded()
+  const scroller = page.getByLabel("Candidate table; scroll horizontally for all columns", { exact: true })
+  const beforeX = await scroller.evaluate((node) => node.scrollLeft)
+  const before = await page.evaluate(() => window.scrollY)
+  expect(before).toBeGreaterThan(100)
+  await header.click()
+  await expect(page.getByText("Loading candidate page…", { exact: true })).toBeVisible()
+  expect(Math.abs(await page.evaluate(() => window.scrollY) - before)).toBeLessThan(2)
+  await expect(header).toBeVisible()
+  expect(Math.abs(await scroller.evaluate((node) => node.scrollLeft) - beforeX)).toBeLessThan(2)
+  await expect(page.getByText("Loading candidate page…", { exact: true })).not.toBeVisible()
+  expect(Math.abs(await page.evaluate(() => window.scrollY) - before)).toBeLessThan(2)
 })

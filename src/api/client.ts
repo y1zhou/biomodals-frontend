@@ -524,10 +524,6 @@ export async function humanizationSelection(jobId: string, query: SelectionQuery
   }
 }
 
-export function humanizationCsvUrl(jobId: string) {
-  return `/api/v1/humanization/jobs/${encodeURIComponent(jobId)}/selection.csv`
-}
-
 export function jobDownloadUrl(jobId: string) {
   return `/api/v1/jobs/${encodeURIComponent(jobId)}/download`
 }

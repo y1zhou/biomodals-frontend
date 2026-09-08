@@ -269,7 +269,7 @@ export default function GromacsSubmissionPage() {
                       {fieldErrors.pdb}
                     </p>
                   ) : (
-                    <p className="text-xs text-muted-foreground" id="pdb-help">
+                    <p className="text-sm text-muted-foreground" id="pdb-help">
                       Your input is uploaded only when you submit.
                     </p>
                   )}
@@ -334,7 +334,7 @@ export default function GromacsSubmissionPage() {
                       {fieldErrors.simulation_time_ns}
                     </p>
                   ) : (
-                    <p className="text-xs text-muted-foreground" id="simulation-time-help">
+                    <p className="text-sm text-muted-foreground" id="simulation-time-help">
                       Enter a whole number from 1 to 200. Default: 5 ns.
                     </p>
                   )}

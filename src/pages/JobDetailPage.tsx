@@ -604,7 +604,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             </Card>
           </div>
         </section>
-        {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults jobId={job.job_id} /></Suspense> : null}
+        {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
       </main>
 
       <dialog

@@ -93,7 +93,7 @@ function JobRow({
           {job.display_name}
           <ArrowRight aria-hidden="true" className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
         </Link>
-        <p className="mt-1 font-mono text-[0.7rem] text-muted-foreground">
+        <p className="mt-1 font-mono text-xs text-muted-foreground">
           {job.job_id}
         </p>
       </td>
@@ -103,7 +103,7 @@ function JobRow({
       <td className="px-4 py-4 align-top">
         <JobStatusBadge state={job.state} />
         {jobQuery.isError ? (
-          <p className="mt-1 text-xs text-amber-700" role="alert">
+          <p className="mt-1 text-sm text-amber-700" role="alert">
             Refresh failed{apiRequestId(jobQuery.error) ? ` · Support ID ${apiRequestId(jobQuery.error)}` : ""}
           </p>
         ) : null}

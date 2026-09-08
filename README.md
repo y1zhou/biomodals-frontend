@@ -99,7 +99,8 @@ or CSV import, with one set of scientific settings for the batch. The backend
 supplies defaults and the pair limit. Drafts remain in memory; explicit Check
 submission replays the unchanged request and idempotency key after a lost
 response. Finished Jobs show bounded server-filtered, server-sorted candidate
-pages and offer direct CSV and archive downloads. The table never fetches the
+pages with column visibility controls and page navigation. The complete CSV
+is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser. See the
 [accepted service specification](../biomodals/docs/specs/humanization-service.md).
 

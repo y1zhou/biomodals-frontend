@@ -179,7 +179,7 @@ export default function HumanizationSubmissionPage() {
           <div>
             <label className="block text-sm font-medium" htmlFor="humanization-name">Job name</label>
             <Input aria-invalid={name.length > 120} className="mt-2 max-w-md" id="humanization-name" onChange={(event) => { editIntent(); setDisplayName(event.target.value) }} placeholder="Antibody humanization" value={displayName} />
-            {name.length > 120 ? <p className="mt-1 text-xs text-destructive">Use at most 120 characters.</p> : null}
+            {name.length > 120 ? <p className="mt-1 text-sm text-destructive">Use at most 120 characters.</p> : null}
           </div>
           <Card>
             <CardHeader><CardTitle>Add an antibody pair</CardTitle></CardHeader>
@@ -196,7 +196,7 @@ export default function HumanizationSubmissionPage() {
                 <Button onClick={addPair} type="button" disabled={!entry.id && !entry.vh && !entry.vl}><Plus aria-hidden="true" /> Add pair</Button>
               </div>
               <div className="space-y-4 border-t border-border/50 pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-8">
-                <p className="leading-7 text-muted-foreground">Import CSV with columns <strong className="font-semibold text-foreground">id,vh,vl</strong>. Rows are appended to the batch below.</p>
+                <p className="leading-7 text-muted-foreground">Import CSV with columns <strong className="font-semibold text-foreground">id,vh,vl</strong> to add multiple pairs to the batch below.</p>
                 <FileDropZone accept=".csv,text/csv" disabled={busy} help="UTF-8 CSV, up to 10 MiB." id="humanization-csv" label="CSV file" onSelect={(file) => void importCsv(file)} />
                 {importing ? <p role="status">Reading CSV…</p> : null}
                 {importError ? <p className="text-sm text-destructive" role="alert">{importError}</p> : null}
@@ -217,7 +217,7 @@ export default function HumanizationSubmissionPage() {
                     return <div key={field}>
                       <label className="text-xs font-medium" htmlFor={id}>{field.toUpperCase()}{field !== "id" ? " · normalized" : ""}</label>
                       {field === "id" ? <Input aria-describedby={errors.length ? `${id}-error` : undefined} aria-invalid={Boolean(errors.length)} id={id} onChange={(event) => update(event.target.value)} value={pair[field]} /> : <textarea aria-describedby={errors.length ? `${id}-error` : undefined} aria-invalid={Boolean(errors.length)} className={textareaClass} id={id} onChange={(event) => update(event.target.value)} spellCheck={false} value={pair[field]} />}
-                      {errors.length ? <p className="mt-1 text-xs text-destructive" id={`${id}-error`}>{errors.join(" ")}</p> : null}
+                      {errors.length ? <p className="mt-1 text-sm text-destructive" id={`${id}-error`}>{errors.join(" ")}</p> : null}
                     </div>
                   })}
                   <Button aria-label={`Remove pair ${index + 1}`} onClick={() => { editIntent(); setPairs((current) => current.filter((row) => row.key !== pair.key)) }} type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button>
@@ -230,7 +230,7 @@ export default function HumanizationSubmissionPage() {
             <summary className="cursor-pointer font-medium">Advanced settings</summary>
             <p className="mt-3 text-sm text-muted-foreground">One scientific configuration applies to every pair in the batch.</p>
             {defaults ? settingGroups.map((group) => <fieldset className="mt-6 border-t pt-4" key={group.prefix}>
-              <legend className="font-medium">{group.name}</legend><p className="mb-3 text-xs text-muted-foreground">{group.help}</p>
+              <legend className="font-medium">{group.name}</legend><p className="mb-3 text-sm text-muted-foreground">{group.help}</p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {settingNames.filter((field) => field.startsWith(group.prefix)).map((field) => {
                   const schema = settingMetadata(options.data, field)
@@ -243,7 +243,7 @@ export default function HumanizationSubmissionPage() {
                       {schema?.enum ? <select className={selectClass} id={field} onChange={(event) => change(event.target.value)} value={String(value)}>{schema.enum.map((option) => <option key={option} value={option}>{option}</option>)}</select> : <Input aria-describedby={error ? `${field}-error` : undefined} aria-invalid={Boolean(error)} id={field} max={schema?.maximum} min={schema?.minimum} onChange={(event) => change(event.target.value)} step={schema?.type === "integer" ? 1 : "any"} type={typeof defaults![field] === "number" ? "number" : "text"} value={String(value)} />}
                       {schema?.minimum !== undefined || schema?.maximum !== undefined ? <p className="mt-1 text-xs text-muted-foreground">{schema.minimum ?? "No minimum"} – {schema.maximum ?? "no maximum"}</p> : null}
                     </>}
-                    {error ? <p className="text-xs text-destructive" id={`${field}-error`}>{error}</p> : null}
+                    {error ? <p className="text-sm text-destructive" id={`${field}-error`}>{error}</p> : null}
                   </div>
                 })}
               </div>
@@ -256,7 +256,7 @@ export default function HumanizationSubmissionPage() {
           {previousUnconfirmed ? <p className="mt-2 text-sm text-amber-800">An earlier submission may already have created a job. Edits create a new submission; check My Jobs to avoid duplicate work.</p> : null}
           {mutation.error ? <div className="mt-3 text-sm text-destructive" role="alert"><p>{errorMessage(mutation.error)}</p>{apiErrors.length ? <ul className="mt-2 list-disc pl-5">{apiErrors.map((error, index) => <li key={index}>{error.row_index === null ? "Batch" : `Pair ${error.row_index + 1}`} · {error.field}: {error.message}</li>)}</ul> : null}</div> : null}
           <Button className="mt-4" disabled={busy || !principal || !defaults || invalid} size="lg" type="submit">{mutation.isPending ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : null}{mutation.isPending ? "Submitting job…" : intent.current && mutation.error ? "Check submission" : "Submit humanization"}</Button>
-          {ambiguous ? <p className="mt-2 text-xs text-muted-foreground">Check submission sends the unchanged original request and key. It does not start replacement work.</p> : null}
+          {ambiguous ? <p className="mt-2 text-sm text-muted-foreground">Check submission sends the unchanged original request and key. It does not start replacement work.</p> : null}
         </div>
       </form>
     </main>

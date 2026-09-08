@@ -152,7 +152,7 @@ export default function AppShell() {
                           Sign out
                         </Menu.Item>
                         {logoutMutation.isError ? (
-                          <p aria-live="polite" className="px-2 py-1 text-xs text-destructive">
+                          <p aria-live="polite" className="px-2 py-1 text-sm text-destructive">
                             {isServiceConfigurationError(logoutMutation.error)
                               ? SERVICE_CONFIGURATION_ERROR_MESSAGE
                               : `Sign out failed. Try again.${

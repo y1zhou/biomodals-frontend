@@ -59,7 +59,7 @@ export default function HumanizationOverviewPage() {
 
     <section aria-labelledby="humanization-results-heading" className="mt-14">
       <h2 className="font-heading text-2xl font-semibold" id="humanization-results-heading">Results: start with selection.csv</h2>
-      <p className="mt-4 text-lg leading-8 text-muted-foreground">Review every column on the job page or download the CSV. Sorting and parent filtering help compare candidates without changing the workflow’s original order.</p>
+      <p className="mt-4 text-lg leading-8 text-muted-foreground">Review the columns you need on the job page, or find the full CSV in the result archive. Sorting and parent filtering help compare candidates without changing the workflow’s original order.</p>
       <dl className="mt-6 divide-y rounded-xl border px-5">
         {resultColumns.map(([columns, description]) => <div className="py-5" key={columns}>
           <dt className="break-words font-mono text-base font-medium">{columns}</dt>

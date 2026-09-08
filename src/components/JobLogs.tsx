@@ -450,7 +450,7 @@ function StageLogViewer({
       >
         {text ? (
           <>
-            <div className="mb-2 flex min-h-5 items-center justify-center font-sans text-[10px] text-slate-400">
+            <div className="mb-2 flex min-h-5 items-center justify-center font-sans text-xs text-slate-400">
               {loadingOlder ? (
                 <>
                   <LoaderCircle aria-hidden="true" className="mr-1 size-3 animate-spin" />
@@ -472,7 +472,7 @@ function StageLogViewer({
               <div className="flex min-w-0 gap-3" key={`${index}-${line.timestamp ?? "plain"}`}>
                 {line.timestamp ? (
                   <time
-                    className="shrink-0 font-sans text-[10px] leading-5 tabular-nums text-slate-400"
+                    className="shrink-0 font-sans text-xs leading-5 tabular-nums text-slate-400"
                     dateTime={line.timestamp.replace(" ", "T")}
                   >
                     {line.timestamp}
@@ -516,7 +516,7 @@ function StageLogViewer({
       </div>
 
       {hasUnloadedEarlier ? (
-        <p className="mt-2 text-xs text-amber-700">
+        <p className="mt-2 text-sm text-amber-700">
           Copy and download include only the log windows loaded in this view.
         </p>
       ) : null}
