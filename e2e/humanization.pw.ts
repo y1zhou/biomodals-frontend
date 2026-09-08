@@ -42,7 +42,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
       const limit = Number(url.searchParams.get("limit"))
       const total = url.searchParams.has("parent_id") ? 1 : 51
       const rows = Array.from({ length: Math.min(limit, Math.max(0, total - offset)) }, (_, i) => ({ parent_id: "ab_001", candidate_id: `candidate-${offset + i}`, quality_tier: null, panel_order: null, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", score: i ? 0.8 : null }))
-      return respond({ columns, rows, total_rows: total, offset, limit, parent_ids: ["ab_001", "ab_002"] })
+      return respond({ columns, rows, default_hidden_columns: [], total_rows: total, offset, limit, parent_ids: ["ab_001", "ab_002"] })
     }
     if (url.pathname === `/api/v1/jobs/${job.job_id}`) return respond(job)
     if (url.pathname === "/api/v1/jobs") return respond({ jobs: [], next_cursor: null })
@@ -284,4 +284,63 @@ for (const width of [360, 1280]) test(`sorting preserves the table and scroll po
   expect(Math.abs(await scroller.evaluate((node) => node.scrollLeft) - beforeX)).toBeLessThan(2)
   await expect(page.getByText("Loading candidate page…", { exact: true })).not.toBeVisible()
   expect(Math.abs(await page.evaluate(() => window.scrollY) - before)).toBeLessThan(2)
+})
+
+test("job ID is revealed on hover and copied with feedback", async ({ page, context }) => {
+  await mockApi(page)
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  await page.route("**/api/v1/jobs?*", (route) => route.fulfill({ json: { jobs: [job], next_cursor: null } }))
+  await page.goto("/jobs")
+  await expect(page.getByText(job.job_id, { exact: true })).toHaveCount(0)
+  const copy = page.getByRole("button", { name: "Copy job ID", exact: true })
+  await copy.hover()
+  await expect(page.getByRole("tooltip")).toHaveText(job.job_id)
+  await copy.click()
+  await expect(page.getByRole("tooltip")).toHaveText("Job ID copied!")
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(job.job_id)
+  await page.getByRole("heading", { name: "My Jobs" }).hover()
+  await expect(page.getByRole("tooltip")).toHaveCount(0)
+  await copy.hover()
+  await expect(page.getByRole("tooltip")).toHaveText(job.job_id)
+})
+
+test("candidate presentation preserves values and respects whole-result visibility defaults", async ({ page, context }) => {
+  await mockApi(page)
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  const candidateId = "a".repeat(64)
+  const row = { parent_id: "ab_001", candidate_id: candidateId, is_parent: true, cdr_preservation: "preserved", cdr_mutations: 2, humatch_vh_target_family: "IGHV1", sapiens_error: null, humatch_error: null, evaluation_complete: true, humatch_pairing_score: 0.87654321, humatch_pairing_score_delta: -0.123456, sapiens_vh_mean_probability_delta: 0.23456, pabnativ2_pair_nativeness: -0.25, pabnativ2_pair_nativeness_delta: 1.23456 }
+  await page.route("**/selection?*", (route) => route.fulfill({ json: {
+    columns: Object.entries(row).map(([name, value]) => ({ name, type: typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string" })),
+    rows: [row], total_rows: 51, offset: 0, limit: 50, parent_ids: ["ab_001"],
+    // An error and incomplete evaluation elsewhere in the result must remain
+    // visible even though this bounded page contains neither.
+    default_hidden_columns: ["sapiens_error"],
+  } }))
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  const table = page.getByRole("table", { name: "Humanization selection.csv, page 1" })
+  for (const name of ["is_parent", "cdr_preservation", "humatch_vh_target_family", "sapiens_error"]) await expect(table.getByRole("button", { name, exact: true })).toHaveCount(0)
+  for (const name of ["humatch_error", "evaluation_complete"]) await expect(table.getByRole("button", { name, exact: true })).toBeVisible()
+  const parent = table.locator("tbody tr").first()
+  expect(await parent.evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)")
+  const summary = parent.locator("summary")
+  expect(await summary.evaluate((node) => node.scrollWidth > node.clientWidth && getComputedStyle(node).textOverflow === "ellipsis")).toBe(true)
+  await summary.click()
+  await parent.getByRole("button", { name: "Copy ID", exact: true }).click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(candidateId)
+  await expect(parent.getByText("-0.250", { exact: true })).toBeVisible()
+  await expect(parent.locator('[title="-0.25"] [aria-hidden]')).toHaveCount(0)
+  await expect(parent.getByText("1.235", { exact: true })).toHaveClass(/text-green-800/)
+  await expect(parent.locator('[title="1.23456"] [aria-hidden]')).toHaveCount(0)
+  await expect(parent.getByText("0.877", { exact: true })).toBeVisible()
+  await expect(parent.getByText("-0.123", { exact: true })).toBeVisible()
+  await expect(parent.getByText("0.235", { exact: true })).toBeVisible()
+  await expect(parent.locator('[title="0.87654321"] .bg-green-100')).toHaveCSS("width", /.+px/)
+  await expect(parent.locator('[title="-0.123456"] .bg-red-100')).toHaveCount(1)
+  await expect(parent.getByText("2", { exact: true })).toHaveClass(/text-red-800/)
+  await page.getByRole("button", { name: "Columns", exact: true }).click()
+  await page.getByRole("menuitemcheckbox", { name: "is_parent", exact: true }).click()
+  await page.keyboard.press("Escape")
+  await expect(table.getByRole("button", { name: "is_parent", exact: true })).toBeVisible()
+  await parent.locator('[title="0.87654321"]').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: test.info().outputPath("humanization-score-bars.png") })
 })

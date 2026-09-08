@@ -1525,6 +1525,11 @@ export interface components {
         readonly SelectionPage: {
             /** Columns */
             readonly columns: readonly components["schemas"]["SelectionColumn"][];
+            /**
+             * Default Hidden Columns
+             * @description Data-dependent defaults computed over the full result before filtering or pagination.
+             */
+            readonly default_hidden_columns: readonly string[];
             /** Limit */
             readonly limit: number;
             /** Offset */

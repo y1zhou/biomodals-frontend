@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Tooltip } from "@base-ui/react/tooltip"
 import { Popover } from "@base-ui/react/popover"
 import {
   AlertTriangle,
@@ -7,12 +8,13 @@ import {
   ArrowUp,
   ArrowUpDown,
   BriefcaseBusiness,
+  Copy,
   FlaskConical,
   ListFilter,
   LoaderCircle,
   Plus,
 } from "lucide-react"
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link, useSearchParams } from "react-router"
 
 import { ApiError, apiRequestId, inspectJob, listJobs, type Job } from "@/api/client"
@@ -40,8 +42,27 @@ import {
   type JobTableColumn,
   type JobTableSort,
 } from "@/jobs"
+import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import { availableTools, toolJobPath, toolName } from "@/tools"
+
+function CopyJobId({ id }: { id: string }) {
+  const [open, setOpen] = useState(false)
+  const [status, setStatus] = useState("")
+  return <Tooltip.Root open={open} onOpenChange={(next) => { setOpen(next); if (!next) setStatus("") }}>
+    <Tooltip.Trigger closeOnClick={false} delay={200} render={<Button className="mt-1" size="sm" variant="ghost" />} onClick={() => void copyText(id).then(() => { setStatus("Job ID copied!"); setOpen(true) }, () => { setStatus("Copy failed. Select the ID to copy it."); setOpen(true) })}>
+      <Copy aria-hidden="true" /> Copy job ID
+    </Tooltip.Trigger>
+    <Tooltip.Portal>
+      <Tooltip.Positioner className="z-50" sideOffset={6}>
+        <Tooltip.Popup role="tooltip" className="max-w-[calc(100vw-2rem)] rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-md">
+          <span aria-live="polite">{status || id}</span>
+          {status.startsWith("Copy failed") ? <p className="select-all font-mono">{id}</p> : null}
+        </Tooltip.Popup>
+      </Tooltip.Positioner>
+    </Tooltip.Portal>
+  </Tooltip.Root>
+}
 
 function JobRow({
   job: initialJob,
@@ -93,9 +114,7 @@ function JobRow({
           {job.display_name}
           <ArrowRight aria-hidden="true" className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
         </Link>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          {job.job_id}
-        </p>
+        <div><CopyJobId id={job.job_id} /></div>
       </td>
       <td className="px-4 py-4 align-top text-sm text-muted-foreground">
         {tool?.name ?? job.tool}

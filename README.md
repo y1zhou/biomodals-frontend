@@ -99,7 +99,11 @@ or CSV import, with one set of scientific settings for the batch. The backend
 supplies defaults and the pair limit. Drafts remain in memory; explicit Check
 submission replays the unchanged request and idempotency key after a lost
 response. Finished Jobs show bounded server-filtered, server-sorted candidate
-pages with column visibility controls and page navigation. The complete CSV
+pages with column visibility controls and page navigation. Whole-result metadata
+keeps error and incomplete-evaluation columns visible when needed, including
+when the affected row is on another page. Parent rows are shaded; bounded
+scores and parental deltas have color bars. Unbounded p-AbNatiV2 nativeness
+values retain their raw scale without fixed-range bars. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser. See the
 [accepted service specification](../biomodals/docs/specs/humanization-service.md).
