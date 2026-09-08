@@ -91,9 +91,37 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
   return <Card className="mt-6 min-w-0">
     <CardHeader>
       <CardTitle>Humanization candidates</CardTitle>
-      <p className="text-sm text-muted-foreground">Click a column header to sort; click again to reverse the order. Missing values sort last; ties use parent and candidate IDs. Gray rows are the unchanged parents. The full selection.csv is included in the result archive.</p>
-      <p className="text-sm text-muted-foreground"><strong className="text-foreground">quality_tier</strong> groups eligible candidates into Pareto tiers, balancing higher model scores with fewer mutations; lower is better, starting at 1. <strong className="text-foreground">panel_order</strong> is the suggested per-parent testing order, balancing quality with sequence diversity; lower comes first, starting at 1. Missing ranks mean the row is a parent or did not meet ranking requirements, including complete evaluation, preserved CDRs, and parental pairing guardrails. Missing ranks are not zero or the worst tier. These ranks are simple heuristics constructed from the model scores. You may use any other combinatory ranking method to pick out top candidates.</p>
-      <p className="text-sm text-muted-foreground">Light gray score bars span 0–1. The thin bar below each score shows its change from the parent: green to the right means higher, red to the left means lower. Nativeness scores use the full column’s minimum and maximum to scale from 0 to 1. Their deltas use that same range, so −1…+1 represents the change between scaled candidate and parent scores. Constant columns use a half-width score bar and zero delta. This relative scale is not comparable across jobs. Other delta bars span −1…+1 in raw score units. Displayed values remain the original scores, rounded to 3 decimals; sorting uses full precision. Red CDR mutation counts flag changes to CDRs.</p>
+      <p className="text-sm leading-7 text-muted-foreground">Compare candidates with their unchanged parents, shown as gray rows.</p>
+      <div className="mt-3 grid gap-8 lg:grid-cols-2">
+        <section aria-labelledby="candidate-ranking-heading" className="space-y-3">
+          <h3 className="text-lg font-semibold" id="candidate-ranking-heading">Understand the ranking</h3>
+          <dl className="space-y-3 text-sm leading-7 text-muted-foreground">
+            <div><dt className="font-medium text-foreground">quality_tier · lower is better</dt><dd>Per-parent Pareto tiers balance higher model scores with fewer mutations. Tier 1 is best.</dd></div>
+            <div><dt className="font-medium text-foreground">panel_order · lower comes first</dt><dd>A suggested testing order for each parent, balancing quality and sequence diversity. Starts at 1.</dd></div>
+            <div><dt className="font-medium text-foreground">Missing ranks</dt><dd>Parents and candidates that fail ranking requirements remain unranked. Missing values do not mean zero or the worst tier.</dd></div>
+          </dl>
+          <p className="text-sm leading-7 text-muted-foreground">These ranks are simple heuristics constructed from the model scores. You may use any other combinatory ranking method to pick out top candidates.</p>
+        </section>
+        <section aria-labelledby="candidate-scores-heading" className="space-y-3">
+          <h3 className="text-lg font-semibold" id="candidate-scores-heading">Read scores and changes</h3>
+          <dl className="space-y-3 text-sm leading-7 text-muted-foreground">
+            <div><dt className="font-medium text-foreground">Gray bar · model score</dt><dd>Bars span 0–1. Numbers show the original score, rounded to 3 decimals.</dd></div>
+            <div><dt className="font-medium text-foreground">Thin bar · change from parent</dt><dd>Green to the right means higher; red to the left means lower. Zero means unchanged.</dd></div>
+            <div><dt className="font-medium text-foreground">Red CDR mutation counts</dt><dd>Flag candidates with changes to CDRs.</dd></div>
+          </dl>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">How nativeness bars are scaled</summary>
+            <div className="mt-3 space-y-3">
+              <p>Nativeness bars map the full column’s minimum and maximum to 0–1. Their deltas use that same range, spanning −1 to +1. This relative scale is not comparable across jobs.</p>
+              <p>Constant columns use a half-width score bar and zero delta. Other delta bars use raw score units from −1 to +1. Displayed numbers and sorting retain the original scale.</p>
+            </div>
+          </details>
+        </section>
+      </div>
+      <section aria-labelledby="candidate-controls-heading" className="mt-3 space-y-2 border-t pt-4">
+        <h3 className="text-lg font-semibold" id="candidate-controls-heading">Explore the table</h3>
+        <p className="text-sm leading-7 text-muted-foreground">Click a column header to sort; click again to reverse. Sorting uses full precision, with missing values last and ties resolved by parent and candidate IDs. Use the parent filter icon and Columns menu to narrow the view. The full selection.csv is in the result archive.</p>
+      </section>
     </CardHeader>
     <CardContent className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
