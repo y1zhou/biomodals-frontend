@@ -36,7 +36,7 @@ export function nextPairId(pairs: readonly HumanizationPair[]) {
   return `ab_${String(index).padStart(3, "0")}`
 }
 
-export function pairErrors(pairs: readonly HumanizationPair[]) {
+export function pairErrors(pairs: readonly HumanizationPair[], limits?: Pick<HumanizationOptions, "max_vh_length" | "max_vl_length">) {
   const counts = new Map<string, number>()
   for (const pair of pairs) counts.set(fastaId(pair.id), (counts.get(fastaId(pair.id)) ?? 0) + 1)
   return pairs.map((pair) => {
@@ -47,8 +47,12 @@ export function pairErrors(pairs: readonly HumanizationPair[]) {
       errors.id = "IDs must be unique, including after whitespace is replaced by underscores."
     }
     for (const field of ["vh", "vl"] as const) {
-      if (!/^[ACDEFGHIKLMNPQRSTVWY]{1,200}$/.test(normalizeSequence(pair[field]))) {
-        errors[field] = "Use 1–200 canonical amino-acid residues. Other characters are not removed."
+      const sequence = normalizeSequence(pair[field])
+      const maximum = limits?.[field === "vh" ? "max_vh_length" : "max_vl_length"]
+      if (!/^[ACDEFGHIKLMNPQRSTVWY]+$/.test(sequence)) {
+        errors[field] = "Use canonical amino-acid residues. Other characters are not removed."
+      } else if (maximum !== undefined && sequence.length > maximum) {
+        errors[field] = `${field.toUpperCase()} has ${sequence.length} residues; the limit is ${maximum}. Provide the correct variable-domain sequence. No residues have been removed.`
       }
     }
     return errors

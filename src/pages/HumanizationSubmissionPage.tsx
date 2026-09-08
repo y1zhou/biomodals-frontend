@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, LoaderCircle, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import { Link, useBeforeUnload, useBlocker, useNavigate } from "react-router"
+import { Link, useBeforeUnload, useBlocker, useNavigate, useSearchParams } from "react-router"
 
-import { ApiError, apiErrorCode, apiRequestId, humanizationOptions, submitHumanizationJob, SERVICE_CONFIGURATION_ERROR_MESSAGE } from "@/api/client"
+import { ApiError, apiErrorCode, apiRequestId, humanizationOptions, humanizationInputs, submitHumanizationJob, SERVICE_CONFIGURATION_ERROR_MESSAGE } from "@/api/client"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import FileDropZone from "@/components/FileDropZone"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -36,6 +36,12 @@ function errorMessage(error: unknown) {
 }
 
 export default function HumanizationSubmissionPage() {
+  const [searchParams] = useSearchParams()
+  const sourceJob = searchParams.get("source_job") || ""
+  return <HumanizationSubmissionForm key={sourceJob} sourceJob={sourceJob} />
+}
+
+function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useCurrentUser()
@@ -52,6 +58,24 @@ export default function HumanizationSubmissionPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [previousUnconfirmed, setPreviousUnconfirmed] = useState(false)
+  const [inputsLoaded, setInputsLoaded] = useState(!sourceJob)
+  const sourceInputs = useQuery({
+    queryKey: ["humanization", "inputs", sourceJob],
+    queryFn: ({ signal }) => humanizationInputs(sourceJob, signal),
+    enabled: Boolean(principal && sourceJob && !inputsLoaded),
+    retry: shouldRetryJobQuery, staleTime: Infinity, gcTime: 0,
+    refetchOnWindowFocus: false, refetchOnReconnect: false,
+  })
+  useExpireSession(sourceInputs.error)
+  useEffect(() => {
+    const input = sourceInputs.data
+    if (!input || inputsLoaded) return
+    setPairs(input.pairs.map((pair) => ({ ...pair, key: crypto.randomUUID() })))
+    setEntry({ id: nextPairId(input.pairs), vh: "", vl: "" })
+    setDisplayName(input.display_name ?? "")
+    setSettingsEdits(Object.fromEntries(Object.entries(input.settings ?? {}).filter(([, value]) => value !== undefined).map(([name, value]) => [name, typeof value === "boolean" ? value : String(value)])))
+    setInputsLoaded(true)
+  }, [sourceInputs.data, inputsLoaded])
   const intent = useRef<Intent | null>(null)
   const inFlight = useRef(false)
   const mounted = useRef(true)
@@ -77,7 +101,7 @@ export default function HumanizationSubmissionPage() {
   })
   useExpireSession(mutation.error)
   const apiErrors = inputErrors(mutation.error)
-  const localErrors = useMemo(() => pairErrors(pairs), [pairs])
+  const localErrors = useMemo(() => pairErrors(pairs, options.data), [pairs, options.data])
   const dirty = Boolean(pairs.length || entry.vh || entry.vl || entry.id !== "ab_001" || displayName || Object.keys(settingsEdits).length || importing)
   const shouldBlock = useCallback(() => !allowNavigation.current && (dirty || inFlight.current), [dirty])
   const blocker = useBlocker(shouldBlock)
@@ -133,7 +157,7 @@ export default function HumanizationSubmissionPage() {
   }
 
   const defaults = options.data?.defaults
-  const settingsReady = typeof defaults?.pabnativ2_num_seeds === "number"
+  const settingsReady = typeof defaults?.pabnativ2_num_seeds === "number" && typeof options.data?.max_vh_length === "number" && typeof options.data?.max_vl_length === "number"
   const settingNames = Object.keys(settingLabels) as (keyof HumanizationSettings)[]
   const settings: Record<string, string | number | boolean> = {}
   const settingsErrors: Record<string, string> = {}
@@ -141,7 +165,7 @@ export default function HumanizationSubmissionPage() {
     if (!defaults || !settingsReady) break
     const fallback = defaults[name]
     const source = generalSettingSources[name] ?? name
-    const value = settingsEdits[source] ?? defaults[source]
+    const value = settingsEdits[name] ?? settingsEdits[source] ?? defaults[source]
     const schema = settingMetadata(options.data, name)
     settings[name] = typeof fallback === "number" ? Number(value) : value
     if (typeof fallback === "number") {
@@ -154,8 +178,8 @@ export default function HumanizationSubmissionPage() {
   const name = displayName.trim().replace(/\s+/g, " ") || "Antibody humanization"
   const tooManyPairs = Boolean(options.data && pairs.length > options.data.max_pairs)
   const hasUnaddedEntry = Boolean(entry.vh || entry.vl)
-  const invalid = !settingsReady || !pairs.length || tooManyPairs || hasUnaddedEntry || name.length > 120 || localErrors.some((errors) => Object.keys(errors).length) || Object.keys(settingsErrors).length > 0 || apiErrors.length > 0
-  const busy = mutation.isPending || importing
+  const invalid = !inputsLoaded || !settingsReady || !pairs.length || tooManyPairs || hasUnaddedEntry || name.length > 120 || localErrors.some((errors) => Object.keys(errors).length) || Object.keys(settingsErrors).length > 0 || apiErrors.length > 0
+  const busy = mutation.isPending || importing || !inputsLoaded
 
   function submit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault()
@@ -174,6 +198,10 @@ export default function HumanizationSubmissionPage() {
       <Link className={buttonVariants({ variant: "ghost" })} to={humanizationPaths.overview}><ArrowLeft aria-hidden="true" /> Humanization overview</Link>
       <h1 className="mt-8 font-heading text-3xl font-semibold">Humanize antibodies</h1>
       <p className="mt-3 max-w-3xl text-muted-foreground">Add complete paired VH and VL variable domains, or append a CSV batch. Sequences are uppercased and whitespace is removed; review the normalized sequences below.</p>
+      {sourceJob ? <div className="mt-4 text-sm">
+        {inputsLoaded ? <p>Inputs copied from the <Link className="underline" to={humanizationPaths.job(sourceJob)}>original job</Link>. Review and edit them before submitting a new job using the current workflow.</p> : sourceInputs.error ? <div role="alert"><p>{apiErrorCode(sourceInputs.error) === "job_input_unavailable" || sourceInputs.error instanceof ApiError && sourceInputs.error.status === 404 ? "The original inputs are unavailable or you do not have access to this job." : "Unable to load the original inputs. Sign in if needed, then retry."}</p><Button className="mt-2" onClick={() => void sourceInputs.refetch()} type="button" variant="outline">Retry loading inputs</Button></div> : <p role="status">Loading original inputs…</p>}
+      </div> : null}
+      {settingsReady && options.data ? <p className="mt-3 text-sm text-muted-foreground">Maximum lengths: VH {options.data.max_vh_length} residues; VL {options.data.max_vl_length} residues. Passing this length check does not guarantee valid antibody numbering.</p> : null}
       {options.isPending ? <p className="mt-6" role="status">Loading scientific defaults and batch limit…</p> : null}
       {options.error ? <div className="mt-6" role="alert"><p>{errorMessage(options.error)}</p><Button className="mt-2" onClick={() => void options.refetch()} variant="outline">Retry options</Button></div> : null}
       {options.data && !settingsReady ? <p className="mt-6 text-sm text-amber-800" role="alert">Humanization submission is awaiting a service update. You can prepare a batch here, but submission is disabled until the update is ready. Existing jobs remain available in My Jobs.</p> : null}
@@ -239,13 +267,16 @@ export default function HumanizationSubmissionPage() {
                   const schema = settingMetadata(options.data, field)
                   const value = settingsEdits[field] ?? defaults![field]
                   const error = settingsErrors[field]
-                  const change = (next: string | boolean) => { editIntent(); setSettingsEdits((current) => ({ ...current, [field]: next })) }
+                  const related = settingNames.filter((name) => name === field || generalSettingSources[name] === field)
+                  const mixed = related.some((name) => settings[name] !== settings[field])
+                  const change = (next: string | boolean) => { editIntent(); setSettingsEdits((current) => ({ ...current, ...Object.fromEntries(related.map((name) => [name, next])) })) }
                   return <div key={field}>
-                    {typeof value === "boolean" ? <label className="flex gap-2 text-sm"><input checked={value} id={field} onChange={(event) => change(event.target.checked)} type="checkbox" />{settingLabels[field]}</label> : <>
+                    {typeof value === "boolean" ? <label className="flex gap-2 text-sm"><input aria-checked={mixed ? "mixed" : value} ref={(node) => { if (node) node.indeterminate = mixed }} checked={!mixed && value} id={field} onChange={(event) => change(event.target.checked)} type="checkbox" />{settingLabels[field]}</label> : <>
                       <label className="mb-1 block text-sm" htmlFor={field}>{settingLabels[field]}</label>
-                      {schema?.enum ? <select className={selectClass} id={field} onChange={(event) => change(event.target.value)} value={String(value)}>{schema.enum.map((option) => <option key={option} value={option}>{option}</option>)}</select> : <Input aria-describedby={error ? `${field}-error` : undefined} aria-invalid={Boolean(error)} id={field} max={schema?.maximum} min={schema?.minimum} onChange={(event) => change(event.target.value)} step={schema?.type === "integer" ? 1 : "any"} type={typeof defaults![field] === "number" ? "number" : "text"} value={String(value)} />}
+                      {schema?.enum ? <select className={selectClass} id={field} onChange={(event) => change(event.target.value)} value={String(value)}>{schema.enum.map((option) => <option key={option} value={option}>{option}</option>)}</select> : <Input aria-describedby={error ? `${field}-error` : undefined} aria-invalid={Boolean(error)} id={field} max={schema?.maximum} min={schema?.minimum} onChange={(event) => change(event.target.value)} step={schema?.type === "integer" ? 1 : "any"} type={typeof defaults![field] === "number" ? "number" : "text"} placeholder={mixed ? "Mixed values" : undefined} value={mixed ? "" : String(value)} />}
                       {schema?.minimum !== undefined || schema?.maximum !== undefined ? <p className="mt-1 text-xs text-muted-foreground">{schema.minimum ?? "No minimum"} – {schema.maximum ?? "no maximum"}</p> : null}
                     </>}
+                    {mixed ? <p className="mt-1 text-sm text-muted-foreground">Original model values differ and are preserved until you change this control.</p> : null}
                     {settingHelp[field] ? <p className="mt-1 text-sm text-muted-foreground">{settingHelp[field]}</p> : null}
                     {error ? <p className="text-sm text-destructive" id={`${field}-error`}>{error}</p> : null}
                   </div>

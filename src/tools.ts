@@ -51,6 +51,7 @@ export const humanizationTool = {
 
 const humanizationOverviewPath = toolOverviewPath(humanizationTool)
 export const humanizationPaths = {
+  rerun: (jobId: string) => `/tools/humanization/new?source_job=${encodeURIComponent(jobId)}`,
   overview: humanizationOverviewPath,
   submission: `${humanizationOverviewPath}/new`,
   jobRoute: `${humanizationOverviewPath}/jobs/:jobId`,

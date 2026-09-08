@@ -493,6 +493,10 @@ export function humanizationOptions(signal?: AbortSignal) {
   return requestJson<HumanizationOptions>("/api/v1/humanization/options", { signal })
 }
 
+export function humanizationInputs(jobId: string, signal?: AbortSignal) {
+  return requestJson<HumanizationSubmission>(`/api/v1/humanization/jobs/${encodeURIComponent(jobId)}/inputs`, { signal, cache: "no-store" })
+}
+
 export function submitHumanizationJob(input: HumanizationSubmission, idempotencyKey: string) {
   return requestJson<Job>("/api/v1/humanization/jobs", {
     method: "POST",

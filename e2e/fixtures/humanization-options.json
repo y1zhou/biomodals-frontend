@@ -1,5 +1,7 @@
 {
   "max_pairs": 100,
+  "max_vh_length": 142,
+  "max_vl_length": 126,
   "defaults": {
     "sapiens_iterations": 1,
     "sapiens_numbering_scheme": "kabat",

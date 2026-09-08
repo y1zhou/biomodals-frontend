@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
-import { ApiError, humanizationSelection, submitHumanizationJob } from "../src/api/client"
+import { ApiError, humanizationInputs, humanizationSelection, submitHumanizationJob } from "../src/api/client"
 import { nextPairId, normalizeSequence, pairErrors, parsePairCsv } from "../src/humanization"
 
 describe("humanization batch input", () => {
@@ -14,6 +14,17 @@ describe("humanization batch input", () => {
     expect(Object.keys(pairErrors(rows)[1])).toEqual(["vh", "vl"])
   })
 
+  test("checks normalized chain lengths against service limits without trimming", () => {
+    const limits = { max_vh_length: 142, max_vl_length: 126 }
+    expect(pairErrors([{ id: "one", vh: " a ".repeat(142), vl: "g".repeat(126) }], limits)).toEqual([{}])
+    const pair = { id: "one", vh: "A".repeat(143), vl: "G".repeat(127) }
+    const errors = pairErrors([pair], limits)[0]
+    expect(errors.vh).toContain("143 residues; the limit is 142")
+    expect(errors.vl).toContain("127 residues; the limit is 126")
+    expect(pair.vh).toHaveLength(143)
+    expect(pair.vl).toHaveLength(127)
+  })
+
   test("rejects the whole import for malformed framing and preserves escaped quotes", () => {
     for (const csv of ['id,vh,vl\na,ACD', 'id,vh,vl\na,"ACD,EFG', 'id,vh,vl\na,"ACD"oops,EFG', 'id,vh,vl\na,A"CD,EFG', 'vh,vl,id\na,ACD,EFG']) {
       expect(() => parsePairCsv(csv)).toThrow()
@@ -25,7 +36,7 @@ describe("humanization batch input", () => {
     const rows = [{ id: "ab 001", vh: "ACD", vl: "EFG" }, { id: "ab_001", vh: "ACD", vl: "EFG" }]
     expect(pairErrors(rows).every((row) => Boolean(row.id))).toBe(true)
     expect(nextPairId(rows)).toBe("ab_002")
-    expect(pairErrors([{ id: " invalid ", vh: "A".repeat(201), vl: "EFG" }])[0]).toHaveProperty("vh")
+    expect(pairErrors([{ id: " invalid ", vh: "A".repeat(201), vl: "EFG" }], { max_vh_length: 142, max_vl_length: 126 })[0]).toHaveProperty("vh")
   })
 })
 
@@ -40,6 +51,18 @@ function csrf() { Object.defineProperty(globalThis, "document", { configurable: 
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }) }
 
 describe("humanization request boundaries", () => {
+  test("retrieves original inputs with a private read and no submission", async () => {
+    const calls: { path: string; init: RequestInit | undefined }[] = []
+    const input = { pairs: [{ id: "old", vh: "A".repeat(192), vl: "EFG" }], settings: { pabnativ2_seed: 7 } }
+    globalThis.fetch = (async (path, init) => { calls.push({ path: String(path), init }); return json(input) }) as typeof fetch
+    expect(await humanizationInputs("job/one")).toEqual(input)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].path).toBe("/api/v1/humanization/jobs/job%2Fone/inputs")
+    expect(calls[0].init).toMatchObject({ cache: "no-store", credentials: "same-origin" })
+    expect(calls[0].init?.body).toBeUndefined()
+    expect(calls[0].init?.method ?? "GET").toBe("GET")
+  })
+
   test("recovers an evicted cache once without sending table contents or changing query", async () => {
     csrf()
     const requests: { path: string; method: string; body: unknown }[] = []

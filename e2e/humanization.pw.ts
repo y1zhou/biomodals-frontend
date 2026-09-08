@@ -381,3 +381,57 @@ test("old service metadata blocks unsupported humanization submissions", async (
   await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
   expect(api.submissions).toHaveLength(0)
 })
+
+test("rerun loads an editable historical batch without submitting or overwriting model settings", async ({ page }) => {
+  const api = await mockApi(page)
+  const settings = { ...options.defaults, sapiens_iterations: 5, pabnativ2_num_seeds: 10, pabnativ2_seed: 7, hudiff_ab_seed: 9, humatch_mutate_cdrs: true }
+  let reads = 0
+  await page.route("**/humanization/jobs/*/inputs", (route) => {
+    reads++
+    return route.fulfill({ json: { display_name: "Original experiment", pairs: [{ id: "OKT3", vh: "A".repeat(192), vl: "G".repeat(106) }], settings } })
+  })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("link", { name: "Rerun with same inputs" }).click()
+  const row = page.getByRole("group", { name: "Pair 1", exact: true })
+  await expect(row.getByLabel("VH · normalized", { exact: true })).toHaveValue("A".repeat(192))
+  await expect(page.getByText("VH has 192 residues; the limit is 142.", { exact: false })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
+  expect(api.submissions).toHaveLength(0)
+  await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("Original experiment")
+  await page.getByText("Advanced settings", { exact: true }).click()
+  await expect(page.getByLabel("Root seed", { exact: true })).toHaveAttribute("placeholder", "Mixed values")
+  await expect(page.getByLabel("Allow CDR mutations", { exact: true })).toHaveJSProperty("indeterminate", true)
+  await row.getByLabel("VH · normalized", { exact: true }).fill("A".repeat(142))
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")))
+  await expect(row.getByLabel("VH · normalized", { exact: true })).toHaveValue("A".repeat(142))
+  expect(reads).toBe(1)
+  expect(api.submissions).toHaveLength(0)
+  await page.getByRole("button", { name: "Submit humanization" }).click()
+  await expect.poll(() => api.submissions.length).toBe(1)
+  expect(api.submissions[0].body).toEqual({ display_name: "Original experiment", pairs: [{ id: "OKT3", vh: "A".repeat(142), vl: "G".repeat(106) }], settings })
+  expect(api.submissions[0].key).toMatch(/^[0-9a-f-]{36}$/)
+  expect(api.submissions[0].key).not.toBe(job.job_id)
+})
+
+test("missing retained inputs cannot submit a blank rerun", async ({ page }) => {
+  const api = await mockApi(page)
+  await page.route("**/humanization/jobs/*/inputs", (route) => route.fulfill({ status: 404, json: { code: "job_input_unavailable" } }))
+  await page.goto(`/tools/humanization/new?source_job=${job.job_id}`)
+  await expect(page.getByText("The original inputs are unavailable or you do not have access to this job.")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
+  expect(api.submissions).toHaveLength(0)
+})
+
+test("oversized CSV sequences remain editable and block submission", async ({ page }) => {
+  const api = await mockApi(page)
+  await page.goto("/tools/humanization/new")
+  await page.locator("#humanization-csv").setInputFiles({ name: "long.csv", mimeType: "text/csv", buffer: Buffer.from(`id,vh,vl\nlong,${"A".repeat(143)},${"G".repeat(127)}`) })
+  const row = page.getByRole("group", { name: "Pair 1", exact: true })
+  await expect(row.getByLabel("VL · normalized", { exact: true })).toHaveValue("G".repeat(127))
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
+  await row.getByLabel("VH · normalized", { exact: true }).fill("A".repeat(142))
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
+  await row.getByLabel("VL · normalized", { exact: true }).fill("G".repeat(126))
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeEnabled()
+  expect(api.submissions).toHaveLength(0)
+})

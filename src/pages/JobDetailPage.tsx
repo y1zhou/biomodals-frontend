@@ -56,6 +56,7 @@ import { formatBytes } from "@/storage"
 import {
   availableTools,
   toolSubmissionPath,
+  humanizationPaths,
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
@@ -362,7 +363,10 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       : "Download result"}
                   </Button>
                 ) : null}
-                {canStartAgain ? (
+                {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
+                  <RotateCcw aria-hidden="true" /> Rerun with same inputs
+                </Link> : null}
+                {canStartAgain && job.tool !== "humanization" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job

@@ -96,7 +96,14 @@ a Job.
 
 Antibody humanization accepts an editable ID/VH/VL batch through manual entry
 or CSV import, with one set of scientific settings for the batch. The backend
-supplies defaults and the pair limit. General CDR mutation and root-seed
+supplies defaults, the pair limit, and chain length limits (currently VH 142
+and VL 126 residues). Oversized sequences remain editable and block submission;
+the form never trims domains or treats length as proof of valid numbering.
+“Rerun with same inputs” retrieves an authorized original request into an
+editable memory-only draft. It preserves historical settings, including differing
+model seeds or CDR controls until the shared control is edited. Only explicit
+submission creates a new job and idempotency intent under the current workflow.
+General CDR mutation and root-seed
 controls apply to supported models; p-AbNatiV2 offers independent optimization
 attempts, and Sapiens contributes each iteration before deduplication. New
 submissions stay disabled until the service advertises these settings.
