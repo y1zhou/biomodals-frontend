@@ -35,7 +35,7 @@ export default function HumanizationOverviewPage() {
       <div className="space-y-4">
         <Card className="shadow-sm">
           <CardHeader><CardTitle>Start a new humanization</CardTitle><p className="mt-1 leading-7 text-muted-foreground">Add antibody pairs and choose the settings for your batch.</p></CardHeader>
-          <CardContent><Link className={cn(buttonVariants({ size: "lg" }), "w-full")} to={target}>{signedIn ? "Configure humanization" : "Sign in to start"}<ArrowRight aria-hidden="true" /></Link></CardContent>
+          <CardContent><Link className={cn(buttonVariants({ size: "lg" }), "w-full")} to={target}>{signedIn ? "Submit a job" : "Sign in to start"}<ArrowRight aria-hidden="true" /></Link></CardContent>
         </Card>
         <Card className="shadow-sm">
           <CardHeader><CardTitle>Humanization jobs</CardTitle><p className="mt-1 leading-7 text-muted-foreground">Follow active runs and return to previous results.</p></CardHeader>
