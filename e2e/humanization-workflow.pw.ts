@@ -22,9 +22,19 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   const submitted = page.waitForResponse((response) => response.url().endsWith("/api/v1/humanization/jobs") && response.request().method() === "POST")
   await page.getByRole("button", { name: "Submit humanization" }).click()
   const submission = await submitted
+  const submittedAt = performance.now()
   expect(submission.status()).toBe(202)
   const job = await submission.json()
   await expect(page).toHaveURL(new RegExp(`/tools/humanization/jobs/${job.job_id}$`))
+  // The offline provider completes Sapiens at 1s and Humatch at 2s,
+  // while HuDiff and p-AbNatiV2 remain active until 3s and 4s.
+  await page.waitForTimeout(Math.max(0, 2200 - (performance.now() - submittedAt)))
+  await page.getByRole("button", { name: "Refresh", exact: true }).click()
+  const stages = page.getByRole("table", { name: "Execution stages", exact: true })
+  await expect(stages.locator("tbody tr")).toHaveCount(6)
+  for (const model of ["Sapiens", "Humatch"]) await expect(stages.getByRole("row").filter({ hasText: model })).toContainText("Completed")
+  for (const model of ["HuDiff", "p-AbNatiV2"]) await expect(stages.getByRole("row").filter({ hasText: model })).toContainText("Running")
+  await page.screenshot({ path: test.info().outputPath("humanization-concurrent-stages.png"), fullPage: true })
   await expect.poll(async () => (await (await context.request.get(`/api/v1/jobs/${job.job_id}`)).json()).state, { timeout: 30_000 }).toBe("succeeded")
   const firstPage = page.waitForResponse((response) => response.url().includes(`/humanization/jobs/${job.job_id}/selection?`))
   await page.getByRole("button", { name: "Refresh", exact: true }).click()

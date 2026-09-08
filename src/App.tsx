@@ -1,6 +1,6 @@
 import { ArrowUpRight, LoaderCircle, Search } from "lucide-react"
-import { lazy, Suspense, useState } from "react"
-import { Link, Navigate, Route, Routes } from "react-router"
+import { lazy, Suspense, useEffect, useState } from "react"
+import { Link, Navigate, Route, Routes, useLocation } from "react-router"
 
 import AppShell from "@/AppShell"
 import { AdminRoute, LoginPage, ProtectedRoute, SetPasswordPage } from "@/auth"
@@ -164,6 +164,31 @@ function NotFoundPage() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const path = pathname.replace(/\/$/, "") || "/"
+    const titles: Record<string, string> = {
+      "/": "Tools",
+      "/login": "Sign in",
+      "/set-password": "Set password",
+      "/jobs": "My Jobs",
+      "/admin": "Administration",
+      "/admin/users": "Manage users",
+      "/admin/modal": "Runtime settings",
+      "/admin/storage": "Result storage",
+    }
+    for (const tool of toolCatalog) {
+      if (tool.status !== "available") continue
+      const overview = toolOverviewPath(tool)
+      titles[overview] = tool.name
+      titles[`${overview}/new`] = `New job · ${tool.name}`
+      if (path.startsWith(`${overview}/jobs/`) && !path.slice(`${overview}/jobs/`.length).includes("/")) {
+        titles[path] = `Job details · ${tool.name}`
+      }
+    }
+    document.title = `${titles[path] ?? "Page not found"} | BioModals`
+  }, [pathname])
+
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>

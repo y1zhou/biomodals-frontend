@@ -2,7 +2,14 @@ import { expect, test, type Page } from "@playwright/test"
 import options from "./fixtures/humanization-options.json" with { type: "json" }
 
 const principal = { user_id: "user-one", display_name: "Researcher", email: "researcher@example.test", is_admin: false }
-const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Antibody humanization", tool: "humanization", state: "partial", created_at: "2026-09-07T00:00:00Z", updated_at: "2026-09-07T00:01:00Z", stages: [], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
+const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Antibody humanization", tool: "humanization", state: "partial", created_at: "2026-09-07T00:00:00Z", updated_at: "2026-09-07T00:01:00Z", stages: [
+  { code: "generate_sapiens", label: "Sapiens", outcome: "completed", started_at: "2026-09-07T00:00:00Z", ended_at: "2026-09-07T00:00:10Z" },
+  { code: "generate_humatch", label: "Humatch", outcome: "completed", started_at: "2026-09-07T00:00:00Z", ended_at: "2026-09-07T00:00:20Z" },
+  { code: "generate_pabnativ2", label: "p-AbNatiV2", outcome: "completed", started_at: "2026-09-07T00:00:00Z", ended_at: "2026-09-07T00:00:40Z" },
+  { code: "generate_hudiff_ab", label: "HuDiff", outcome: "completed", started_at: "2026-09-07T00:00:00Z", ended_at: "2026-09-07T00:00:30Z" },
+  { code: "union", label: "Collect unique candidates", outcome: "completed", started_at: "2026-09-07T00:00:40Z", ended_at: "2026-09-07T00:00:45Z" },
+  { code: "evaluate", label: "Evaluate and rank candidates", outcome: "partial", started_at: "2026-09-07T00:00:45Z", ended_at: "2026-09-07T00:01:00Z" },
+], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "score"].map((name) => ({ name, type: ["quality_tier", "panel_order", "score"].includes(name) ? "number" : "string" }))
 
 async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100 } = {}) {
@@ -54,7 +61,7 @@ test("editable CSV batch, normalization, malformed imports, and backend limit", 
   await page.goto("/tools/humanization/new")
   await addPair(page)
   await page.locator("#humanization-csv").setInputFiles({ name: "pairs.csv", mimeType: "text/csv", buffer: Buffer.from("id,vh,vl\nab_001,x,efg\n") })
-  await expect(page.getByText("Batch · 2 pairs")).toBeVisible()
+  await expect(page.getByText("Current batch · 2 pairs")).toBeVisible()
   await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
   const second = page.getByRole("group", { name: "Pair 2", exact: true })
   await second.getByLabel("ID", { exact: true }).fill("ab_002")
@@ -64,7 +71,7 @@ test("editable CSV batch, normalization, malformed imports, and backend limit", 
   await page.screenshot({ path: test.info().outputPath("humanization-editor.png"), fullPage: true })
   await page.locator("#humanization-csv").setInputFiles({ name: "broken.csv", mimeType: "text/csv", buffer: Buffer.from('id,vh,vl\na,"unterminated,EFG') })
   await expect(page.getByText("Unclosed CSV quotation.", { exact: false })).toBeVisible()
-  await expect(page.getByText("Batch · 2 pairs")).toBeVisible()
+  await expect(page.getByText("Current batch · 2 pairs")).toBeVisible()
   await page.locator("#humanization-csv").setInputFiles({ name: "extra.csv", mimeType: "text/csv", buffer: Buffer.from("id,vh,vl\nab_003,ACD,EFG") })
   await expect(page.getByText("Remove pairs to meet the current limit of 2.")).toBeVisible()
   await page.getByRole("button", { name: "Remove pair 3", exact: true }).click()
@@ -111,7 +118,7 @@ test("default-size batch remains editable and Advanced controls submit server de
   const csv = "id,vh,vl\n" + Array.from({ length: 100 }, (_, index) => `ab_${index},${"A".repeat(120)},${"G".repeat(110)}`).join("\n")
   const start = performance.now()
   await page.locator("#humanization-csv").setInputFiles({ name: "batch.csv", mimeType: "text/csv", buffer: Buffer.from(csv) })
-  await expect(page.getByText("Batch · 100 pairs")).toBeVisible()
+  await expect(page.getByText("Current batch · 100 pairs")).toBeVisible()
   console.log(`100-pair import and render: ${Math.round(performance.now() - start)} ms`)
   await page.getByText("Advanced settings", { exact: true }).click()
   await page.getByLabel("Sampling attempts per parent", { exact: true }).fill("3")
@@ -132,7 +139,7 @@ test("reauthentication keeps the batch mounted and never automatically submits",
   await dialog.getByLabel("Password", { exact: true }).fill("correct horse battery staple")
   await dialog.getByRole("button", { name: "Sign in and return" }).click()
   await expect(dialog).not.toBeVisible()
-  await expect(page.getByText("Batch · 1 pair")).toBeVisible()
+  await expect(page.getByText("Current batch · 1 pair")).toBeVisible()
   expect(api.submissions).toHaveLength(1)
   await page.getByRole("button", { name: "Check submission" }).click()
   await expect.poll(() => api.submissions.length).toBe(2)
@@ -143,6 +150,12 @@ test("Result table fetches one page, delegates sorting/filtering, and downloads 
   const api = await mockApi(page)
   await page.setViewportSize({ width: 360, height: 800 })
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await expect(page).toHaveTitle("Job details · Antibody humanization | BioModals")
+  const stages = page.getByRole("table", { name: "Execution stages", exact: true })
+  await expect(stages.locator("tbody tr")).toHaveCount(6)
+  for (const model of ["Sapiens", "Humatch", "p-AbNatiV2", "HuDiff"]) {
+    await expect(stages.getByRole("row").filter({ hasText: model })).toContainText("Completed")
+  }
   await expect(page.getByText("1–50 of 51 rows")).toBeVisible()
   expect(api.selections).toHaveLength(1)
   expect(api.selections[0].search).toBe("?offset=0&limit=50")
@@ -164,4 +177,64 @@ test("Result table fetches one page, delegates sorting/filtering, and downloads 
   expect(api.requests.some((request) => request.startsWith("POST") && request.includes("/selection"))).toBe(false)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await page.screenshot({ path: test.info().outputPath("humanization-results-mobile.png"), fullPage: true })
+})
+
+
+test("humanization overview explains inputs and results with route-specific tab titles", async ({ page }) => {
+  await mockApi(page)
+  await page.goto("/")
+  await expect(page).toHaveTitle("Tools | BioModals")
+  const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole("link", { name: "Antibody humanization", exact: true }) })
+  for (const tag of ["Antibody", "Humanization", "Sequence"]) await expect(card.getByText(tag, { exact: true })).toBeVisible()
+  await card.getByRole("link", { name: "Antibody humanization", exact: true }).click()
+  await expect(page).toHaveTitle("Antibody humanization | BioModals")
+  await expect(page.getByRole("link", { name: "Configure humanization", exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: "View My Jobs", exact: true })).toHaveAttribute("href", "/jobs?tool=humanization")
+  await expect(page.getByRole("heading", { name: "Input: paired VH and VL sequences" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Results: start with selection.csv" })).toBeVisible()
+  await page.screenshot({ path: test.info().outputPath("humanization-overview.png"), fullPage: true })
+  await page.setViewportSize({ width: 360, height: 800 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: test.info().outputPath("humanization-overview-mobile.png"), fullPage: true })
+  await page.getByRole("link", { name: "Configure humanization", exact: true }).click()
+  await expect(page).toHaveTitle("New job · Antibody humanization | BioModals")
+  await page.getByRole("link", { name: "Humanization overview", exact: true }).click()
+  await expect(page).toHaveTitle("Antibody humanization | BioModals")
+  await page.goBack()
+  await expect(page).toHaveTitle("New job · Antibody humanization | BioModals")
+  for (const [url, title] of [["/tools/alphafold3", "AlphaFold3 structure prediction"], ["/tools/gromacs", "GROMACS MD simulation"], ["/jobs", "My Jobs"], ["/missing-page", "Page not found"]]) {
+    await page.goto(url)
+    await expect(page).toHaveTitle(`${title} | BioModals`)
+    await expect(page.locator("head title")).toHaveCount(1)
+  }
+})
+
+test("manual pair and CSV entry share a responsive layout and accept up to 10 MiB", async ({ page }) => {
+  await mockApi(page)
+  await page.setViewportSize({ width: 1280, height: 1000 })
+  await page.goto("/tools/humanization/new")
+  await expect(page.getByLabel("Job name", { exact: true })).toBeVisible()
+  const name = await page.getByLabel("Job name", { exact: true }).boundingBox()
+  const id = await page.getByLabel("ID", { exact: true }).boundingBox()
+  const vh = await page.getByLabel("VH sequence", { exact: true }).boundingBox()
+  const vl = await page.getByLabel("VL sequence", { exact: true }).boundingBox()
+  const csv = await page.getByText("Import CSV with columns", { exact: false }).boundingBox()
+  expect(name!.y).toBeLessThan(id!.y)
+  expect(id!.x).toBe(vh!.x)
+  expect(vh!.x).toBe(vl!.x)
+  expect(vl!.y).toBeGreaterThan(vh!.y + vh!.height)
+  expect(csv!.x).toBeGreaterThan(vh!.x + vh!.width)
+  await page.screenshot({ path: test.info().outputPath("humanization-entry-desktop.png"), fullPage: true })
+  const prefix = "id,vh,vl\nab_large,"
+  const suffix = "ACD,EFG\n"
+  const content = prefix + " ".repeat(10 * 1024 * 1024 - prefix.length - suffix.length) + suffix
+  await page.locator("#humanization-csv").setInputFiles({ name: "large.csv", mimeType: "text/csv", buffer: Buffer.from(content) })
+  await expect(page.getByText("Current batch · 1 pair", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeEnabled()
+  await page.locator("#humanization-csv").setInputFiles({ name: "too-large.csv", mimeType: "text/csv", buffer: Buffer.from(content + " ") })
+  await expect(page.getByRole("alert")).toContainText("CSV must be at most 10 MiB. The batch was not changed.")
+  await expect(page.getByText("Current batch · 1 pair", { exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 360, height: 800 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: test.info().outputPath("humanization-entry-mobile.png"), fullPage: true })
 })

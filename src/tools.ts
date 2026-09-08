@@ -1,4 +1,4 @@
-import { Atom, Dna, type LucideIcon } from "lucide-react"
+import { Atom, Dna, UserRoundArrowLeft, type LucideIcon } from "lucide-react"
 
 interface ToolCatalogEntryBase {
   slug: string
@@ -44,8 +44,8 @@ export const humanizationTool = {
   slug: "humanization",
   name: "Antibody humanization",
   description: "Generate and compare humanization candidates from paired antibody VH and VL sequences.",
-  tags: ["Antibodies", "Humanization", "CSV"],
-  icon: Dna,
+  tags: ["Antibody", "Humanization", "Sequence"],
+  icon: UserRoundArrowLeft,
   status: "available",
 } satisfies AvailableTool
 

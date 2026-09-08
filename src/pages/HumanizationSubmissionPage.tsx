@@ -111,8 +111,8 @@ export default function HumanizationSubmissionPage() {
     const version = ++importVersion.current
     setImportError(null)
     if (!file) { setImporting(false); return }
-    if (file.size > 3 * 1024 * 1024) {
-      setImportError("CSV must be at most 3 MiB. The batch was not changed.")
+    if (file.size > 10 * 1024 * 1024) {
+      setImportError("CSV must be at most 10 MiB. The batch was not changed.")
       setImporting(false)
       return
     }
@@ -176,25 +176,35 @@ export default function HumanizationSubmissionPage() {
       {options.error ? <div className="mt-6" role="alert"><p>{errorMessage(options.error)}</p><Button className="mt-2" onClick={() => void options.refetch()} variant="outline">Retry options</Button></div> : null}
       <form className="mt-8 space-y-6" noValidate onSubmit={submit}>
         <fieldset className="space-y-6" disabled={busy || !principal}>
+          <div>
+            <label className="block text-sm font-medium" htmlFor="humanization-name">Job name</label>
+            <Input aria-invalid={name.length > 120} className="mt-2 max-w-md" id="humanization-name" onChange={(event) => { editIntent(); setDisplayName(event.target.value) }} placeholder="Antibody humanization" value={displayName} />
+            {name.length > 120 ? <p className="mt-1 text-xs text-destructive">Use at most 120 characters.</p> : null}
+          </div>
           <Card>
             <CardHeader><CardTitle>Add an antibody pair</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="max-w-sm"><label className="text-sm font-medium" htmlFor="pair-id">ID</label><Input id="pair-id" onChange={(event) => setEntry({ ...entry, id: event.target.value })} value={entry.id} /></div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {(["vh", "vl"] as const).map((field) => <div key={field}>
-                  <label className="text-sm font-medium" htmlFor={`pair-${field}`}>{field.toUpperCase()} sequence</label>
-                  <textarea className={textareaClass} id={`pair-${field}`} onChange={(event) => setEntry({ ...entry, [field]: event.target.value })} spellCheck={false} value={entry[field]} />
-                  <p className="mt-1 text-xs text-muted-foreground">Normalized preview</p><p className="break-all font-mono text-xs">{normalizeSequence(entry[field]) || "—"}</p>
-                </div>)}
+            <CardContent className="grid gap-6 md:grid-cols-2 md:gap-0">
+              <div className="space-y-4 md:pr-8">
+                <div className="max-w-sm"><label className="text-sm font-medium" htmlFor="pair-id">ID</label><Input id="pair-id" onChange={(event) => setEntry({ ...entry, id: event.target.value })} value={entry.id} /></div>
+                <div className="space-y-4">
+                  {(["vh", "vl"] as const).map((field) => <div key={field}>
+                    <label className="text-sm font-medium" htmlFor={`pair-${field}`}>{field.toUpperCase()} sequence</label>
+                    <textarea className={textareaClass} id={`pair-${field}`} onChange={(event) => setEntry({ ...entry, [field]: event.target.value })} spellCheck={false} value={entry[field]} />
+                    <p className="mt-1 text-xs text-muted-foreground">Normalized preview</p><p className="break-all font-mono text-xs">{normalizeSequence(entry[field]) || "—"}</p>
+                  </div>)}
+                </div>
+                <Button onClick={addPair} type="button" disabled={!entry.id && !entry.vh && !entry.vl}><Plus aria-hidden="true" /> Add pair</Button>
               </div>
-              <Button onClick={addPair} type="button" disabled={!entry.id && !entry.vh && !entry.vl}><Plus aria-hidden="true" /> Add pair</Button>
-              <FileDropZone accept=".csv,text/csv" disabled={busy} help="UTF-8 CSV, up to 3 MiB, with columns id,vh,vl. Imported rows append to this batch." id="humanization-csv" label="CSV file" onSelect={(file) => void importCsv(file)} />
-              {importing ? <p role="status">Reading CSV…</p> : null}
-              {importError ? <p className="text-sm text-destructive" role="alert">{importError}</p> : null}
+              <div className="space-y-4 border-t border-border/50 pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-8">
+                <p className="leading-7 text-muted-foreground">Import CSV with columns <strong className="font-semibold text-foreground">id,vh,vl</strong>. Rows are appended to the batch below.</p>
+                <FileDropZone accept=".csv,text/csv" disabled={busy} help="UTF-8 CSV, up to 10 MiB." id="humanization-csv" label="CSV file" onSelect={(file) => void importCsv(file)} />
+                {importing ? <p role="status">Reading CSV…</p> : null}
+                {importError ? <p className="text-sm text-destructive" role="alert">{importError}</p> : null}
+              </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Batch · {pairs.length} {pairs.length === 1 ? "pair" : "pairs"}</CardTitle><p className="text-sm text-muted-foreground">{options.data ? `Current limit: ${options.data.max_pairs} pairs per job. ` : ""}Edit or remove invalid rows before submitting. IDs remain unchanged.</p></CardHeader>
+            <CardHeader><CardTitle>Current batch · {pairs.length} {pairs.length === 1 ? "pair" : "pairs"}</CardTitle><p className="text-sm text-muted-foreground">{options.data ? `Current limit: ${options.data.max_pairs} pairs per job. ` : ""}Edit or remove invalid rows before submitting. IDs remain unchanged.</p></CardHeader>
             <CardContent className="space-y-3">
               {!pairs.length ? <p className="text-sm text-muted-foreground">No pairs added yet.</p> : null}
               {pairs.map((pair, index) => <fieldset className="rounded-lg border p-4 has-[[aria-invalid=true]]:border-destructive" key={pair.key}>
@@ -219,7 +229,6 @@ export default function HumanizationSubmissionPage() {
           <details className="rounded-xl border p-5">
             <summary className="cursor-pointer font-medium">Advanced settings</summary>
             <p className="mt-3 text-sm text-muted-foreground">One scientific configuration applies to every pair in the batch.</p>
-            <fieldset className="mt-5"><legend className="font-medium">General</legend><label className="mt-3 block text-sm" htmlFor="humanization-name">Job name</label><Input aria-invalid={name.length > 120} className="mt-1 max-w-md" id="humanization-name" onChange={(event) => { editIntent(); setDisplayName(event.target.value) }} placeholder="Antibody humanization" value={displayName} />{name.length > 120 ? <p className="text-xs text-destructive">Use at most 120 characters.</p> : null}</fieldset>
             {defaults ? settingGroups.map((group) => <fieldset className="mt-6 border-t pt-4" key={group.prefix}>
               <legend className="font-medium">{group.name}</legend><p className="mb-3 text-xs text-muted-foreground">{group.help}</p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
