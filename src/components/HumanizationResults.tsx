@@ -8,7 +8,7 @@ import { apiErrorCode, humanizationSelection } from "@/api/client"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { SelectionQuery } from "@/humanization"
+import type { HumanizationSelection, SelectionQuery } from "@/humanization"
 import { shouldRetryJobQuery } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 
@@ -31,26 +31,29 @@ function ExpandableCell({ value, sequence = false }: { value: string; sequence?:
 function ValueBar({ value, signed, small = false }: { value: number; signed: boolean; small?: boolean }) {
   const width = Math.abs(value) * (signed ? 50 : 100)
   return <span aria-hidden="true" className={small ? "relative mt-1 block h-1.5 overflow-hidden rounded bg-muted" : "absolute inset-0 overflow-hidden rounded"}>
-    <span className={`absolute inset-y-0 ${value < 0 ? small ? "bg-red-300" : "bg-red-100" : small ? "bg-green-300" : "bg-green-100"}`} style={{ left: `${signed ? value < 0 ? 50 - width : 50 : 0}%`, width: `${width}%` }} />
+    <span className={`absolute inset-y-0 ${small || signed ? value < 0 ? "bg-red-200" : "bg-emerald-200/60" : "bg-neutral-200/70"}`} style={{ left: `${signed ? value < 0 ? 50 - width : 50 : 0}%`, width: `${width}%` }} />
     {signed ? <span className="absolute inset-y-0 left-1/2 border-l border-foreground/20" /> : null}
   </span>
 }
 
-function ScoreCell({ name, value, deltaValue, scales }: { name: string; value: number; deltaValue: unknown; scales: Readonly<Record<string, number>> | undefined }) {
+function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: number; deltaValue: unknown; ranges: HumanizationSelection["nativeness_ranges"] | undefined }) {
   const delta = name.endsWith("_delta")
   const score = /_(probability|score|likeness|nativeness)$/.test(name)
   if (!score && !delta) return <span className={name === "cdr_mutations" && value !== 0 ? "rounded bg-red-100 px-1 font-medium tabular-nums text-red-800" : "tabular-nums"}>{value}</span>
   const nativeness = /^pabnativ2_.*_nativeness(?:_delta)?$/.test(name)
   function scaled(column: string, raw: number) {
     if (!nativeness) return Math.abs(raw) <= 1 ? raw : undefined
-    const scale = scales?.[column]
-    return scale === undefined ? undefined : scale === 0 ? 0 : raw / scale
+    const range = ranges?.[column.replace(/_delta$/, "")]
+    if (!range) return undefined
+    const difference = column.endsWith("_delta")
+    const width = range.max - range.min
+    return width === 0 ? difference ? 0 : 0.5 : difference ? raw / width : (raw - range.min) / width
   }
   const barValue = scaled(name, value)
   const deltaBar = typeof deltaValue === "number" ? scaled(`${name}_delta`, deltaValue) : undefined
   return <span className="block min-w-24 tabular-nums" title={String(value)}>
-    <span className="relative block rounded px-2 py-1 text-right">
-      {barValue !== undefined ? <ValueBar value={barValue} signed={delta || nativeness} /> : null}
+    <span className="relative block rounded px-2 py-1 text-center">
+      {barValue !== undefined ? <ValueBar value={barValue} signed={delta} /> : null}
       <span className="relative">{value.toFixed(3)}</span>
     </span>
     {!delta && deltaBar !== undefined ? <span className="block" aria-label={`Change from parent: ${deltaValue}`} title={`Change from parent: ${deltaValue}`}><ValueBar value={deltaBar} signed small /></span> : null}
@@ -90,7 +93,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
       <CardTitle>Humanization candidates</CardTitle>
       <p className="text-sm text-muted-foreground">Click a column header to sort; click again to reverse the order. Missing values sort last; ties use parent and candidate IDs. Gray rows are the unchanged parents. The full selection.csv is included in the result archive.</p>
       <p className="text-sm text-muted-foreground"><strong className="text-foreground">quality_tier</strong> groups eligible candidates into Pareto tiers, balancing higher model scores with fewer mutations; lower is better, starting at 1. <strong className="text-foreground">panel_order</strong> is the suggested per-parent testing order, balancing quality with sequence diversity; lower comes first, starting at 1. Missing ranks mean the row is a parent or did not meet ranking requirements, including complete evaluation, preserved CDRs, and parental pairing guardrails. Missing ranks are not zero or the worst tier. These ranks are simple heuristics constructed from the model scores. You may use any other combinatory ranking method to pick out top candidates.</p>
-      <p className="text-sm text-muted-foreground">Score backgrounds span 0–1. The thin bar below each score shows its change from the parent: green to the right means higher, red to the left means lower. Nativeness scores and their deltas are scaled separately to −1…+1 by dividing by each column’s largest absolute value in the full result; zero stays zero. This relative scale is not comparable across jobs. Other delta bars span −1…+1 in raw score units. Displayed values remain the original scores, rounded to 3 decimals; sorting uses full precision. Red CDR mutation counts flag changes to CDRs.</p>
+      <p className="text-sm text-muted-foreground">Light gray score bars span 0–1. The thin bar below each score shows its change from the parent: green to the right means higher, red to the left means lower. Nativeness scores use the full column’s minimum and maximum to scale from 0 to 1. Their deltas use that same range, so −1…+1 represents the change between scaled candidate and parent scores. Constant columns use a half-width score bar and zero delta. This relative scale is not comparable across jobs. Other delta bars span −1…+1 in raw score units. Displayed values remain the original scores, rounded to 3 decimals; sorting uses full precision. Red CDR mutation counts flag changes to CDRs.</p>
     </CardHeader>
     <CardContent className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
@@ -143,7 +146,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
             {/* Keep the previous page geometry during requests without exposing stale rows. */}
             <tbody aria-hidden={loadingPage || undefined} className={loadingPage ? "invisible divide-y" : "divide-y"}>{data.rows.map((row, index) => <tr className={row.is_parent === true ? "bg-muted/60" : undefined} key={`${row.parent_id}:${row.candidate_id}:${data.offset + index}`}>
               {visibleColumns.map((column) => <td className="max-w-sm px-3 py-3 align-top" key={column.name}>
-                {row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : ["vh", "vl"].includes(column.name) && typeof row[column.name] === "string" ? <ExpandableCell sequence value={String(row[column.name])} /> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} scales={data.nativeness_max_abs} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
+                {row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : ["vh", "vl"].includes(column.name) && typeof row[column.name] === "string" ? <ExpandableCell sequence value={String(row[column.name])} /> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
               </td>)}
             </tr>)}</tbody>
           </table>

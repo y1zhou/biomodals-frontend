@@ -103,7 +103,8 @@ pages with column visibility controls and page navigation. Whole-result metadata
 keeps error and incomplete-evaluation columns visible when needed, including
 when the affected row is on another page. Parent rows are shaded; bounded
 scores include parental delta bars beneath them. Nativeness bars use a
-zero-preserving scale based on each full column’s maximum absolute value;
+0–1 scale based on each full column’s minimum and maximum, with parental
+deltas using that same range;
 displayed numbers and server-side sorting retain the original values. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser. See the

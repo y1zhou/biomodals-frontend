@@ -42,7 +42,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
       const limit = Number(url.searchParams.get("limit"))
       const total = url.searchParams.has("parent_id") ? 1 : 51
       const rows = Array.from({ length: Math.min(limit, Math.max(0, total - offset)) }, (_, i) => ({ parent_id: "ab_001", candidate_id: `candidate-${offset + i}`, quality_tier: null, panel_order: null, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", sapiens_vh_mean_probability: i ? 0.8 : null }))
-      return respond({ columns, rows, default_hidden_columns: [], nativeness_max_abs: {}, total_rows: total, offset, limit, parent_ids: ["ab_001", "ab_002"] })
+      return respond({ columns, rows, default_hidden_columns: [], nativeness_ranges: {}, total_rows: total, offset, limit, parent_ids: ["ab_001", "ab_002"] })
     }
     if (url.pathname === `/api/v1/jobs/${job.job_id}`) return respond(job)
     if (url.pathname === "/api/v1/jobs") return respond({ jobs: [], next_cursor: null })
@@ -310,13 +310,13 @@ test("candidate presentation preserves values and respects whole-result visibili
   await mockApi(page)
   await context.grantPermissions(["clipboard-read", "clipboard-write"])
   const candidateId = "a".repeat(64)
-  const row = { parent_id: "ab_001", candidate_id: candidateId, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", is_parent: true, cdr_preservation: "preserved", cdr_mutations: 2, humatch_vh_target_family: "IGHV1", sapiens_error: null, humatch_error: null, evaluation_complete: true, humatch_pairing_score: 0.87654321, humatch_pairing_score_delta: -0.123456, sapiens_vh_mean_probability_delta: 0.23456, pabnativ2_pair_nativeness: -0.25, pabnativ2_pair_nativeness_delta: 1.23456 }
+  const row = { parent_id: "ab_001", candidate_id: candidateId, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", is_parent: true, cdr_preservation: "preserved", cdr_mutations: 2, humatch_vh_target_family: "IGHV1", sapiens_error: null, humatch_error: null, evaluation_complete: true, humatch_pairing_score: 0.87654321, humatch_pairing_score_delta: -0.123456, sapiens_vh_mean_probability_delta: 0.23456, pabnativ2_pair_nativeness: -0.25, pabnativ2_pair_nativeness_delta: 1.23456, pabnativ2_vh_nativeness: 0.2, pabnativ2_vh_nativeness_delta: 0 }
   await page.route("**/selection?*", (route) => route.fulfill({ json: {
     columns: Object.entries(row).map(([name, value]) => ({ name, type: typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string" })),
     rows: [row], total_rows: 51, offset: 0, limit: 50, parent_ids: ["ab_001"],
     // An error and incomplete evaluation elsewhere in the result must remain
     // visible even though this bounded page contains neither.
-    default_hidden_columns: ["sapiens_error"], nativeness_max_abs: { pabnativ2_pair_nativeness: 0.5, pabnativ2_pair_nativeness_delta: 2 },
+    default_hidden_columns: ["sapiens_error"], nativeness_ranges: { pabnativ2_pair_nativeness: { min: -2, max: 0 }, pabnativ2_vh_nativeness: { min: 0.2, max: 0.2 } },
   } }))
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
   const table = page.getByRole("table", { name: "Humanization selection.csv, page 1" })
@@ -343,12 +343,15 @@ test("candidate presentation preserves values and respects whole-result visibili
   await expect(parent.getByRole("button", { name: "Copy ID", exact: true })).toBeVisible()
   await expect(parent.getByRole("button", { name: "Copy sequence", exact: true })).toHaveCount(2)
   await expect(parent.getByText("-0.250", { exact: true })).toBeVisible()
-  await expect(parent.locator('[title="-0.25"] .bg-red-100')).toHaveAttribute("style", "left: 25%; width: 25%;")
+  await expect(parent.locator('[title="-0.25"] .bg-neutral-200\\/70')).toHaveAttribute("style", "left: 0%; width: 87.5%;")
   await expect(parent.getByText("0.877", { exact: true })).toBeVisible()
+  await expect(parent.locator('[title="0.87654321"] > span').first()).toHaveCSS("text-align", "center")
+  await expect(parent.locator('[title="0.2"] .bg-neutral-200\\/70')).toHaveAttribute("style", "left: 0%; width: 50%;")
+  expect(await parent.locator('[aria-label="Change from parent: 1.23456"] .bg-emerald-200\\/60').evaluate((node) => parseFloat((node as HTMLElement).style.width))).toBeCloseTo(30.864)
   await expect(parent.getByText("-0.123", { exact: true })).toHaveCount(0)
-  await expect(parent.locator('[title="0.87654321"] .bg-green-100')).toHaveCount(1)
-  await expect(parent.locator('[aria-label="Change from parent: -0.123456"] .bg-red-300')).toHaveCount(1)
-  await expect(parent.locator('[aria-label="Change from parent: 1.23456"] .bg-green-300')).toHaveCount(1)
+  await expect(parent.locator('[title="0.87654321"] .bg-neutral-200\\/70')).toHaveCount(1)
+  await expect(parent.locator('[aria-label="Change from parent: -0.123456"] .bg-red-200')).toHaveCount(1)
+  await expect(parent.locator('[aria-label="Change from parent: 1.23456"] .bg-emerald-200\\/60')).toHaveCount(1)
   await expect(parent.getByText("2", { exact: true })).toHaveClass(/text-red-800/)
   await page.getByRole("button", { name: "Columns", exact: true }).click()
   await page.getByRole("menuitemcheckbox", { name: "is_parent", exact: true }).click()

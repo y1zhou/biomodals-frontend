@@ -1412,6 +1412,16 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * NativenessRange
+         * @description Full-result finite bounds for one original nativeness score.
+         */
+        readonly NativenessRange: {
+            /** Max */
+            readonly max: number;
+            /** Min */
+            readonly min: number;
+        };
+        /**
          * OriginErrorResponse
          * @description Browser origin rejected before an unsafe request.
          */
@@ -1533,11 +1543,11 @@ export interface components {
             /** Limit */
             readonly limit: number;
             /**
-             * Nativeness Max Abs
-             * @description Full-result maximum absolute finite value for each p-AbNatiV2 nativeness column and delta. Zero for no finite values or all zeros; visualization scale only.
+             * Nativeness Ranges
+             * @description Full-result finite min/max for the three original p-AbNatiV2 nativeness columns, before filtering or pagination. Both zero when no finite values exist. Original scores and their deltas share this range; visualization only.
              */
-            readonly nativeness_max_abs: {
-                readonly [key: string]: number;
+            readonly nativeness_ranges: {
+                readonly [key: string]: components["schemas"]["NativenessRange"];
             };
             /** Offset */
             readonly offset: number;
