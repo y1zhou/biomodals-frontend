@@ -12,7 +12,7 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "sapiens_vh_mean_probability"].map((name) => ({ name, type: ["quality_tier", "panel_order", "sapiens_vh_mean_probability"].includes(name) ? "number" : "string" }))
 
-async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0 } = {}) {
+async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0, legacyOptions = false } = {}) {
   const submissions: { body: unknown; key: string | undefined }[] = []
   const selections: URL[] = []
   const requests: string[] = []
@@ -26,7 +26,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
     requests.push(`${request.method()} ${url.pathname}${url.search}`)
     const respond = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (url.pathname.endsWith("/auth/me") || url.pathname.endsWith("/auth/login")) return respond(principal)
-    if (url.pathname.endsWith("/humanization/options")) return respond({ ...options, max_pairs: maxPairs })
+    if (url.pathname.endsWith("/humanization/options")) return respond({ ...options, max_pairs: maxPairs, defaults: legacyOptions ? Object.fromEntries(Object.entries(options.defaults).filter(([name]) => name !== "pabnativ2_num_seeds")) : options.defaults })
     if (url.pathname.endsWith("/humanization/jobs") && request.method() === "POST") {
       submissions.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] })
       if (submissions.length === 1 && lostResponse) return route.abort("failed")
@@ -96,7 +96,7 @@ test("lost response replays the unchanged in-memory intent", async ({ page }) =>
   await expect(page).toHaveURL(new RegExp(`/jobs/${job.job_id}$`))
   expect(api.submissions).toHaveLength(2)
   expect(api.submissions[1]).toEqual(api.submissions[0])
-  expect(api.submissions[0].body).toMatchObject({ pairs: [{ id: "ab_001", vh: "ACD", vl: "EFG" }], display_name: "Antibody humanization", settings: options.defaults })
+  expect(api.submissions[0].body).toMatchObject({ pairs: [{ id: "ab_001", vh: "ACD", vl: "EFG" }], display_name: "Antibody humanization", settings: { ...options.defaults, hudiff_ab_seed: options.defaults.pabnativ2_seed } })
 })
 
 test("editing an ambiguous submission creates a new intent and retains the warning", async ({ page }) => {
@@ -113,7 +113,7 @@ test("editing an ambiguous submission creates a new intent and retains the warni
   expect(api.submissions[1].body).toMatchObject({ pairs: [{ id: "edited-parent", vh: "ACD", vl: "EFG" }] })
 })
 
-test("default-size batch remains editable and Advanced controls submit server defaults", async ({ page }) => {
+test("default-size batch remains editable and General controls fan out to supported models", async ({ page }) => {
   const api = await mockApi(page)
   await page.goto("/tools/humanization/new")
   const csv = "id,vh,vl\n" + Array.from({ length: 100 }, (_, index) => `ab_${index},${"A".repeat(120)},${"G".repeat(110)}`).join("\n")
@@ -122,11 +122,22 @@ test("default-size batch remains editable and Advanced controls submit server de
   await expect(page.getByText("Current batch · 100 pairs")).toBeVisible()
   console.log(`100-pair import and render: ${Math.round(performance.now() - start)} ms`)
   await page.getByText("Advanced settings", { exact: true }).click()
-  await page.getByLabel("Sampling attempts per parent", { exact: true }).fill("3")
+  const general = page.getByRole("group", { name: "General", exact: true })
+  await expect(page.getByLabel("Root seed", { exact: true })).toHaveCount(1)
+  await expect(page.getByLabel("Allow CDR mutations", { exact: true })).toHaveCount(1)
+  await general.getByLabel("Root seed", { exact: true }).fill("123")
+  await general.getByLabel("Allow CDR mutations", { exact: true }).check()
+  await page.getByRole("group", { name: "HuDiff", exact: true }).getByLabel("Sampling attempts per parent", { exact: true }).fill("3")
+  const pabAttempts = page.getByRole("group", { name: "p-AbNatiV2", exact: true }).getByLabel("Sampling attempts per parent", { exact: true })
+  await pabAttempts.fill("0")
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
+  await pabAttempts.fill("2")
+  await page.getByRole("group", { name: "Sapiens", exact: true }).getByLabel("Iterations", { exact: true }).fill("3")
+  await expect(page.getByText("The paired sequences after every iteration are included as candidates", { exact: false })).toBeVisible()
   await page.getByLabel("Job name", { exact: true }).fill("  Batch   experiment  ")
   await page.getByRole("button", { name: "Submit humanization" }).click()
   await expect.poll(() => api.submissions.length).toBe(1)
-  expect(api.submissions[0].body).toMatchObject({ display_name: "Batch experiment", settings: { ...options.defaults, hudiff_ab_candidate_count: 3 } })
+  expect(api.submissions[0].body).toMatchObject({ display_name: "Batch experiment", settings: { ...options.defaults, hudiff_ab_candidate_count: 3, pabnativ2_num_seeds: 2, sapiens_iterations: 3, pabnativ2_seed: 123, hudiff_ab_seed: 123, sapiens_mutate_cdrs: true, humatch_mutate_cdrs: true, pabnativ2_mutate_cdrs: true } })
 })
 
 test("reauthentication keeps the batch mounted and never automatically submits", async ({ page }) => {
@@ -359,4 +370,14 @@ test("candidate presentation preserves values and respects whole-result visibili
   await expect(table.getByRole("button", { name: "is_parent", exact: true })).toBeVisible()
   await parent.locator('[title="0.87654321"]').scrollIntoViewIfNeeded()
   await page.screenshot({ path: test.info().outputPath("humanization-score-bars.png") })
+})
+
+
+test("old service metadata blocks unsupported humanization submissions", async ({ page }) => {
+  const api = await mockApi(page, { legacyOptions: true })
+  await page.goto("/tools/humanization/new")
+  await addPair(page)
+  await expect(page.getByRole("alert")).toContainText("awaiting a service update")
+  await expect(page.getByRole("button", { name: "Submit humanization" })).toBeDisabled()
+  expect(api.submissions).toHaveLength(0)
 })

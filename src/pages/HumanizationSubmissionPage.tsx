@@ -9,7 +9,7 @@ import FileDropZone from "@/components/FileDropZone"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { nextPairId, normalizeSequence, pairErrors, parsePairCsv, settingMetadata, settingGroups, settingLabels, type HumanizationInputError, type HumanizationPair, type HumanizationSettings, type HumanizationSubmission } from "@/humanization"
+import { nextPairId, normalizeSequence, pairErrors, parsePairCsv, settingMetadata, settingGroups, settingLabels, generalSettingSources, settingHelp, type HumanizationInputError, type HumanizationPair, type HumanizationSettings, type HumanizationSubmission } from "@/humanization"
 import { jobKey, jobListKey, shouldRetryJobQuery } from "@/jobs"
 import { humanizationPaths } from "@/tools"
 
@@ -133,13 +133,15 @@ export default function HumanizationSubmissionPage() {
   }
 
   const defaults = options.data?.defaults
+  const settingsReady = typeof defaults?.pabnativ2_num_seeds === "number"
   const settingNames = Object.keys(settingLabels) as (keyof HumanizationSettings)[]
   const settings: Record<string, string | number | boolean> = {}
   const settingsErrors: Record<string, string> = {}
   for (const name of settingNames) {
-    if (!defaults) break
+    if (!defaults || !settingsReady) break
     const fallback = defaults[name]
-    const value = settingsEdits[name] ?? fallback
+    const source = generalSettingSources[name] ?? name
+    const value = settingsEdits[source] ?? defaults[source]
     const schema = settingMetadata(options.data, name)
     settings[name] = typeof fallback === "number" ? Number(value) : value
     if (typeof fallback === "number") {
@@ -152,7 +154,7 @@ export default function HumanizationSubmissionPage() {
   const name = displayName.trim().replace(/\s+/g, " ") || "Antibody humanization"
   const tooManyPairs = Boolean(options.data && pairs.length > options.data.max_pairs)
   const hasUnaddedEntry = Boolean(entry.vh || entry.vl)
-  const invalid = !pairs.length || tooManyPairs || hasUnaddedEntry || name.length > 120 || localErrors.some((errors) => Object.keys(errors).length) || Object.keys(settingsErrors).length > 0 || apiErrors.length > 0
+  const invalid = !settingsReady || !pairs.length || tooManyPairs || hasUnaddedEntry || name.length > 120 || localErrors.some((errors) => Object.keys(errors).length) || Object.keys(settingsErrors).length > 0 || apiErrors.length > 0
   const busy = mutation.isPending || importing
 
   function submit(event?: FormEvent<HTMLFormElement>) {
@@ -174,6 +176,7 @@ export default function HumanizationSubmissionPage() {
       <p className="mt-3 max-w-3xl text-muted-foreground">Add complete paired VH and VL variable domains, or append a CSV batch. Sequences are uppercased and whitespace is removed; review the normalized sequences below.</p>
       {options.isPending ? <p className="mt-6" role="status">Loading scientific defaults and batch limit…</p> : null}
       {options.error ? <div className="mt-6" role="alert"><p>{errorMessage(options.error)}</p><Button className="mt-2" onClick={() => void options.refetch()} variant="outline">Retry options</Button></div> : null}
+      {options.data && !settingsReady ? <p className="mt-6 text-sm text-amber-800" role="alert">Humanization submission is awaiting a service update. You can prepare a batch here, but submission is disabled until the update is ready. Existing jobs remain available in My Jobs.</p> : null}
       <form className="mt-8 space-y-6" noValidate onSubmit={submit}>
         <fieldset className="space-y-6" disabled={busy || !principal}>
           <div>
@@ -229,10 +232,10 @@ export default function HumanizationSubmissionPage() {
           <details className="rounded-xl border p-5">
             <summary className="cursor-pointer font-medium">Advanced settings</summary>
             <p className="mt-3 text-sm text-muted-foreground">One scientific configuration applies to every pair in the batch.</p>
-            {defaults ? settingGroups.map((group) => <fieldset className="mt-6 border-t pt-4" key={group.prefix}>
+            {defaults && settingsReady ? settingGroups.map((group) => <fieldset className="mt-6 border-t pt-4" key={group.prefix}>
               <legend className="font-medium">{group.name}</legend><p className="mb-3 text-sm text-muted-foreground">{group.help}</p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {settingNames.filter((field) => field.startsWith(group.prefix)).map((field) => {
+                {settingNames.filter((field) => group.prefix ? field.startsWith(group.prefix) && !generalSettingSources[field] : generalSettingSources[field] === field).map((field) => {
                   const schema = settingMetadata(options.data, field)
                   const value = settingsEdits[field] ?? defaults![field]
                   const error = settingsErrors[field]
@@ -243,6 +246,7 @@ export default function HumanizationSubmissionPage() {
                       {schema?.enum ? <select className={selectClass} id={field} onChange={(event) => change(event.target.value)} value={String(value)}>{schema.enum.map((option) => <option key={option} value={option}>{option}</option>)}</select> : <Input aria-describedby={error ? `${field}-error` : undefined} aria-invalid={Boolean(error)} id={field} max={schema?.maximum} min={schema?.minimum} onChange={(event) => change(event.target.value)} step={schema?.type === "integer" ? 1 : "any"} type={typeof defaults![field] === "number" ? "number" : "text"} value={String(value)} />}
                       {schema?.minimum !== undefined || schema?.maximum !== undefined ? <p className="mt-1 text-xs text-muted-foreground">{schema.minimum ?? "No minimum"} – {schema.maximum ?? "no maximum"}</p> : null}
                     </>}
+                    {settingHelp[field] ? <p className="mt-1 text-sm text-muted-foreground">{settingHelp[field]}</p> : null}
                     {error ? <p className="text-sm text-destructive" id={`${field}-error`}>{error}</p> : null}
                   </div>
                 })}

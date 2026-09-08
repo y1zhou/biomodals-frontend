@@ -97,7 +97,16 @@ export function parsePairCsv(content: string): HumanizationPair[] {
   })
 }
 
+export const generalSettingSources: Partial<Record<keyof HumanizationSettings, keyof HumanizationSettings>> = {
+  sapiens_mutate_cdrs: "sapiens_mutate_cdrs",
+  humatch_mutate_cdrs: "sapiens_mutate_cdrs",
+  pabnativ2_mutate_cdrs: "sapiens_mutate_cdrs",
+  pabnativ2_seed: "pabnativ2_seed",
+  hudiff_ab_seed: "pabnativ2_seed",
+}
+
 export const settingGroups = [
+  { name: "General", prefix: "", help: "CDR mutations apply to Sapiens, Humatch, and p-AbNatiV2. The root seed applies to p-AbNatiV2 and HuDiff." },
   { name: "Sapiens", prefix: "sapiens_", help: "Numbering and CDR definitions are independent controls." },
   { name: "Humatch", prefix: "humatch_", help: "Protected positions use IMGT. Auto families are resolved separately for each parent." },
   { name: "p-AbNatiV2", prefix: "pabnativ2_", help: "Protected positions use AHo. Pairing decrease controls generation, not the panel-ranking guardrail." },
@@ -116,6 +125,12 @@ export const settingLabels: Record<keyof HumanizationSettings, string> = {
   pabnativ2_fixed_vl_positions: "Protected VL positions (AHo)", pabnativ2_residue_score_threshold: "Residue score threshold",
   pabnativ2_rasa_threshold: "RASA threshold", pabnativ2_max_relative_pairing_score_decrease: "Maximum relative pairing score decrease",
   pabnativ2_forbidden_residues: "Forbidden proposed residues", pabnativ2_seed: "Root seed",
+  pabnativ2_num_seeds: "Sampling attempts per parent",
   hudiff_ab_candidate_count: "Sampling attempts per parent", hudiff_ab_seed: "Root seed",
   hudiff_ab_sampling_order: "Sampling order", hudiff_ab_upstream_inference_dropout: "Preserve released inference dropout",
+}
+
+export const settingHelp: Partial<Record<keyof HumanizationSettings, string>> = {
+  sapiens_iterations: "The paired sequences after every iteration are included as candidates, then deduplicated and evaluated with the other models’ outputs.",
+  pabnativ2_num_seeds: "One independent optimization run per derived seed and parent. More attempts increase compute and may return identical sequences, which are deduplicated.",
 }

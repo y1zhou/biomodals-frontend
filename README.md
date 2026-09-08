@@ -96,7 +96,11 @@ a Job.
 
 Antibody humanization accepts an editable ID/VH/VL batch through manual entry
 or CSV import, with one set of scientific settings for the batch. The backend
-supplies defaults and the pair limit. Drafts remain in memory; explicit Check
+supplies defaults and the pair limit. General CDR mutation and root-seed
+controls apply to supported models; p-AbNatiV2 offers independent optimization
+attempts, and Sapiens contributes each iteration before deduplication. New
+submissions stay disabled until the service advertises these settings.
+Drafts remain in memory; explicit Check
 submission replays the unchanged request and idempotency key after a lost
 response. Finished Jobs show bounded server-filtered, server-sorted candidate
 pages with column visibility controls and page navigation. Whole-result metadata

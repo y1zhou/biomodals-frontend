@@ -1139,6 +1139,12 @@ export interface components {
              */
             readonly pabnativ2_mutate_cdrs: boolean;
             /**
+             * Pabnativ2 Num Seeds
+             * @description Independent optimization runs per parent; distinct seeds do not guarantee distinct candidates.
+             * @default 1
+             */
+            readonly pabnativ2_num_seeds: number;
+            /**
              * Pabnativ2 Rasa Threshold
              * @default 0.15
              */
