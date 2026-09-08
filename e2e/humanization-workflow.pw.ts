@@ -47,6 +47,7 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   await expect(page.getByText("1–50 of 300 rows")).toBeVisible()
   await page.getByRole("button", { name: "Next page", exact: true }).click()
   await expect(page.getByText("51–100 of 300 rows")).toBeVisible()
+  await page.getByRole("button", { name: /^Filter by parent/ }).click()
   await page.getByLabel("Parent", { exact: true }).selectOption("ab_000")
   await expect(page.getByText("1–3 of 3 rows")).toBeVisible()
   for (const expected of [[1, 2, null], [2, 1, null]]) {
@@ -55,7 +56,7 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
     expect((await (await sortedPage).json()).rows.map((row: { panel_order: number | null }) => row.panel_order)).toEqual(expected)
   }
   const originalPage = page.waitForResponse((next) => next.url().includes("/selection?") && !next.url().includes("sort_by="))
-  await page.getByRole("button", { name: "Restore scientific order" }).click()
+  await page.getByRole("button", { name: "Restore default order" }).click()
   expect((await (await originalPage).json()).rows.map((row: { panel_order: number | null }) => row.panel_order)).toEqual([null, 1, 2])
   await expect(page.getByRole("button", { name: "Download selection.csv" })).toHaveCount(0)
   const archiveDownload = page.waitForEvent("download")

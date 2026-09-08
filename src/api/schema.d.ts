@@ -1532,6 +1532,13 @@ export interface components {
             readonly default_hidden_columns: readonly string[];
             /** Limit */
             readonly limit: number;
+            /**
+             * Nativeness Max Abs
+             * @description Full-result maximum absolute finite value for each p-AbNatiV2 nativeness column and delta. Zero for no finite values or all zeros; visualization scale only.
+             */
+            readonly nativeness_max_abs: {
+                readonly [key: string]: number;
+            };
             /** Offset */
             readonly offset: number;
             /** Parent Ids */

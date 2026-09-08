@@ -10,7 +10,7 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
   { code: "union", label: "Collect unique candidates", outcome: "completed", started_at: "2026-09-07T00:00:40Z", ended_at: "2026-09-07T00:00:45Z" },
   { code: "evaluate", label: "Evaluate and rank candidates", outcome: "partial", started_at: "2026-09-07T00:00:45Z", ended_at: "2026-09-07T00:01:00Z" },
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
-const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "score"].map((name) => ({ name, type: ["quality_tier", "panel_order", "score"].includes(name) ? "number" : "string" }))
+const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "sapiens_vh_mean_probability"].map((name) => ({ name, type: ["quality_tier", "panel_order", "sapiens_vh_mean_probability"].includes(name) ? "number" : "string" }))
 
 async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0 } = {}) {
   const submissions: { body: unknown; key: string | undefined }[] = []
@@ -41,8 +41,8 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
       const offset = Number(url.searchParams.get("offset"))
       const limit = Number(url.searchParams.get("limit"))
       const total = url.searchParams.has("parent_id") ? 1 : 51
-      const rows = Array.from({ length: Math.min(limit, Math.max(0, total - offset)) }, (_, i) => ({ parent_id: "ab_001", candidate_id: `candidate-${offset + i}`, quality_tier: null, panel_order: null, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", score: i ? 0.8 : null }))
-      return respond({ columns, rows, default_hidden_columns: [], total_rows: total, offset, limit, parent_ids: ["ab_001", "ab_002"] })
+      const rows = Array.from({ length: Math.min(limit, Math.max(0, total - offset)) }, (_, i) => ({ parent_id: "ab_001", candidate_id: `candidate-${offset + i}`, quality_tier: null, panel_order: null, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", sapiens_vh_mean_probability: i ? 0.8 : null }))
+      return respond({ columns, rows, default_hidden_columns: [], nativeness_max_abs: {}, total_rows: total, offset, limit, parent_ids: ["ab_001", "ab_002"] })
     }
     if (url.pathname === `/api/v1/jobs/${job.job_id}`) return respond(job)
     if (url.pathname === "/api/v1/jobs") return respond({ jobs: [], next_cursor: null })
@@ -162,14 +162,15 @@ test("Result table delegates paging and sorting and lets readers choose columns"
   expect(api.selections[0].search).toBe("?offset=0&limit=50")
   await page.getByRole("button", { name: "Next page", exact: true }).click()
   await expect(page.getByText("51–51 of 51 rows")).toBeVisible()
-  await page.getByRole("button", { name: "score", exact: true }).click()
-  await expect.poll(() => api.selections.at(-1)?.searchParams.get("sort_by")).toBe("score")
+  await page.getByRole("button", { name: "sapiens_vh_mean_probability", exact: true }).click()
+  await expect.poll(() => api.selections.at(-1)?.searchParams.get("sort_by")).toBe("sapiens_vh_mean_probability")
   expect(api.selections.at(-1)?.searchParams.get("offset")).toBe("0")
-  await page.getByRole("button", { name: "score", exact: true }).click()
+  await page.getByRole("button", { name: "sapiens_vh_mean_probability", exact: true }).click()
   await expect.poll(() => api.selections.at(-1)?.searchParams.get("descending")).toBe("true")
+  await page.getByRole("button", { name: /^Filter by parent/ }).click()
   await page.getByLabel("Parent", { exact: true }).selectOption("ab_001")
   await expect(page.getByText("1–1 of 1 rows")).toBeVisible()
-  await page.getByRole("button", { name: "Restore scientific order" }).click()
+  await page.getByRole("button", { name: "Restore default order" }).click()
   await expect.poll(() => api.selections.at(-1)?.searchParams.has("sort_by")).toBe(false)
   await expect(page.getByRole("button", { name: "Download selection.csv" })).toHaveCount(0)
   expect(api.prepared()).toBe(0)
@@ -187,6 +188,7 @@ test("Result table delegates paging and sorting and lets readers choose columns"
   await page.getByRole("menuitem", { name: "Show all columns" }).click()
   await page.keyboard.press("Escape")
   await expect(table.getByRole("columnheader")).toHaveCount(columns.length)
+  await page.getByRole("button", { name: /^Filter by parent/ }).click()
   await page.getByLabel("Parent", { exact: true }).selectOption("")
   await expect(page.getByText("1–50 of 51 rows")).toBeVisible()
   await page.getByLabel("Rows per page", { exact: true }).selectOption("25")
@@ -271,7 +273,7 @@ for (const width of [360, 1280]) test(`sorting preserves the table and scroll po
   await mockApi(page, { selectionDelay: 800 })
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
   await expect(page.getByText("1–50 of 51 rows")).toBeVisible()
-  const header = page.getByRole("button", { name: "score", exact: true })
+  const header = page.getByRole("button", { name: "sapiens_vh_mean_probability", exact: true })
   await header.scrollIntoViewIfNeeded()
   const scroller = page.getByLabel("Candidate table; scroll horizontally for all columns", { exact: true })
   const beforeX = await scroller.evaluate((node) => node.scrollLeft)
@@ -308,34 +310,45 @@ test("candidate presentation preserves values and respects whole-result visibili
   await mockApi(page)
   await context.grantPermissions(["clipboard-read", "clipboard-write"])
   const candidateId = "a".repeat(64)
-  const row = { parent_id: "ab_001", candidate_id: candidateId, is_parent: true, cdr_preservation: "preserved", cdr_mutations: 2, humatch_vh_target_family: "IGHV1", sapiens_error: null, humatch_error: null, evaluation_complete: true, humatch_pairing_score: 0.87654321, humatch_pairing_score_delta: -0.123456, sapiens_vh_mean_probability_delta: 0.23456, pabnativ2_pair_nativeness: -0.25, pabnativ2_pair_nativeness_delta: 1.23456 }
+  const row = { parent_id: "ab_001", candidate_id: candidateId, vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG", is_parent: true, cdr_preservation: "preserved", cdr_mutations: 2, humatch_vh_target_family: "IGHV1", sapiens_error: null, humatch_error: null, evaluation_complete: true, humatch_pairing_score: 0.87654321, humatch_pairing_score_delta: -0.123456, sapiens_vh_mean_probability_delta: 0.23456, pabnativ2_pair_nativeness: -0.25, pabnativ2_pair_nativeness_delta: 1.23456 }
   await page.route("**/selection?*", (route) => route.fulfill({ json: {
     columns: Object.entries(row).map(([name, value]) => ({ name, type: typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string" })),
     rows: [row], total_rows: 51, offset: 0, limit: 50, parent_ids: ["ab_001"],
     // An error and incomplete evaluation elsewhere in the result must remain
     // visible even though this bounded page contains neither.
-    default_hidden_columns: ["sapiens_error"],
+    default_hidden_columns: ["sapiens_error"], nativeness_max_abs: { pabnativ2_pair_nativeness: 0.5, pabnativ2_pair_nativeness_delta: 2 },
   } }))
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
   const table = page.getByRole("table", { name: "Humanization selection.csv, page 1" })
-  for (const name of ["is_parent", "cdr_preservation", "humatch_vh_target_family", "sapiens_error"]) await expect(table.getByRole("button", { name, exact: true })).toHaveCount(0)
+  for (const name of ["is_parent", "cdr_preservation", "humatch_vh_target_family", "sapiens_error", "humatch_pairing_score_delta", "pabnativ2_pair_nativeness_delta"]) await expect(table.getByRole("button", { name, exact: true })).toHaveCount(0)
   for (const name of ["humatch_error", "evaluation_complete"]) await expect(table.getByRole("button", { name, exact: true })).toBeVisible()
   const parent = table.locator("tbody tr").first()
   expect(await parent.evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)")
-  const summary = parent.locator("summary")
+  const summary = parent.locator("summary").filter({ hasText: candidateId })
   expect(await summary.evaluate((node) => node.scrollWidth > node.clientWidth && getComputedStyle(node).textOverflow === "ellipsis")).toBe(true)
+  await expect(parent.getByText(/residues/).filter({ visible: true })).toHaveCount(0)
   await summary.click()
   await parent.getByRole("button", { name: "Copy ID", exact: true }).click()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(candidateId)
+  await expect(parent.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
+  for (const sequence of [row.vh, row.vl]) {
+    const details = parent.locator("details").filter({ has: page.locator("summary").filter({ hasText: new RegExp(`^${sequence.slice(0, 16)}${sequence.length > 16 ? "…" : ""}$`) }) })
+    await details.locator("summary").click()
+    await expect(details.getByText(`${sequence.length} residues`, { exact: true })).toBeVisible()
+    await details.getByRole("button", { name: "Copy sequence", exact: true }).click()
+    await expect(details.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sequence)
+  }
+  await expect(parent.getByRole("button", { name: "Copied", exact: true })).toHaveCount(0, { timeout: 4000 })
+  await expect(parent.getByRole("button", { name: "Copy ID", exact: true })).toBeVisible()
+  await expect(parent.getByRole("button", { name: "Copy sequence", exact: true })).toHaveCount(2)
   await expect(parent.getByText("-0.250", { exact: true })).toBeVisible()
-  await expect(parent.locator('[title="-0.25"] [aria-hidden]')).toHaveCount(0)
-  await expect(parent.getByText("1.235", { exact: true })).toHaveClass(/text-green-800/)
-  await expect(parent.locator('[title="1.23456"] [aria-hidden]')).toHaveCount(0)
+  await expect(parent.locator('[title="-0.25"] .bg-red-100')).toHaveAttribute("style", "left: 25%; width: 25%;")
   await expect(parent.getByText("0.877", { exact: true })).toBeVisible()
-  await expect(parent.getByText("-0.123", { exact: true })).toBeVisible()
-  await expect(parent.getByText("0.235", { exact: true })).toBeVisible()
-  await expect(parent.locator('[title="0.87654321"] .bg-green-100')).toHaveCSS("width", /.+px/)
-  await expect(parent.locator('[title="-0.123456"] .bg-red-100')).toHaveCount(1)
+  await expect(parent.getByText("-0.123", { exact: true })).toHaveCount(0)
+  await expect(parent.locator('[title="0.87654321"] .bg-green-100')).toHaveCount(1)
+  await expect(parent.locator('[aria-label="Change from parent: -0.123456"] .bg-red-300')).toHaveCount(1)
+  await expect(parent.locator('[aria-label="Change from parent: 1.23456"] .bg-green-300')).toHaveCount(1)
   await expect(parent.getByText("2", { exact: true })).toHaveClass(/text-red-800/)
   await page.getByRole("button", { name: "Columns", exact: true }).click()
   await page.getByRole("menuitemcheckbox", { name: "is_parent", exact: true }).click()

@@ -102,8 +102,9 @@ response. Finished Jobs show bounded server-filtered, server-sorted candidate
 pages with column visibility controls and page navigation. Whole-result metadata
 keeps error and incomplete-evaluation columns visible when needed, including
 when the affected row is on another page. Parent rows are shaded; bounded
-scores and parental deltas have color bars. Unbounded p-AbNatiV2 nativeness
-values retain their raw scale without fixed-range bars. The complete CSV
+scores include parental delta bars beneath them. Nativeness bars use a
+zero-preserving scale based on each full column’s maximum absolute value;
+displayed numbers and server-side sorting retain the original values. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser. See the
 [accepted service specification](../biomodals/docs/specs/humanization-service.md).
