@@ -104,16 +104,56 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
         </section>
         <section aria-labelledby="candidate-scores-heading" className="space-y-3">
           <h3 className="text-lg font-semibold" id="candidate-scores-heading">Read scores and changes</h3>
-          <dl className="space-y-3 text-sm leading-7 text-muted-foreground">
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">What are the color bars</summary>
+            <dl className="mt-3 space-y-3">
             <div><dt className="font-medium text-foreground">Gray bar · model score</dt><dd>Bars span 0–1. Numbers show the original score, rounded to 3 decimals.</dd></div>
             <div><dt className="font-medium text-foreground">Thin bar · change from parent</dt><dd>Green to the right means higher; red to the left means lower. Zero means unchanged.</dd></div>
             <div><dt className="font-medium text-foreground">Red CDR mutation counts</dt><dd>Flag candidates with changes to CDRs.</dd></div>
-          </dl>
-          <details className="text-sm leading-7 text-muted-foreground">
-            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">How nativeness bars are scaled</summary>
+            </dl>
             <div className="mt-3 space-y-3">
+              <h4 className="font-medium text-foreground">How nativeness bars are scaled</h4>
               <p>Nativeness bars map the full column’s minimum and maximum to 0–1. Their deltas use that same range, spanning −1 to +1. This relative scale is not comparable across jobs.</p>
               <p>Constant columns use a half-width score bar and zero delta. Other delta bars use raw score units from −1 to +1. Displayed numbers and sorting retain the original scale.</p>
+            </div>
+          </details>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Sapiens scores</summary>
+            <div className="mt-3 space-y-3">
+              <p>The VH and VL mean probabilities average the probabilities Sapiens assigns to the sequence’s observed amino acids. Values range from 0 to 1; higher means the residues are more likely under the model.</p>
+              <p>Each chain is scored separately. This is a sequence-model score, not the probability that the antibody will work experimentally.</p>
+            </div>
+          </details>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">p-AbNatiV2 scores</summary>
+            <div className="mt-3 space-y-3">
+              <p><strong className="font-medium text-foreground">Nativeness</strong> scores describe how well the model reconstructs the pair or individual VH and VL chains. Higher is better in the model’s scoring direction. These rescaled scores can be negative and are not probabilities or restricted to 0–1.</p>
+              <p><strong className="font-medium text-foreground">Pairing score</strong> is a separate 0–1 model score for the VH–VL pair. Higher means stronger model support for the pair; it does not measure experimental success.</p>
+              <p>The table displays the original scores. Nativeness bars use a scale relative to this job’s candidates, as explained under “What are the color bars”.</p>
+            </div>
+          </details>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Humatch scores</summary>
+            <div className="mt-3 space-y-3">
+              <p><strong className="font-medium text-foreground">Target probability</strong> measures the classifier’s support for the selected human V-gene family, separately for VH and VL. Values range from 0 to 1; higher means stronger support for that family.</p>
+              <p>With an automatic target, the workflow selects a human family from the parent sequence and keeps it fixed when scoring that parent’s candidates.</p>
+              <p><strong className="font-medium text-foreground">Best-family probability</strong> is the score for the candidate’s highest-scoring human family. It can be high even when the fixed target’s score is low. Enable the target_family and best_family columns in Columns to compare them.</p>
+            </div>
+          </details>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Why Humatch probabilities can show 0.000</summary>
+            <div className="mt-3 space-y-3">
+              <p><strong className="font-medium text-foreground">Rounding:</strong> small probabilities such as 0.00012 display as 0.000. The archive’s selection.csv retains the unrounded values.</p>
+              <p><strong className="font-medium text-foreground">Low support for the target:</strong> the classifier may favor another human family or its negative class. Compare target and best-family probabilities to distinguish these possibilities.</p>
+              <p>Zero is a score, not a missing-value marker. Missing scores appear as —. These probabilities do not measure sequence identity or the chance of experimental success.</p>
+            </div>
+          </details>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Humatch pairing and germline likeness</summary>
+            <div className="mt-3 space-y-3">
+              <p><strong className="font-medium text-foreground">Pairing score</strong> is the paired classifier’s score for the VH–VL pair, on a 0–1 scale. Higher means stronger model support for the pair.</p>
+              <p><strong className="font-medium text-foreground">Germline likeness</strong> averages the observed residue frequencies for the target family over the padded sequence length. It ranges from 0 to 1 and is a frequency-based score, not sequence identity or classifier confidence.</p>
+              <p>Deltas subtract the same parent’s score from the candidate’s score. Positive means a higher model score; it is not a percentage improvement or measured experimental benefit.</p>
             </div>
           </details>
         </section>
