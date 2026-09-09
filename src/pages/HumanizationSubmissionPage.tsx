@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, LoaderCircle, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, ChevronLeft, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Link, useBeforeUnload, useBlocker, useNavigate, useSearchParams } from "react-router"
 
@@ -17,6 +17,7 @@ type BatchRow = HumanizationPair & { key: string }
 type Intent = { input: HumanizationSubmission; key: string }
 const textareaClass = "min-h-20 w-full rounded-lg border border-input bg-background p-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive"
 const selectClass = "h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
+const batchPageSize = 50
 
 function inputErrors(error: unknown): HumanizationInputError[] {
   if (!(error instanceof ApiError) || apiErrorCode(error) !== "humanization_input_invalid") return []
@@ -52,6 +53,10 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
   })
   useExpireSession(options.error)
   const [pairs, setPairs] = useState<BatchRow[]>([])
+  const [batchPage, setBatchPage] = useState(0)
+  const batchPageCount = Math.max(1, Math.ceil(pairs.length / batchPageSize))
+  const currentBatchPage = Math.min(batchPage, batchPageCount - 1)
+  const batchOffset = currentBatchPage * batchPageSize
   const [entry, setEntry] = useState<HumanizationPair>({ id: "ab_001", vh: "", vl: "" })
   const [displayName, setDisplayName] = useState("")
   const [settingsEdits, setSettingsEdits] = useState<Record<string, string | boolean>>({})
@@ -102,6 +107,7 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
   useExpireSession(mutation.error)
   const apiErrors = inputErrors(mutation.error)
   const localErrors = useMemo(() => pairErrors(pairs, options.data), [pairs, options.data])
+  const firstInvalidRow = localErrors.findIndex((errors, index) => Object.keys(errors).length || apiErrors.some((error) => error.row_index === index))
   const dirty = Boolean(pairs.length || entry.vh || entry.vl || entry.id !== "ab_001" || displayName || Object.keys(settingsEdits).length || importing)
   const shouldBlock = useCallback(() => !allowNavigation.current && (dirty || inFlight.current), [dirty])
   const blocker = useBlocker(shouldBlock)
@@ -128,6 +134,7 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
     const added = { ...entry, vh: normalizeSequence(entry.vh), vl: normalizeSequence(entry.vl), key: crypto.randomUUID() }
     const next = [...pairs, added]
     setPairs(next)
+    setBatchPage(Math.floor((next.length - 1) / batchPageSize))
     setEntry({ id: nextPairId(next), vh: "", vl: "" })
   }
 
@@ -238,7 +245,10 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
             <CardHeader><CardTitle>Current batch · {pairs.length} {pairs.length === 1 ? "pair" : "pairs"}</CardTitle><p className="text-sm text-muted-foreground">{options.data ? `Current limit: ${options.data.max_pairs} pairs per job. ` : ""}Edit or remove invalid rows before submitting. IDs remain unchanged.</p></CardHeader>
             <CardContent className="space-y-3">
               {!pairs.length ? <p className="text-sm text-muted-foreground">No pairs added yet.</p> : null}
-              {pairs.map((pair, index) => <fieldset className="rounded-lg border p-4 has-[[aria-invalid=true]]:border-destructive" key={pair.key}>
+              {firstInvalidRow >= 0 ? <p className="text-sm text-destructive" role="alert">Some rows need correction. <button className="cursor-pointer underline" onClick={() => setBatchPage(Math.floor(firstInvalidRow / batchPageSize))} type="button">Go to first invalid row (pair {firstInvalidRow + 1})</button></p> : null}
+              {pairs.slice(batchOffset, batchOffset + batchPageSize).map((pair, pageIndex) => {
+                const index = batchOffset + pageIndex
+                return <fieldset className="rounded-lg border p-4 has-[[aria-invalid=true]]:border-destructive" key={pair.key}>
                 <legend className="px-1 text-sm font-medium">Pair {index + 1}</legend>
                 <div className="grid items-start gap-3 md:grid-cols-[12rem_1fr_1fr_auto]">
                   {(["id", "vh", "vl"] as const).map((field) => {
@@ -253,7 +263,15 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
                   })}
                   <Button aria-label={`Remove pair ${index + 1}`} onClick={() => { editIntent(); setPairs((current) => current.filter((row) => row.key !== pair.key)) }} type="button" variant="ghost"><Trash2 aria-hidden="true" /></Button>
                 </div>
-              </fieldset>)}
+              </fieldset>})}
+              {pairs.length > batchPageSize ? <nav aria-label="Batch pages" className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">Pairs {batchOffset + 1}–{Math.min(batchOffset + batchPageSize, pairs.length)} of {pairs.length}</p>
+                <div className="flex items-center gap-2">
+                  <Button aria-label="Previous batch page" disabled={currentBatchPage === 0} onClick={() => setBatchPage(currentBatchPage - 1)} type="button" variant="outline"><ChevronLeft aria-hidden="true" /></Button>
+                  <label className="flex items-center gap-2 text-sm">Page <input aria-label="Batch page" className="h-9 w-24 rounded-lg border border-input px-2" min={1} max={batchPageCount} type="number" value={currentBatchPage + 1} onChange={(event) => { const page = event.target.valueAsNumber; if (Number.isInteger(page) && page >= 1 && page <= batchPageCount) setBatchPage(page - 1) }} /> of {batchPageCount}</label>
+                  <Button aria-label="Next batch page" disabled={currentBatchPage === batchPageCount - 1} onClick={() => setBatchPage(currentBatchPage + 1)} type="button" variant="outline"><ChevronRight aria-hidden="true" /></Button>
+                </div>
+              </nav> : null}
               {tooManyPairs ? <p className="text-sm text-destructive" role="alert">Remove pairs to meet the current limit of {options.data?.max_pairs}.</p> : null}
             </CardContent>
           </Card>

@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import { ApiError, humanizationInputs, humanizationSelection, submitHumanizationJob } from "../src/api/client"
-import { nextPairId, normalizeSequence, pairErrors, parsePairCsv } from "../src/humanization"
+import { formatCandidateNumber, nextPairId, normalizeSequence, pairErrors, parsePairCsv } from "../src/humanization"
+
+test("candidate numbers retain tiny magnitudes and bound displayed precision", () => {
+  for (const [value, expected] of [[0, "0"], [2, "2"], [0.123456, "0.123"], [0.001, "0.001"], [0.00012, "1.200e-4"], [-0.000000123456, "-1.235e-7"], [1_000_000, "1.000e+6"], [-123456789, "-1.235e+8"]] as const) {
+    expect(formatCandidateNumber(value)).toBe(expected)
+  }
+})
 
 describe("humanization batch input", () => {
   test("normalizes sequences without dropping invalid characters or changing IDs", () => {

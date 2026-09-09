@@ -22,6 +22,12 @@ export function settingMetadata(options: HumanizationOptions | undefined, name: 
 
 export interface SelectionQuery { offset: number; limit: number; parentId: string; sortBy: string; descending: boolean }
 
+export function formatCandidateNumber(value: number) {
+  const magnitude = Math.abs(value)
+  if (magnitude !== 0 && (magnitude < 0.001 || magnitude >= 1_000_000)) return value.toExponential(3)
+  return Number.isInteger(value) ? String(value) : value.toFixed(3)
+}
+
 // Match the backend's Python whitespace rules. In particular, an embedded BOM
 // is not whitespace and must survive normalization so validation rejects it.
 // eslint-disable-next-line no-control-regex

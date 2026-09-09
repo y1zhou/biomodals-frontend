@@ -8,15 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { humanizationPaths, humanizationTool } from "@/tools"
 
-const resultColumns = [
-  ["parent_id · candidate_id · is_parent", "Identify each submitted pair, its candidates, and the unchanged parental baseline."],
-  ["vh · vl · generating_methods", "Read both candidate sequences and the models that generated them. Parental rows have no generating method."],
-  ["quality_tier · panel_order", "Compare quality tiers and the workflow’s diverse candidate order within each parent. Unranked rows remain in the table."],
-  ["cdr_preservation · cdr_mutations · vh_mutations · vl_mutations", "Inspect CDR preservation and mutation counts relative to the parent, using IMGT annotations."],
-  ["evaluation_complete · *_error", "Check whether all required evidence is present. Evaluator error columns are empty when evaluation succeeds."],
-  ["sapiens_* · humatch_* · pabnativ2_*", "Compare model scores and their changes from the parent in *_delta columns. Missing scores stay empty."],
-]
-
 export default function HumanizationOverviewPage() {
   const signedIn = Boolean(authenticatedPrincipal(useCurrentUser().data))
   const ToolIcon = humanizationTool.icon
@@ -59,15 +50,7 @@ export default function HumanizationOverviewPage() {
 
     <section aria-labelledby="humanization-results-heading" className="mt-14">
       <h2 className="font-heading text-2xl font-semibold" id="humanization-results-heading">Results: start with selection.csv</h2>
-      <p className="mt-4 text-lg leading-8 text-muted-foreground">Review the columns you need on the job page, or find the full CSV in the result archive. Sorting and parent filtering help compare candidates without changing the workflow’s original order.</p>
-      <dl className="mt-6 divide-y rounded-xl border px-5">
-        {resultColumns.map(([columns, description]) => <div className="py-5" key={columns}>
-          <dt className="break-words font-mono text-base font-medium">{columns}</dt>
-          <dd className="mt-2 text-base leading-7 text-muted-foreground">{description}</dd>
-        </div>)}
-      </dl>
-      <p className="mt-5 text-base leading-7 text-muted-foreground">The complete archive also includes detailed score tables under <code>scores/</code>, <code>imgt_mutations.parquet</code>, unique generation outputs under <code>native/</code>, and <code>manifest.json</code> with settings, model versions, provenance, and failures.</p>
-      <p className="mt-3 text-base leading-7 text-muted-foreground">Panel order is a selection heuristic, not a calibrated confidence score or experimental validation.</p>
+      <p className="mt-4 text-lg leading-8 text-muted-foreground">Compare candidate sequences, scores, and mutations in the job page’s sortable table, with explanations of each score. The result archive includes the full <code>selection.csv</code>, detailed scores, generation outputs, and a manifest recording settings and provenance.</p>
     </section>
   </main>
 }

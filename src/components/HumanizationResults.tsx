@@ -8,7 +8,7 @@ import { apiErrorCode, humanizationSelection } from "@/api/client"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { HumanizationSelection, SelectionQuery } from "@/humanization"
+import { formatCandidateNumber, type HumanizationSelection, type SelectionQuery } from "@/humanization"
 import { shouldRetryJobQuery } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 
@@ -39,7 +39,7 @@ function ValueBar({ value, signed, small = false }: { value: number; signed: boo
 function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: number; deltaValue: unknown; ranges: HumanizationSelection["nativeness_ranges"] | undefined }) {
   const delta = name.endsWith("_delta")
   const score = /_(probability|score|likeness|nativeness)$/.test(name)
-  if (!score && !delta) return <span className={name === "cdr_mutations" && value !== 0 ? "rounded bg-red-100 px-1 font-medium tabular-nums text-red-800" : "tabular-nums"}>{value}</span>
+  if (!score && !delta) return <span title={String(value)} className={name === "cdr_mutations" && value !== 0 ? "rounded bg-red-100 px-1 font-medium tabular-nums text-red-800" : "tabular-nums"}>{formatCandidateNumber(value)}</span>
   const nativeness = /^pabnativ2_.*_nativeness(?:_delta)?$/.test(name)
   function scaled(column: string, raw: number) {
     if (!nativeness) return Math.abs(raw) <= 1 ? raw : undefined
@@ -54,7 +54,7 @@ function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: n
   return <span className="block min-w-24 tabular-nums" title={String(value)}>
     <span className="relative block rounded px-2 py-1 text-center">
       {barValue !== undefined ? <ValueBar value={barValue} signed={delta} /> : null}
-      <span className="relative">{value.toFixed(3)}</span>
+      <span className="relative">{formatCandidateNumber(value)}</span>
     </span>
     {!delta && deltaBar !== undefined ? <span className="block" aria-label={`Change from parent: ${deltaValue}`} title={`Change from parent: ${deltaValue}`}><ValueBar value={deltaBar} signed small /></span> : null}
   </span>
@@ -141,9 +141,9 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
             </div>
           </details>
           <details className="text-sm leading-7 text-muted-foreground">
-            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Why Humatch probabilities can show 0.000</summary>
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Why Humatch probabilities can be near zero</summary>
             <div className="mt-3 space-y-3">
-              <p><strong className="font-medium text-foreground">Rounding:</strong> small probabilities such as 0.00012 display as 0.000. The archive’s selection.csv retains the unrounded values.</p>
+              <p><strong className="font-medium text-foreground">Small probabilities:</strong> values such as 0.00012 display as 1.200e-4, rather than rounding to zero. The archive’s selection.csv retains the unrounded values.</p>
               <p><strong className="font-medium text-foreground">Low support for the target:</strong> the classifier may favor another human family or its negative class. Compare target and best-family probabilities to distinguish these possibilities.</p>
               <p>Zero is a score, not a missing-value marker. Missing scores appear as —. These probabilities do not measure sequence identity or the chance of experimental success.</p>
             </div>
@@ -160,6 +160,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
       </div>
       <section aria-labelledby="candidate-controls-heading" className="mt-3 space-y-2 border-t pt-4">
         <h3 className="text-lg font-semibold" id="candidate-controls-heading">Explore the table</h3>
+        <p className="text-sm leading-7 text-muted-foreground">Numbers use up to 3 decimal places. Nonzero magnitudes below 0.001 or at least 1,000,000 use scientific notation. Hover over a number to see its full value.</p>
         <p className="text-sm leading-7 text-muted-foreground">Click a column header to sort; click again to reverse. Sorting uses full precision, with missing values last and ties resolved by parent and candidate IDs. Use the parent filter icon and Columns menu to narrow the view. The full selection.csv is in the result archive.</p>
       </section>
     </CardHeader>

@@ -95,7 +95,9 @@ validate on the server and present the same confirmation view before creating
 a Job.
 
 Antibody humanization accepts an editable ID/VH/VL batch through manual entry
-or CSV import, with one set of scientific settings for the batch. The backend
+or CSV import, with one set of scientific settings for the batch. The editor
+renders 50 pairs per page while retaining every imported row and validating the
+whole batch, including duplicate IDs across pages. The backend
 supplies defaults, the pair limit, and chain length limits (currently VH 142
 and VL 126 residues). Oversized sequences remain editable and block submission;
 the form never trims domains or treats length as proof of valid numbering.
@@ -116,7 +118,9 @@ when the affected row is on another page. Parent rows are shaded; bounded
 scores include parental delta bars beneath them. Nativeness bars use a
 0–1 scale based on each full column’s minimum and maximum, with parental
 deltas using that same range;
-displayed numbers and server-side sorting retain the original values. The complete CSV
+displayed numbers use up to three decimal places, with scientific notation for
+nonzero magnitudes below 0.001 or at least 1,000,000. Hover values, server-side
+sorting, and the archive retain full precision. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser. See the
 [accepted service specification](../biomodals/docs/specs/humanization-service.md).
