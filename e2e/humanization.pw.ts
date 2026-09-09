@@ -330,6 +330,13 @@ test("candidate presentation preserves values and respects whole-result visibili
     default_hidden_columns: ["sapiens_error"], nativeness_ranges: { pabnativ2_pair_nativeness: { min: -2, max: 0 }, pabnativ2_vh_nativeness: { min: 0.2, max: 0.2 } },
   } }))
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  const guidance = page.getByRole("region", { name: "Understand the ranking and scores", exact: true })
+  await expect(guidance.locator("details").first().locator("summary")).toHaveText("Understand the ranking")
+  await expect(guidance.locator("details[open]")).toHaveCount(0)
+  await expect(page.getByText("Ranking versions", { exact: true })).toHaveCount(0)
+  await guidance.locator("details").first().locator("summary").click()
+  await expect(guidance.getByText("quality_tier · lower is better", { exact: true })).toBeVisible()
+  await expect(guidance).toContainText("Missing values do not mean zero or the worst tier.")
   const table = page.getByRole("table", { name: "Humanization selection.csv, page 1" })
   for (const name of ["is_parent", "cdr_preservation", "humatch_vh_target_family", "sapiens_error", "humatch_pairing_score_delta", "pabnativ2_pair_nativeness_delta"]) await expect(table.getByRole("button", { name, exact: true })).toHaveCount(0)
   for (const name of ["humatch_error", "evaluation_complete"]) await expect(table.getByRole("button", { name, exact: true })).toBeVisible()

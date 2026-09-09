@@ -92,18 +92,17 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
     <CardHeader>
       <CardTitle>Humanization candidates</CardTitle>
       <p className="text-sm leading-7 text-muted-foreground">Compare candidates with their unchanged parents, shown as gray rows.</p>
-      <div className="mt-3 grid gap-8 lg:grid-cols-2">
-        <section aria-labelledby="candidate-ranking-heading" className="space-y-3">
-          <h3 className="text-lg font-semibold" id="candidate-ranking-heading">Understand the ranking</h3>
-          <dl className="space-y-3 text-sm leading-7 text-muted-foreground">
+      <section aria-labelledby="candidate-scores-heading" className="mt-3 w-full space-y-3">
+          <h3 className="text-lg font-semibold" id="candidate-scores-heading">Understand the ranking and scores</h3>
+          <details className="text-sm leading-7 text-muted-foreground">
+            <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Understand the ranking</summary>
+          <dl className="mt-3 space-y-3">
             <div><dt className="font-medium text-foreground">quality_tier · lower is better</dt><dd>Per-parent Pareto tiers balance higher model scores with fewer mutations. Tier 1 is best.</dd></div>
             <div><dt className="font-medium text-foreground">panel_order · lower comes first</dt><dd>A suggested testing order for each parent, balancing quality and sequence diversity. Starts at 1.</dd></div>
             <div><dt className="font-medium text-foreground">Missing ranks</dt><dd>Parents and candidates that fail ranking requirements remain unranked. Missing values do not mean zero or the worst tier.</dd></div>
           </dl>
-          <p className="text-sm leading-7 text-muted-foreground">These ranks are simple heuristics constructed from the model scores. You may use any other combinatory ranking method to pick out top candidates.</p>
-        </section>
-        <section aria-labelledby="candidate-scores-heading" className="space-y-3">
-          <h3 className="text-lg font-semibold" id="candidate-scores-heading">Read scores and changes</h3>
+          <p className="mt-3">These ranks are simple heuristics constructed from the model scores. You may use any other combinatory ranking method to pick out top candidates.</p>
+          </details>
           <details className="text-sm leading-7 text-muted-foreground">
             <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">What are the color bars</summary>
             <dl className="mt-3 space-y-3">
@@ -156,8 +155,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
               <p>Deltas subtract the same parent’s score from the candidate’s score. Positive means a higher model score; it is not a percentage improvement or measured experimental benefit.</p>
             </div>
           </details>
-        </section>
-      </div>
+      </section>
       <section aria-labelledby="candidate-controls-heading" className="mt-3 space-y-2 border-t pt-4">
         <h3 className="text-lg font-semibold" id="candidate-controls-heading">Explore the table</h3>
         <p className="text-sm leading-7 text-muted-foreground">Numbers use up to 3 decimal places. Nonzero magnitudes below 0.001 or at least 1,000,000 use scientific notation. Hover over a number to see its full value.</p>

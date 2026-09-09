@@ -122,7 +122,17 @@ displayed numbers use up to three decimal places, with scientific notation for
 nonzero magnitudes below 0.001 or at least 1,000,000. Hover values, server-side
 sorting, and the archive retain full precision. The complete CSV
 is included in the result archive download. The table never fetches the
-whole CSV to sort it in the browser. See the
+whole CSV to sort it in the browser.
+
+Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
+and `humatch_vl_best_family_probability` as a fifth Pareto objective to
+maximize. The backend derives this mean during ranking; no extra model call,
+selection column, or frontend calculation is introduced. Score tie-break order
+is p-AbNatiV2 pair nativeness, p-AbNatiV2 pairing, Humatch pairing, then the
+Humatch best-family mean, followed by fewer edits and candidate ID. Pairing
+guardrails still apply only to the two pairing scores. Stored v1 results retain
+their original ranks; v2 requires a run using the updated workflow, not a page
+refresh. This frontend change does not deploy that workflow. See the
 [accepted service specification](../biomodals/docs/specs/humanization-service.md).
 
 The implemented path includes administrator-provisioned accounts, protected

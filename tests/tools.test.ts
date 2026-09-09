@@ -28,6 +28,10 @@ describe("filterToolCatalog", () => {
     expect(toolName("future-tool")).toBe("future-tool")
   })
 
+  test("labels the humanization billing category in Admin Modal costs", () => {
+    expect(toolName("humanization")).toBe("Antibody humanization")
+  })
+
   test("makes AlphaFold3 available", () => {
     expect(
       toolCatalog.find((tool) => tool.slug === "alphafold3")?.status
