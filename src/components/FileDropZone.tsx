@@ -107,7 +107,7 @@ export default function FileDropZone({
           </span>
         </div>
       )}
-      <p aria-live="polite" className="mt-2 text-xs text-muted-foreground">
+      <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
         {dragActive ? "Release to select this file." : help}
       </p>
     </div>

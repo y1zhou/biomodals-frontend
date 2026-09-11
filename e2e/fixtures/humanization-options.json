@@ -1,0 +1,249 @@
+{
+  "max_pairs": 100,
+  "max_vh_length": 142,
+  "max_vl_length": 126,
+  "defaults": {
+    "sapiens_iterations": 1,
+    "sapiens_numbering_scheme": "kabat",
+    "sapiens_cdr_definition": "kabat",
+    "sapiens_mutate_cdrs": false,
+    "humatch_vh_target_family": "auto",
+    "humatch_vl_target_family": "auto",
+    "humatch_germline_likeness_target": 0.4,
+    "humatch_vh_classifier_target": 0.95,
+    "humatch_vl_classifier_target": 0.95,
+    "humatch_pair_classifier_target": 0.95,
+    "humatch_max_edits": 60,
+    "humatch_mutate_cdrs": false,
+    "humatch_fixed_vh_positions": "",
+    "humatch_fixed_vl_positions": "",
+    "pabnativ2_mutate_cdrs": false,
+    "pabnativ2_fixed_vh_positions": "",
+    "pabnativ2_fixed_vl_positions": "",
+    "pabnativ2_residue_score_threshold": 0.98,
+    "pabnativ2_rasa_threshold": 0.15,
+    "pabnativ2_max_relative_pairing_score_decrease": 0.1,
+    "pabnativ2_forbidden_residues": "C,M",
+    "pabnativ2_seed": 0,
+    "pabnativ2_num_seeds": 1,
+    "hudiff_ab_candidate_count": 10,
+    "hudiff_ab_seed": 42,
+    "hudiff_ab_sampling_order": "shuffle",
+    "hudiff_ab_upstream_inference_dropout": true
+  },
+  "settings_schema": {
+    "additionalProperties": false,
+    "description": "Namespaced controls map directly to the standalone generators.",
+    "properties": {
+      "sapiens_iterations": {
+        "default": 1,
+        "maximum": 5,
+        "minimum": 1,
+        "title": "Sapiens Iterations",
+        "type": "integer"
+      },
+      "sapiens_numbering_scheme": {
+        "default": "kabat",
+        "enum": [
+          "kabat",
+          "chothia",
+          "imgt"
+        ],
+        "title": "Sapiens Numbering Scheme",
+        "type": "string"
+      },
+      "sapiens_cdr_definition": {
+        "default": "kabat",
+        "enum": [
+          "kabat",
+          "chothia",
+          "imgt",
+          "north"
+        ],
+        "title": "Sapiens Cdr Definition",
+        "type": "string"
+      },
+      "sapiens_mutate_cdrs": {
+        "default": false,
+        "title": "Sapiens Mutate Cdrs",
+        "type": "boolean"
+      },
+      "humatch_vh_target_family": {
+        "default": "auto",
+        "title": "Humatch Vh Target Family",
+        "type": "string",
+        "enum": [
+          "auto",
+          "hv1",
+          "hv2",
+          "hv3",
+          "hv4",
+          "hv5",
+          "hv6",
+          "hv7"
+        ]
+      },
+      "humatch_vl_target_family": {
+        "default": "auto",
+        "title": "Humatch Vl Target Family",
+        "type": "string",
+        "enum": [
+          "auto",
+          "lv1",
+          "lv2",
+          "lv3",
+          "lv4",
+          "lv5",
+          "lv6",
+          "lv7",
+          "lv8",
+          "lv9",
+          "lv10",
+          "kv1",
+          "kv2",
+          "kv3",
+          "kv4",
+          "kv5",
+          "kv6",
+          "kv7"
+        ]
+      },
+      "humatch_germline_likeness_target": {
+        "default": 0.4,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Humatch Germline Likeness Target",
+        "type": "number"
+      },
+      "humatch_vh_classifier_target": {
+        "default": 0.95,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Humatch Vh Classifier Target",
+        "type": "number"
+      },
+      "humatch_vl_classifier_target": {
+        "default": 0.95,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Humatch Vl Classifier Target",
+        "type": "number"
+      },
+      "humatch_pair_classifier_target": {
+        "default": 0.95,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Humatch Pair Classifier Target",
+        "type": "number"
+      },
+      "humatch_max_edits": {
+        "default": 60,
+        "maximum": 400,
+        "minimum": 0,
+        "title": "Humatch Max Edits",
+        "type": "integer"
+      },
+      "humatch_mutate_cdrs": {
+        "default": false,
+        "title": "Humatch Mutate Cdrs",
+        "type": "boolean"
+      },
+      "humatch_fixed_vh_positions": {
+        "default": "",
+        "title": "Humatch Fixed Vh Positions",
+        "type": "string"
+      },
+      "humatch_fixed_vl_positions": {
+        "default": "",
+        "title": "Humatch Fixed Vl Positions",
+        "type": "string"
+      },
+      "pabnativ2_mutate_cdrs": {
+        "default": false,
+        "title": "Pabnativ2 Mutate Cdrs",
+        "type": "boolean"
+      },
+      "pabnativ2_fixed_vh_positions": {
+        "default": "",
+        "title": "Pabnativ2 Fixed Vh Positions",
+        "type": "string"
+      },
+      "pabnativ2_fixed_vl_positions": {
+        "default": "",
+        "title": "Pabnativ2 Fixed Vl Positions",
+        "type": "string"
+      },
+      "pabnativ2_residue_score_threshold": {
+        "default": 0.98,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Pabnativ2 Residue Score Threshold",
+        "type": "number"
+      },
+      "pabnativ2_rasa_threshold": {
+        "default": 0.15,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Pabnativ2 Rasa Threshold",
+        "type": "number"
+      },
+      "pabnativ2_max_relative_pairing_score_decrease": {
+        "default": 0.1,
+        "maximum": 1,
+        "minimum": 0,
+        "title": "Pabnativ2 Max Relative Pairing Score Decrease",
+        "type": "number"
+      },
+      "pabnativ2_forbidden_residues": {
+        "default": "C,M",
+        "title": "Pabnativ2 Forbidden Residues",
+        "type": "string"
+      },
+      "pabnativ2_seed": {
+        "default": 0,
+        "maximum": 4294967295,
+        "minimum": 0,
+        "title": "Pabnativ2 Seed",
+        "type": "integer"
+      },
+      "pabnativ2_num_seeds": {
+        "default": 1,
+        "description": "Independent optimization runs per parent; distinct seeds do not guarantee distinct candidates.",
+        "maximum": 25,
+        "minimum": 1,
+        "title": "Pabnativ2 Num Seeds",
+        "type": "integer"
+      },
+      "hudiff_ab_candidate_count": {
+        "default": 10,
+        "maximum": 25,
+        "minimum": 1,
+        "title": "Hudiff Ab Candidate Count",
+        "type": "integer"
+      },
+      "hudiff_ab_seed": {
+        "default": 42,
+        "maximum": 4294967295,
+        "minimum": 0,
+        "title": "Hudiff Ab Seed",
+        "type": "integer"
+      },
+      "hudiff_ab_sampling_order": {
+        "default": "shuffle",
+        "enum": [
+          "shuffle",
+          "left_to_right"
+        ],
+        "title": "Hudiff Ab Sampling Order",
+        "type": "string"
+      },
+      "hudiff_ab_upstream_inference_dropout": {
+        "default": true,
+        "title": "Hudiff Ab Upstream Inference Dropout",
+        "type": "boolean"
+      }
+    },
+    "title": "HumanizationSettings",
+    "type": "object"
+  }
+}

@@ -291,7 +291,7 @@ function StateUnknownJobsCard({
                   <tr key={job.job_id}>
                     <td className="px-6 py-4 align-top">
                       <span className="font-medium">{job.display_name}</span>
-                      <span className="mt-1 block break-all font-mono text-[0.7rem] text-amber-950/70">
+                      <span className="mt-1 block break-all font-mono text-xs text-amber-950/70">
                         {job.job_id}
                       </span>
                     </td>

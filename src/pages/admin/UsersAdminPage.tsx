@@ -145,7 +145,7 @@ function PasswordLinkDialog({
                     {copied ? "Copied" : "Copy"}
                   </Button>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                <p className="mt-3 text-sm leading-5 text-muted-foreground">
                   Expires {formatTimestamp(link.expires_at)}. Valid for approximately one hour.
                 </p>
               </>

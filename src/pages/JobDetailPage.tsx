@@ -10,7 +10,7 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react"
 import { Link, useParams } from "react-router"
 
 import {
@@ -56,7 +56,10 @@ import { formatBytes } from "@/storage"
 import {
   availableTools,
   toolSubmissionPath,
+  humanizationPaths,
 } from "@/tools"
+
+const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -360,7 +363,10 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       : "Download result"}
                   </Button>
                 ) : null}
-                {canStartAgain ? (
+                {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
+                  <RotateCcw aria-hidden="true" /> Rerun with same inputs
+                </Link> : null}
+                {canStartAgain && job.tool !== "humanization" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job
@@ -602,6 +608,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             </Card>
           </div>
         </section>
+        {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
       </main>
 
       <dialog

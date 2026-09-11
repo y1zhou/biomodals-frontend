@@ -88,11 +88,52 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
-The MVP has two available Tools: `GROMACS MD simulation` and `AlphaFold3
-structure prediction`. AlphaFold3 accepts a guided protein, DNA, RNA, and
+The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
+prediction`, and `Antibody humanization`. AlphaFold3 accepts a guided protein, DNA, RNA, and
 small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating
 a Job.
+
+Antibody humanization accepts an editable ID/VH/VL batch through manual entry
+or CSV import, with one set of scientific settings for the batch. The editor
+renders 50 pairs per page while retaining every imported row and validating the
+whole batch, including duplicate IDs across pages. The backend
+supplies defaults, the pair limit, and chain length limits (currently VH 142
+and VL 126 residues). Oversized sequences remain editable and block submission;
+the form never trims domains or treats length as proof of valid numbering.
+“Rerun with same inputs” retrieves an authorized original request into an
+editable memory-only draft. It preserves historical settings, including differing
+model seeds or CDR controls until the shared control is edited. Only explicit
+submission creates a new job and idempotency intent under the current workflow.
+General CDR mutation and root-seed
+controls apply to supported models; p-AbNatiV2 offers independent optimization
+attempts, and Sapiens contributes each iteration before deduplication. New
+submissions stay disabled until the service advertises these settings.
+Drafts remain in memory; explicit Check
+submission replays the unchanged request and idempotency key after a lost
+response. Finished Jobs show bounded server-filtered, server-sorted candidate
+pages with column visibility controls and page navigation. Whole-result metadata
+keeps error and incomplete-evaluation columns visible when needed, including
+when the affected row is on another page. Parent rows are shaded; bounded
+scores include parental delta bars beneath them. Nativeness bars use a
+0–1 scale based on each full column’s minimum and maximum, with parental
+deltas using that same range;
+displayed numbers use up to three decimal places, with scientific notation for
+nonzero magnitudes below 0.001 or at least 1,000,000. Hover values, server-side
+sorting, and the archive retain full precision. The complete CSV
+is included in the result archive download. The table never fetches the
+whole CSV to sort it in the browser.
+
+Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
+and `humatch_vl_best_family_probability` as a fifth Pareto objective to
+maximize. The backend derives this mean during ranking; no extra model call,
+selection column, or frontend calculation is introduced. Score tie-break order
+is p-AbNatiV2 pair nativeness, p-AbNatiV2 pairing, Humatch pairing, then the
+Humatch best-family mean, followed by fewer edits and candidate ID. Pairing
+guardrails still apply only to the two pairing scores. Stored v1 results retain
+their original ranks; v2 requires a run using the updated workflow, not a page
+refresh. This frontend change does not deploy that workflow. See the
+[accepted service specification](../biomodals/docs/specs/humanization-service.md).
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,

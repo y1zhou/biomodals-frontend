@@ -145,7 +145,7 @@ the provider Function Call identifier used by the backend.
 _Avoid_: Job History, Stage History, audit log, Progress
 
 **Stage Outcome**:
-How a started Job Stage ended: completed, failed, or cancelled. It remains
+How a started Job Stage ended: completed, partial, failed, or cancelled. It remains
 absent while that Stage is active, state-unknown, or blocked.
 _Avoid_: Job Status, Progress
 

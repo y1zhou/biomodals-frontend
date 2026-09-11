@@ -15,7 +15,11 @@ export function installAuthenticatedPrincipal(
   queryClient: QueryClient,
   principal: Principal
 ) {
-  queryClient.removeQueries()
+  // Keep mounted session observers attached while discarding private data.
+  void queryClient.cancelQueries({ queryKey: currentUserKey, exact: true }, { revert: false })
+  queryClient.removeQueries({
+    predicate: ({ queryKey }) => queryKey.length !== currentUserKey.length || queryKey[0] !== currentUserKey[0] || queryKey[1] !== currentUserKey[1],
+  })
   queryClient.setQueryData<CurrentUserState>(currentUserKey, principal)
 }
 

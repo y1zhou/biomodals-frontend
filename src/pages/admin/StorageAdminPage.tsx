@@ -38,7 +38,7 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
       </CardHeader>
       <CardContent>
         <p className="font-heading text-2xl font-semibold tabular-nums">{value}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
       </CardContent>
     </Card>
   )
@@ -113,7 +113,7 @@ export default function StorageAdminPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Published results remain authoritative in Modal; this page manages rebuildable local copies.
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             Last updated {formatTimestamp(storage.dataUpdatedAt)}
           </p>
         </div>

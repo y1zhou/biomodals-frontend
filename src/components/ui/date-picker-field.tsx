@@ -237,7 +237,7 @@ function DatePickerField({
                   type="number"
                   value={jumpYear}
                 />
-                <p className="mt-1.5 text-[0.65rem] text-muted-foreground">
+                <p className="mt-1.5 text-sm text-muted-foreground">
                   Enter a year, then choose a month.
                 </p>
                 <div
@@ -273,7 +273,7 @@ function DatePickerField({
               <>
                 <div
                   aria-hidden="true"
-                  className="mt-2 grid grid-cols-7 text-center text-[0.65rem] font-medium text-muted-foreground"
+                  className="mt-2 grid grid-cols-7 text-center text-xs font-medium text-muted-foreground"
                 >
                   {weekdayLabels.map((weekday) => (
                     <span className="py-1" key={weekday}>

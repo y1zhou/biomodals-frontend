@@ -1,4 +1,4 @@
-import { Atom, Dna, type LucideIcon } from "lucide-react"
+import { Atom, Dna, UserRoundArrowLeft, type LucideIcon } from "lucide-react"
 
 interface ToolCatalogEntryBase {
   slug: string
@@ -40,6 +40,24 @@ export function toolOverviewPath(tool: AvailableTool) {
   return `/tools/${tool.slug}`
 }
 
+export const humanizationTool = {
+  slug: "humanization",
+  name: "Antibody humanization",
+  description: "Generate and compare humanization candidates from paired antibody VH and VL sequences.",
+  tags: ["Antibody", "Humanization", "Sequence"],
+  icon: UserRoundArrowLeft,
+  status: "available",
+} satisfies AvailableTool
+
+const humanizationOverviewPath = toolOverviewPath(humanizationTool)
+export const humanizationPaths = {
+  rerun: (jobId: string) => `/tools/humanization/new?source_job=${encodeURIComponent(jobId)}`,
+  overview: humanizationOverviewPath,
+  submission: `${humanizationOverviewPath}/new`,
+  jobRoute: `${humanizationOverviewPath}/jobs/:jobId`,
+  job: (jobId: string) => `${humanizationOverviewPath}/jobs/${encodeURIComponent(jobId)}`,
+}
+
 const gromacsOverviewPath = toolOverviewPath(gromacsTool)
 
 export const gromacsPaths = {
@@ -60,18 +78,20 @@ export const alphafold3Paths = {
 }
 
 export function toolJobPath(tool: string, jobId: string) {
+  if (tool === "humanization") return humanizationPaths.job(jobId)
   if (tool === "gromacs") return gromacsPaths.job(jobId)
   if (tool === "alphafold3") return alphafold3Paths.job(jobId)
   return "/jobs"
 }
 
 export function toolSubmissionPath(tool: string) {
+  if (tool === "humanization") return humanizationPaths.submission
   if (tool === "gromacs") return gromacsPaths.submission
   if (tool === "alphafold3") return alphafold3Paths.submission
   return "/"
 }
 
-export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool]
+export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool, humanizationTool]
 
 export const availableTools = toolCatalog.filter(
   (entry): entry is AvailableTool => entry.status === "available"

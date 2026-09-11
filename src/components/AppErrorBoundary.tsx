@@ -13,6 +13,7 @@ export default class AppErrorBoundary extends Component<
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
+    document.title = "Unable to load page | BioModals"
     if (import.meta.env.DEV) {
       console.error("BioModals frontend failed", error, info.componentStack)
     }

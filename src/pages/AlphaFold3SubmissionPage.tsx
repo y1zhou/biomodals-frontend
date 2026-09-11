@@ -202,10 +202,10 @@ function EntityEditor({
               onClick={() => setEditing(true)}
               type="button"
             >
-              <span className="flex flex-wrap gap-x-[0.9em] gap-y-5 pt-3 leading-5">
+              <span className="flex flex-wrap gap-x-[0.9em] gap-y-6 pt-5 leading-5">
                 {formatSequence(entity.sequence).split(" ").map((group, groupIndex) => (
                   <span className="relative" key={`${groupIndex}-${group}`}>
-                    <span className="absolute -top-3 right-0 min-w-[4ch] whitespace-nowrap text-right font-sans text-[0.65rem] leading-none tracking-normal text-muted-foreground">
+                    <span className="absolute -top-5 right-0 min-w-[4ch] whitespace-nowrap text-right font-sans text-xs leading-none tracking-normal text-muted-foreground">
                       {groupIndex * 10 + group.length}
                     </span>
                     {group}
@@ -739,7 +739,7 @@ export default function AlphaFold3SubmissionPage() {
             <label className="flex items-center gap-2 text-sm"><input checked={draft.searchProteinTemplates} disabled={!draft.searchMsa} onChange={(event) => setDraft({ ...draft, searchProteinTemplates: event.target.checked })} type="checkbox" />Search protein templates</label>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-recycle">Recycles</label><Input id="alphafold3-recycle" min={0} onChange={(event) => setDraft({ ...draft, recycle: Number(event.target.value) })} type="number" value={draft.recycle} /></div>
             <div><label className="mb-1 block text-sm" htmlFor="alphafold3-sample">Samples per seed</label><Input id="alphafold3-sample" min={1} onChange={(event) => setDraft({ ...draft, sample: Number(event.target.value) })} type="number" value={draft.sample} /></div>
-            <div className="sm:col-span-2 lg:col-span-4"><label className="mb-1 block text-sm" htmlFor="alphafold3-seeds">Model seeds</label><Input id="alphafold3-seeds" onChange={(event) => setDraft({ ...draft, seeds: event.target.value })} placeholder="1,2,4,8 or 1-10,42,1024" value={draft.seeds} /><p className="mt-1 text-xs text-muted-foreground">Comma-separated integers or ranges, e.g., &quot;1,2,4,8&quot; or &quot;1-10,42,1024&quot;.</p></div>
+            <div className="sm:col-span-2 lg:col-span-4"><label className="mb-1 block text-sm" htmlFor="alphafold3-seeds">Model seeds</label><Input id="alphafold3-seeds" onChange={(event) => setDraft({ ...draft, seeds: event.target.value })} placeholder="1,2,4,8 or 1-10,42,1024" value={draft.seeds} /><p className="mt-1 text-sm text-muted-foreground">Comma-separated integers or ranges, e.g., &quot;1,2,4,8&quot; or &quot;1-10,42,1024&quot;.</p></div>
           </div>
         </details>
 

@@ -241,7 +241,7 @@ export function LoginPage() {
       title="Sign in"
     >
       <LoginForm onSuccess={() => navigate(returnTo, { replace: true })} />
-      <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
+      <p className="mt-5 text-center text-sm leading-5 text-muted-foreground">
         Need access or forgot your password? Contact your administrator.
       </p>
     </AuthCard>
@@ -346,7 +346,7 @@ export function SetPasswordPage() {
             type={passwordType}
             value={password}
           />
-          <p className="text-xs text-muted-foreground" id="password-help">
+          <p className="text-sm text-muted-foreground" id="password-help">
             Use 15 to 128 characters.
           </p>
           {passwordError ? (

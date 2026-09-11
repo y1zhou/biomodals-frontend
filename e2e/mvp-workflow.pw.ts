@@ -60,8 +60,9 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     origin,
   })
   await expect.poll(async () => (await browserStats()).password_link).not.toBe("")
-  await expect.poll(async () => (await browserStats()).preflight_versions).toEqual([7, 1])
-  const setup = (await browserStats()).password_link
+  await expect.poll(async () => (await browserStats()).preflight_versions.slice(0, 3)).toEqual([7, 1, 1])
+  const baseline = await browserStats()
+  const setup = baseline.password_link
 
   await page.goto(setup)
   await page.getByLabel("New password").fill(PASSWORD)
@@ -219,8 +220,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   )
   await prepareStage.click()
   await expect(prepareLogs).toHaveCount(0)
-  await expect.poll(async () => (await browserStats()).submit_calls).toBe(1)
-  await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7])
+  await expect.poll(async () => (await browserStats()).submit_calls - baseline.submit_calls).toBe(1)
+  await expect.poll(async () => (await browserStats()).submit_versions.slice(baseline.submit_versions.length)).toEqual([7])
   const statusMetadata = page.locator("p", { hasText: "Job updated" }).first()
   await expect(statusMetadata).toContainText(/Last checked \d+s ago/)
   const stagesTable = page.getByRole("table", { name: "Execution stages" })
@@ -272,13 +273,13 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await prepareStage.click()
   await expect(prepareLogs.getByText("Fetched logs")).toBeVisible()
   await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
-  await expect.poll(async () => (await browserStats()).log_fetches).toBe(2)
+  await expect.poll(async () => (await browserStats()).log_fetches - baseline.log_fetches).toBe(2)
   await prepareStage.click()
   await expect(prepareLogs).toHaveCount(0)
   await prepareStage.click()
   await expect(prepareLogs.getByText("Fetched logs")).toBeVisible()
   await expect(prepareLogs.getByText("Browser test remote log")).toBeVisible()
-  await expect.poll(async () => (await browserStats()).log_fetches).toBe(2)
+  await expect.poll(async () => (await browserStats()).log_fetches - baseline.log_fetches).toBe(2)
 
   const historicalEnd = Date.now() - 60_000
   const historicalStart = historicalEnd - 20 * 60_000
@@ -374,8 +375,8 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   })
   await expect(page.locator("p", { hasText: "Job updated" }).first()).not.toContainText("ago")
 
-  await expect.poll(async () => (await browserStats()).submit_calls).toBe(2)
-  await expect.poll(async () => (await browserStats()).submit_versions).toEqual([7, 7])
+  await expect.poll(async () => (await browserStats()).submit_calls - baseline.submit_calls).toBe(2)
+  await expect.poll(async () => (await browserStats()).submit_versions.slice(baseline.submit_versions.length)).toEqual([7, 7])
 
   await page.goto("/jobs?tool=gromacs")
   await page.getByRole("button", { name: "Filter jobs by tool (active)" }).click()

@@ -1,6 +1,6 @@
 import { ArrowUpRight, LoaderCircle, Search } from "lucide-react"
-import { lazy, Suspense, useState } from "react"
-import { Link, Navigate, Route, Routes } from "react-router"
+import { lazy, Suspense, useEffect, useState } from "react"
+import { Link, Navigate, Route, Routes, useLocation } from "react-router"
 
 import AppShell from "@/AppShell"
 import { AdminRoute, LoginPage, ProtectedRoute, SetPasswordPage } from "@/auth"
@@ -18,6 +18,7 @@ import {
   alphafold3Paths,
   filterToolCatalog,
   gromacsPaths,
+  humanizationPaths,
   toolCatalog,
   toolOverviewPath,
 } from "@/tools"
@@ -27,6 +28,8 @@ const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage")
 const AlphaFold3OverviewPage = lazy(() => import("@/pages/AlphaFold3OverviewPage"))
 const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3SubmissionPage"))
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
+const HumanizationOverviewPage = lazy(() => import("@/pages/HumanizationOverviewPage"))
+const HumanizationSubmissionPage = lazy(() => import("@/pages/HumanizationSubmissionPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
 const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
@@ -161,6 +164,31 @@ function NotFoundPage() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const path = pathname.replace(/\/$/, "") || "/"
+    const titles: Record<string, string> = {
+      "/": "Tools",
+      "/login": "Sign in",
+      "/set-password": "Set password",
+      "/jobs": "My Jobs",
+      "/admin": "Administration",
+      "/admin/users": "Manage users",
+      "/admin/modal": "Runtime settings",
+      "/admin/storage": "Result storage",
+    }
+    for (const tool of toolCatalog) {
+      if (tool.status !== "available") continue
+      const overview = toolOverviewPath(tool)
+      titles[overview] = tool.name
+      titles[`${overview}/new`] = `New job · ${tool.name}`
+      if (path.startsWith(`${overview}/jobs/`) && !path.slice(`${overview}/jobs/`.length).includes("/")) {
+        titles[path] = `Job details · ${tool.name}`
+      }
+    }
+    document.title = `${titles[path] ?? "Page not found"} | BioModals`
+  }, [pathname])
+
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>
@@ -168,12 +196,15 @@ export default function App() {
           <Route element={<LandingPage />} path="/" />
           <Route element={<GromacsOverviewPage />} path={gromacsPaths.overview} />
           <Route element={<AlphaFold3OverviewPage />} path={alphafold3Paths.overview} />
+          <Route element={<HumanizationOverviewPage />} path={humanizationPaths.overview} />
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
             <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
+            <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
+            <Route element={<JobDetailPage tool="humanization" />} path={humanizationPaths.jobRoute} />
             <Route
               element={<JobDetailPage tool="gromacs" />}
               path={gromacsPaths.jobRoute}

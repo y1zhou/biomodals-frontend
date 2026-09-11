@@ -15,7 +15,7 @@ describe("filterToolCatalog", () => {
     expect(
       filterToolCatalog(toolCatalog, "molecular").map((tool) => tool.slug)
     ).toEqual(["gromacs", "alphafold3"])
-    expect(filterToolCatalog(toolCatalog, "csv")).toEqual([])
+    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization"])
   })
 
   test("returns all tools for blank input", () => {
@@ -28,6 +28,10 @@ describe("filterToolCatalog", () => {
     expect(toolName("future-tool")).toBe("future-tool")
   })
 
+  test("labels the humanization billing category in Admin Modal costs", () => {
+    expect(toolName("humanization")).toBe("Antibody humanization")
+  })
+
   test("makes AlphaFold3 available", () => {
     expect(
       toolCatalog.find((tool) => tool.slug === "alphafold3")?.status
@@ -35,6 +39,7 @@ describe("filterToolCatalog", () => {
     expect(availableTools.map((tool) => tool.slug)).toEqual([
       "gromacs",
       "alphafold3",
+      "humanization",
     ])
   })
 
