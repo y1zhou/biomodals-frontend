@@ -1,7 +1,7 @@
 {
   "name": "biomodals-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "api:generate": "openapi-typescript ${BIOMODALS_OPENAPI_URL:-http://127.0.0.1:4144/openapi.json} -o src/api/schema.d.ts --immutable --alphabetize",
