@@ -54,17 +54,29 @@ biomodals.example.com {
 	encode zstd gzip
 	root * /srv/biomodals.example.com
 
-	route {
-		@backend path /api/* /docs* /openapi.json /redoc*
-		reverse_proxy @backend 127.0.0.1:4100
-		try_files {path} /index.html
+	@backend path /api/* /docs* /openapi.json /redoc*
+	handle @backend {
+		reverse_proxy 127.0.0.1:4100
+	}
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
 		file_server
+	}
+	handle {
+		route {
+			try_files {path} /index.html
+			header /index.html Cache-Control "no-cache"
+			file_server
+		}
 	}
 }
 ```
 
-The `route` keeps API proxying ahead of the SPA fallback. Browser requests use
-relative `/api` URLs, so the build contains no production API hostname.
+The separate `handle` blocks keep API requests and hashed assets out of the
+SPA fallback. Inside the fallback, `route` applies the HTML cache header after
+rewriting. Browser requests use relative `/api` URLs, so the build contains no
+production API hostname. Direct visits to `/login` and `/set-password` must
+serve `index.html`; these React routes are not separate files in `dist/`.
 
 Caddy configuration remains host-owned; this example does not modify the live
 Caddyfile. Review the [production checklist](docs/deployment/production.md)
