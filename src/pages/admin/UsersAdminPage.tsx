@@ -61,7 +61,7 @@ const expectedAdminErrorCodes = new Set([
 ])
 
 const menuItemClass =
-  "flex h-8 cursor-default items-center gap-2 rounded-lg px-2.5 text-sm outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted"
+  "flex h-8 cursor-default items-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-[0.875rem] outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted"
 const destructiveMenuItemClass =
   `${menuItemClass} text-destructive data-[highlighted]:bg-destructive/10`
 

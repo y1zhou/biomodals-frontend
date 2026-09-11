@@ -299,22 +299,12 @@ for (const width of [360, 1280]) test(`sorting preserves the table and scroll po
   expect(Math.abs(await page.evaluate(() => window.scrollY) - before)).toBeLessThan(2)
 })
 
-test("job ID is revealed on hover and copied with feedback", async ({ page, context }) => {
+test("job rows omit the ID and copy button", async ({ page }) => {
   await mockApi(page)
-  await context.grantPermissions(["clipboard-read", "clipboard-write"])
   await page.route("**/api/v1/jobs?*", (route) => route.fulfill({ json: { jobs: [job], next_cursor: null } }))
   await page.goto("/jobs")
   await expect(page.getByText(job.job_id, { exact: true })).toHaveCount(0)
-  const copy = page.getByRole("button", { name: "Copy job ID", exact: true })
-  await copy.hover()
-  await expect(page.getByRole("tooltip")).toHaveText(job.job_id)
-  await copy.click()
-  await expect(page.getByRole("tooltip")).toHaveText("Job ID copied!")
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(job.job_id)
-  await page.getByRole("heading", { name: "My Jobs" }).hover()
-  await expect(page.getByRole("tooltip")).toHaveCount(0)
-  await copy.hover()
-  await expect(page.getByRole("tooltip")).toHaveText(job.job_id)
+  await expect(page.getByRole("button", { name: "Copy job ID", exact: true })).toHaveCount(0)
 })
 
 test("candidate presentation preserves values and respects whole-result visibility defaults", async ({ page, context }) => {

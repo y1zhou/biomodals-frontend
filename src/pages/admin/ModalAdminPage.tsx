@@ -4,8 +4,6 @@ import { Tooltip } from "@base-ui/react/tooltip"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
-  Check,
-  Copy,
   Lock,
   LockOpen,
   LoaderCircle,
@@ -63,7 +61,6 @@ import {
   useDocumentVisibility,
   visibilityPollingInterval,
 } from "@/jobs"
-import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import { toolName } from "@/tools"
 
@@ -882,7 +879,6 @@ export default function ModalAdminPage() {
   const [globalActiveJobLimit, setGlobalActiveJobLimit] = useState("")
   const [environmentDirty, setEnvironmentDirty] = useState(false)
   const [globalLimitDirty, setGlobalLimitDirty] = useState(false)
-  const [tokenCopied, setTokenCopied] = useState(false)
   const [toolDrafts, setToolDrafts] = useState<Record<string, ToolDraft>>({})
   const [toolFailure, setToolFailure] = useState<ToolFailure | null>(null)
   const [restoreAllConfirmationOpen, setRestoreAllConfirmationOpen] =
@@ -1170,41 +1166,7 @@ export default function ModalAdminPage() {
           <CardTitle>Environment</CardTitle>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-5 lg:grid-cols-3" onSubmit={saveEnvironment}>
-            <div className="grid content-start gap-1.5">
-              <label className="text-sm font-medium" htmlFor="service-token-id">
-                Service user token ID
-              </label>
-              <div className="flex">
-                <Input
-                  className="cursor-default rounded-r-none bg-muted/60 font-mono text-xs text-muted-foreground dark:bg-muted/40"
-                  id="service-token-id"
-                  readOnly
-                  value={modal.data.environment.service_token_id}
-                />
-                <Button
-                  aria-label="Copy service user token ID"
-                  aria-live="polite"
-                  className="rounded-l-none border-l-0"
-                  onClick={() => {
-                    void copyText(modal.data.environment.service_token_id)
-                      .then(() => {
-                        setTokenCopied(true)
-                        window.setTimeout(() => setTokenCopied(false), 2_000)
-                      })
-                      .catch(() => setTokenCopied(false))
-                  }}
-                  type="button"
-                  variant="outline"
-                >
-                  {tokenCopied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                  {tokenCopied ? "Copied" : "Copy"}
-                </Button>
-              </div>
-              <span className="text-xs font-normal text-muted-foreground">
-                The token secret is available only to the backend process.
-              </span>
-            </div>
+          <form className="grid gap-5 lg:grid-cols-2" onSubmit={saveEnvironment}>
             <div className="grid content-start gap-1.5">
               <label className="text-sm font-medium" htmlFor="modal-environment">
                 Modal environment
