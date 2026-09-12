@@ -156,8 +156,13 @@ the backend and never stored in the service database.
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown
 remote states, the local Result cache, and optional Modal billing reports.
-Per-Job container ceilings are derived from each Tool's active-Job limit;
-deployed Modal App names remain backend startup configuration. API types in
+Per-Job provider-call ceilings are derived from each Tool's active-Job limit,
+not the Global limit. For a positive Tool limit `N`, the updated backend admits
+humanization jobs with up to `5N` concurrent GPU calls and `8N` total calls;
+other Tools retain `N` GPU calls and `8N` total calls. These are per-Job bounds,
+not a shared per-Tool pool. Zero pauses admission. Existing Jobs retain their
+saved limits; the new humanization multiplier requires the updated API process.
+Deployed Modal App names remain backend startup configuration. API types in
 `src/api/schema.d.ts` come from the live FastAPI OpenAPI document.
 
 To add another Tool, add its metadata to `src/tools.ts` and introduce a
