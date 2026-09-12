@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -32,6 +33,7 @@ import {
   clearAlphaFold3Draft,
   expandEntityRecords,
   expertAlphaFold3Document,
+  expertAlphaFold3Feedback,
   expertAlphaFold3ModelSeeds,
   formatSequence,
   loadAlphaFold3Draft,
@@ -345,9 +347,15 @@ export default function AlphaFold3SubmissionPage() {
   const [validation, setValidation] = useState<AlphaFold3Validation | null>(null)
   const [recoveryValidationId, setRecoveryValidationId] = useState<string | null>(null)
   const [formError, setFormError] = useState("")
+  const [expertReadState, setExpertReadState] = useState<"idle" | "reading" | "error">("idle")
+  const [expertReadError, setExpertReadError] = useState("")
   const validationController = useRef<AbortController | null>(null)
   const draftChanged = useRef(false)
   const expertFileSelection = useRef(0)
+  const expertFeedback = useMemo(() => {
+    if (!draft.expertJson) return null
+    try { return expertAlphaFold3Feedback(draft.expertJson) } catch { return null }
+  }, [draft.expertJson])
 
   function setDraft(update: SetStateAction<AlphaFold3Draft>) {
     draftChanged.current = true
@@ -362,6 +370,9 @@ export default function AlphaFold3SubmissionPage() {
     setDraftState(newAlphaFold3Draft())
     setValidation(null)
     setRecoveryValidationId(null)
+    setExpertReadState("idle")
+    setExpertReadError("")
+    expertFileSelection.current += 1
     loadAlphaFold3Draft(ownerUserId).then((saved) => {
       if (!active) return
       if (saved && !draftChanged.current) {
@@ -373,6 +384,7 @@ export default function AlphaFold3SubmissionPage() {
     })
     return () => {
       active = false
+      expertFileSelection.current += 1
     }
   }, [ownerUserId])
   useEffect(() => {
@@ -541,33 +553,42 @@ export default function AlphaFold3SubmissionPage() {
   function chooseExpertJson(file: File | null) {
     if (!file) return
     const selection = ++expertFileSelection.current
+    setExpertReadError("")
     if (file.size > 256 * 1024 * 1024) {
-      setFormError("AlphaFold3 JSON files may not exceed 256 MiB.")
+      setExpertReadState("error")
+      setExpertReadError("AlphaFold3 JSON files may not exceed 256 MiB.")
       return
     }
+    setExpertReadState("reading")
     file.text().then((text) => {
       if (selection !== expertFileSelection.current) return
       try {
         const seeds = expertAlphaFold3ModelSeeds(text)
+        const feedback = expertAlphaFold3Feedback(text)
         setDraft((current) => ({
           ...current,
           expertFilename: file.name,
           expertJson: text,
+          jobName: current.jobName.trim() ? current.jobName : feedback.name,
           seeds,
         }))
+        setExpertReadState("idle")
         setFormError("")
       } catch (error) {
-        setFormError(errorMessage(error))
+        setExpertReadState("error")
+        setExpertReadError(errorMessage(error))
       }
     }).catch(() => {
       if (selection === expertFileSelection.current) {
-        setFormError("The JSON file could not be read.")
+        setExpertReadState("error")
+        setExpertReadError("The JSON file could not be read.")
       }
     })
   }
 
   function validate(event: FormEvent) {
     event.preventDefault()
+    if (draft.mode === "expert" && expertReadState !== "idle") return
     try {
       const document = draft.mode === "regular"
         ? regularAlphaFold3Document(draft)
@@ -606,6 +627,8 @@ export default function AlphaFold3SubmissionPage() {
       window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
     }
     setDraft(newAlphaFold3Draft())
+    setExpertReadState("idle")
+    setExpertReadError("")
     setFormError("")
     if (ownerUserId) {
       void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
@@ -728,6 +751,23 @@ export default function AlphaFold3SubmissionPage() {
                 label="AlphaFold3 JSON file"
                 onSelect={chooseExpertJson}
               />
+              {expertReadState === "reading" ? <p className="mt-4" role="status">Reading JSON file…</p> : null}
+              {expertReadState === "error" ? (
+                <div className="mt-4 space-y-3 rounded-lg bg-destructive/10 p-4" role="alert">
+                  <p>{expertReadError}</p>
+                  <p>{draft.expertJson ? `The previous file (${draft.expertFilename || "restored draft"}) is still loaded. Choose another file or explicitly keep it.` : "Choose another JSON file to continue."}</p>
+                  {draft.expertJson ? <Button onClick={() => { setExpertReadState("idle"); setExpertReadError("") }} type="button" variant="outline">Keep loaded JSON</Button> : null}
+                </div>
+              ) : null}
+              {expertFeedback ? (
+                <div className="mt-5 space-y-4 rounded-lg border bg-muted/30 p-4">
+                  <div role="status"><p className="font-semibold">JSON loaded: {draft.expertFilename || "restored draft"}</p><p className="mt-1 text-muted-foreground">{expertFeedback.entityCount} entity entries. File loading is complete; AlphaFold3 validation runs when you continue.</p></div>
+                  <ul className="max-h-48 space-y-1 overflow-auto text-sm">{expertFeedback.entities.map((entity, index) => <li key={index}>{entity}</li>)}</ul>
+                  {expertFeedback.entityCount > expertFeedback.entities.length ? <p className="text-sm text-muted-foreground">Showing the first {expertFeedback.entities.length} entries.</p> : null}
+                  <p className="text-muted-foreground">The visible Job name and Model seeds override the JSON values. All other JSON fields are retained.</p>
+                  <details><summary className="cursor-pointer font-medium">Preview loaded JSON</summary><pre className="mt-3 max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs">{expertFeedback.preview}</pre>{expertFeedback.truncated ? <p className="mt-2 text-sm text-muted-foreground">Preview truncated. The complete document is retained.</p> : null}</details>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         )}
@@ -745,7 +785,7 @@ export default function AlphaFold3SubmissionPage() {
 
         {formError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
         <div className="flex justify-end">
-          <Button disabled={validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson)} size="lg" type="submit">
+          <Button disabled={validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson || expertReadState !== "idle")} size="lg" type="submit">
             {validationMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
             Continue and preview job
           </Button>

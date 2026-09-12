@@ -212,6 +212,57 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/alphafold3/jobs/{job_id}/prediction": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Prediction */
+        readonly get: operations["prediction_api_v1_alphafold3_jobs__job_id__prediction_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/jobs/{job_id}/prediction/model.cif": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Prediction Model */
+        readonly get: operations["prediction_model_api_v1_alphafold3_jobs__job_id__prediction_model_cif_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/alphafold3/jobs/{job_id}/prediction/pae": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Prediction Pae */
+        readonly get: operations["prediction_pae_api_v1_alphafold3_jobs__job_id__prediction_pae_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/alphafold3/validations": {
         readonly parameters: {
             readonly query?: never;
@@ -1462,6 +1513,27 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * PaeWindow
+         * @description Row-major PAE: Y is aligned/frame token, X is scored token.
+         */
+        readonly PaeWindow: {
+            /**
+             * Aggregation
+             * @enum {string}
+             */
+            readonly aggregation: "exact" | "mean";
+            /** Prediction Id */
+            readonly prediction_id: string;
+            /** Valid Counts */
+            readonly valid_counts: readonly (readonly number[])[];
+            /** Values */
+            readonly values: readonly (readonly (number | null)[])[];
+            /** X Edges */
+            readonly x_edges: readonly number[];
+            /** Y Edges */
+            readonly y_edges: readonly number[];
+        };
+        /**
          * PairInput
          * @description One editable row, retained even when its biological values are invalid.
          */
@@ -1511,6 +1583,41 @@ export interface components {
             readonly code: "payload_too_large";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * PredictionSummary
+         * @description Identity and small scientific metadata for the Job's best prediction.
+         */
+        readonly PredictionSummary: {
+            /** Has Clash */
+            readonly has_clash: boolean | null;
+            /** Iptm */
+            readonly iptm: number | null;
+            /**
+             * Max Pae Grid Size
+             * @default 512
+             */
+            readonly max_pae_grid_size: number;
+            /** Pae Error */
+            readonly pae_error: ("pae_too_large" | "pae_invalid") | null;
+            /** Prediction Count */
+            readonly prediction_count: number;
+            /** Prediction Id */
+            readonly prediction_id: string;
+            /** Ptm */
+            readonly ptm: number | null;
+            /** Ranking Score */
+            readonly ranking_score: number;
+            /** Sample Index */
+            readonly sample_index: number;
+            /** Seed */
+            readonly seed: number;
+            /** Summary Error */
+            readonly summary_error: "summary_invalid" | null;
+            /** Token Chain Ids */
+            readonly token_chain_ids: readonly string[];
+            /** Token Res Ids */
+            readonly token_res_ids: readonly number[];
         };
         /**
          * PrincipalView
@@ -2905,6 +3012,216 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly prediction_api_v1_alphafold3_jobs__job_id__prediction_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PredictionSummary"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly prediction_model_api_v1_alphafold3_jobs__job_id__prediction_model_cif_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "chemical/x-mmcif": string;
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly prediction_pae_api_v1_alphafold3_jobs__job_id__prediction_pae_get: {
+        readonly parameters: {
+            readonly query?: {
+                readonly max_size?: number;
+                readonly x_end?: number | null;
+                readonly x_start?: number;
+                readonly y_end?: number | null;
+                readonly y_start?: number;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PaeWindow"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Internal Server Error */

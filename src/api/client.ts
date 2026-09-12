@@ -30,6 +30,15 @@ export type AdminStorage = components["schemas"]["AdminStorageView"]
 export type AdminCacheCleanup = components["schemas"]["AdminCacheCleanupView"]
 export type AdminCosts = components["schemas"]["AdminCostsView"]
 export type AlphaFold3Validation = components["schemas"]["ValidationView"]
+export type AlphaFold3Prediction = components["schemas"]["PredictionSummary"]
+export type AlphaFold3Pae = components["schemas"]["PaeWindow"]
+
+export interface PaeBounds {
+  x_start: number
+  x_end: number
+  y_start: number
+  y_end: number
+}
 
 export interface JobLogWindow {
   since: string
@@ -491,6 +500,33 @@ export function prepareJobDownload(jobId: string) {
 
 export function humanizationOptions(signal?: AbortSignal) {
   return requestJson<HumanizationOptions>("/api/v1/humanization/options", { signal })
+}
+
+async function alphaFold3ResultResponse(jobId: string, suffix: string, signal?: AbortSignal, accept?: string) {
+  const path = `/api/v1/alphafold3/jobs/${encodeURIComponent(jobId)}/prediction${suffix}`
+  try {
+    return await requestResponse(path, { signal, cache: "no-store" }, accept)
+  } catch (error) {
+    if (apiErrorCode(error) !== "result_not_cached") throw error
+    signal?.throwIfAborted()
+    await prepareJobDownload(jobId)
+    signal?.throwIfAborted()
+    return requestResponse(path, { signal, cache: "no-store" }, accept)
+  }
+}
+
+export async function alphaFold3Prediction(jobId: string, signal?: AbortSignal): Promise<AlphaFold3Prediction> {
+  return (await alphaFold3ResultResponse(jobId, "", signal)).json()
+}
+
+export async function alphaFold3Model(jobId: string, signal?: AbortSignal) {
+  return (await alphaFold3ResultResponse(jobId, "/model.cif", signal, "chemical/x-mmcif")).text()
+}
+
+export async function alphaFold3Pae(jobId: string, bounds: PaeBounds | null, signal?: AbortSignal): Promise<AlphaFold3Pae> {
+  const parameters = new URLSearchParams()
+  if (bounds) for (const [name, value] of Object.entries(bounds)) parameters.set(name, String(value))
+  return (await alphaFold3ResultResponse(jobId, `/pae?${parameters}`, signal)).json()
 }
 
 export function humanizationInputs(jobId: string, signal?: AbortSignal) {

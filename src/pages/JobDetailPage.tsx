@@ -60,6 +60,7 @@ import {
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
+const AlphaFold3Results = lazy(() => import("@/components/AlphaFold3Results"))
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -236,7 +237,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
 
   return (
     <>
-      <main className="mx-auto max-w-5xl px-6 py-10 lg:px-8 lg:py-14">
+      <main className={cn("mx-auto px-6 py-10 lg:px-8 lg:py-14", job.tool === "alphafold3" && job.state === "succeeded" ? "max-w-7xl" : "max-w-5xl")}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link className={buttonVariants({ variant: "ghost" })} to="/jobs">
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
@@ -387,6 +388,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               ) : null}
             </CardContent>
           </Card>
+
+          {job.tool === "alphafold3" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading prediction viewer…</p>}><AlphaFold3Results jobId={job.job_id} key={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
             <CardHeader>

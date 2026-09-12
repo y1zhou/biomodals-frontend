@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import {
   chainId,
   expertAlphaFold3Document,
+  expertAlphaFold3Feedback,
   expertAlphaFold3ModelSeeds,
   expandEntityRecords,
   MAX_ENTITY_COPIES,
@@ -15,6 +16,16 @@ import {
 } from "../src/alphafold3"
 
 describe("AlphaFold3 input builder", () => {
+  test("Expert feedback is bounded and preserves advanced fields for validation", () => {
+    const document = { name: "Imported job", modelSeeds: [42], sequences: [{ protein: { id: ["A", "B"], sequence: "ACD", unpairedMsa: "", templates: [] } }, { ligand: { id: "L", ccdCodes: ["ATP"] } }], bondedAtomPairs: [[1, 2]], userCCD: "x".repeat(40_000) }
+    const input = JSON.stringify(document)
+    const feedback = expertAlphaFold3Feedback(input)
+    expect(feedback.name).toBe("Imported job")
+    expect(feedback.entities).toEqual(["protein · A, B · 3 residues", "ligand · L · 1 CCD component(s)"])
+    expect(feedback.truncated).toBe(true)
+    expect(feedback.preview.length).toBe(32_000)
+    expect(expertAlphaFold3Document(input, "Visible name", "7")).toEqual({ ...document, name: "Visible name", modelSeeds: [7] })
+  })
   test("allocates sequential spreadsheet-style chain IDs", () => {
     expect([0, 25, 26, 27, 701].map(chainId)).toEqual([
       "A",

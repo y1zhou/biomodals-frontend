@@ -162,6 +162,12 @@ _Avoid_: Payload
 The retrievable output of a succeeded or partial Job.
 _Avoid_: Response, artifact
 
+**Highest-Ranked Prediction**:
+The AlphaFold3 seed and sample selected by scientific ranking within one
+Job's requested predictions. It belongs to that Job's published Result, rather
+than the accumulated predictions of other Jobs.
+_Avoid_: run best, latest model, globally best model
+
 **Result Cache**:
 A rebuildable local copy of finalized Result data whose authoritative source
 remains on a remote Modal Volume.
