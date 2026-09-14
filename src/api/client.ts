@@ -498,6 +498,13 @@ export function prepareJobDownload(jobId: string) {
   )
 }
 
+export function retryJobResultPreparation(jobId: string) {
+  return requestJson<Job>(`/api/v1/jobs/${encodeURIComponent(jobId)}/retry-result-preparation`, {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken() },
+  })
+}
+
 export function humanizationOptions(signal?: AbortSignal) {
   return requestJson<HumanizationOptions>("/api/v1/humanization/options", { signal })
 }

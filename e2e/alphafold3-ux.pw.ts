@@ -8,6 +8,49 @@ const principal = { user_id: "af3-test", display_name: "Researcher", email: "res
 const document = { name: "Imported complex", modelSeeds: [7, 42], sequences: [{ protein: { id: ["A", "B"], sequence: "ACD", unpairedMsa: "", templates: [] } }, { ligand: { id: "L", ccdCodes: ["ATP"] } }] }
 const prediction = { prediction_id: "fixture-identity", seed: 42, sample_index: 0, prediction_count: 2, ranking_score: 0.87, ptm: 0.7, iptm: null, has_clash: false, summary_error: null, pae_error: null, max_pae_grid_size: 512, token_chain_ids: ["A", "A", "L", "L"], token_res_ids: [1, 2, 1, 1] }
 
+test("same-job preparation recovery never submits scientific work", async ({ page }) => {
+  await mockApi(page)
+  let retried = false
+  const posts: string[] = []
+  page.on("request", (request) => { if (request.method() === "POST") posts.push(new URL(request.url()).pathname) })
+  await page.route((url) => url.pathname === `/api/v1/jobs/${jobId}` || url.pathname === `/api/v1/jobs/${jobId}/retry-result-preparation`, async (route) => {
+    const retry = route.request().url().endsWith("/retry-result-preparation")
+    if (retry) {
+      expect(route.request().headers()["x-csrf-token"]).toBe("test-csrf")
+      retried = true
+    }
+    await route.fulfill({ status: retry ? 202 : 200, json: {
+      job_id: jobId, display_name: "Recovered AF3", tool: "alphafold3", state: retried ? "finalizing" : "failed",
+      can_retry_result_preparation: !retried, can_view_logs: false,
+      created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-12T00:01:00Z", stages: [], warnings: [],
+      error_code: retried ? null : "result_preparation_failed", error_message: retried ? null : "Local preparation failed",
+    } })
+  })
+  await page.goto(`/tools/alphafold3/jobs/${jobId}`)
+  await expect(page.getByText("This does not rerun scientific computation", { exact: false })).toBeVisible()
+  await page.getByRole("button", { name: "Retry result preparation", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Retry result preparation", exact: true })).toHaveCount(0)
+  await expect(page.getByText("Preparing result", { exact: true }).first()).toBeVisible()
+  expect(posts).toEqual([`/api/v1/jobs/${jobId}/retry-result-preparation`])
+})
+
+test("transient preview retry exposes evidence and uses cache restoration", async ({ page }) => {
+  await mockApi(page)
+  let reads = 0
+  await page.route("**/prediction", async (route) => {
+    reads++
+    await route.fulfill(reads === 1 ? { status: 503, headers: { "X-Request-ID": "offline-support" }, json: { code: "result_storage_unavailable", detail: "Temporary result storage failure" } } : reads === 2 ? { status: 409, json: { code: "result_not_cached" } } : { json: prediction })
+  })
+  await page.goto(`/tools/alphafold3/jobs/${jobId}`)
+  await expect(page.getByText("result_storage_unavailable: Temporary result storage failure", { exact: false })).toBeVisible()
+  await expect(page.getByText("Support ID: offline-support", { exact: false })).toBeVisible()
+  await page.getByRole("button", { name: "Retry preview", exact: true }).click()
+  await expect(page.getByLabel("PAE matrix, columns scored tokens, rows aligned tokens")).toBeVisible()
+  await expect(page.getByText("preview_too_large: Test structure fallback")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Retry preview", exact: true })).toHaveCount(0)
+  expect(reads).toBe(3)
+})
+
 async function mockApi(page: Page, { paeError = false, cacheMiss = false, state = "succeeded", structure = false } = {}) {
   const requests: URL[] = []
   let restores = 0

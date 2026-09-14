@@ -5,6 +5,7 @@ import { useExpireSession } from "@/auth-state"
 import { paeCellAt, paeColor, paeZoomBounds } from "@/alphafold3-pae"
 import type { AlphaFold3Residue } from "@/alphafold3-structure"
 import { Button } from "@/components/ui/button"
+import PredictionReadError from "@/components/PredictionReadError"
 
 type Cell = { x: number; y: number }
 
@@ -59,7 +60,7 @@ export default function AlphaFold3Pae({ jobId, ownerId, prediction, residue }: {
   return <section className="space-y-4" aria-labelledby="af3-pae-title">
     <div className="flex items-center justify-between gap-4"><h3 className="font-heading text-xl font-semibold" id="af3-pae-title">Predicted aligned error (PAE)</h3><Button disabled={!bounds} onClick={() => zoom(null)} variant="outline">Reset zoom</Button></div>
     <p className="text-muted-foreground">Lower PAE means greater confidence in relative positions. X is the scored token; Y is the token used for alignment. Drag a rectangle to zoom. Hover for values; arrow keys move the focused cell.</p>
-    {errorCode || query.error || mismatch ? <p className="rounded-lg bg-muted p-4" role="alert">{errorCode === "pae_too_large" || errorCode === "preview_too_large" ? "This prediction is too large for the PAE preview." : "PAE preview is unavailable for this prediction."} The structure and native result download remain available.</p> : null}
+    {query.error ? <PredictionReadError error={query.error} label="PAE preview is unavailable for this prediction." pending={query.isFetching} onRetry={() => { void query.refetch() }} /> : errorCode || mismatch ? <p className="rounded-lg bg-muted p-4" role="alert">{errorCode === "pae_too_large" || errorCode === "preview_too_large" ? "This prediction is too large for the PAE preview." : "PAE preview is unavailable for this prediction."} The structure and native result download remain available. Code: {errorCode ?? "prediction_identity_mismatch"}.</p> : null}
     {query.isPending && !prediction.pae_error ? <p role="status">Loading PAE…</p> : null}
     {data ? <>
       <p className="font-medium">{data.aggregation === "mean" ? "Block mean PAE · reduced-resolution overview" : "Exact PAE"}</p>
