@@ -269,6 +269,12 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(page.getByRole("button", { name: "Download result" })).toBeVisible({
     timeout: 15_000,
   })
+  await expect(page.getByText("Trajectory overview", { exact: true })).toBeVisible()
+  for (const title of ["RMSD", "Radius of gyration", "RMSF"]) {
+    const plot = page.getByRole("img", { name: `${title} production trajectory plot`, exact: true })
+    await expect(plot).toBeVisible()
+    await expect.poll(() => plot.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+  }
   await expect(statusMetadata).not.toContainText("ago")
   await prepareStage.click()
   await expect(prepareLogs.getByText("Fetched logs")).toBeVisible()

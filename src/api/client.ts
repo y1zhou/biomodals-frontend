@@ -509,6 +509,28 @@ export function retryJobResultPreparation(jobId: string) {
   })
 }
 
+export const gromacsTrajectoryMetrics = ["rmsd", "rg", "rmsf"] as const
+
+export function gromacsTrajectoryPlots(jobId: string, signal?: AbortSignal) {
+  let restoration: Promise<undefined> | undefined
+  return Promise.allSettled(gromacsTrajectoryMetrics.map(async (metric) => {
+    const path = `/api/v1/gromacs/jobs/${encodeURIComponent(jobId)}/trajectory/${metric}.png`
+    const read = () => requestResponse(path, { signal, cache: "no-store" }, "image/png")
+    let response: Response
+    try {
+      response = await read()
+    } catch (error) {
+      if (apiErrorCode(error) !== "result_not_cached") throw error
+      signal?.throwIfAborted()
+      restoration ??= prepareJobDownload(jobId)
+      await restoration
+      signal?.throwIfAborted()
+      response = await read()
+    }
+    return response.blob()
+  }))
+}
+
 export function humanizationOptions(signal?: AbortSignal) {
   return requestJson<HumanizationOptions>("/api/v1/humanization/options", { signal })
 }

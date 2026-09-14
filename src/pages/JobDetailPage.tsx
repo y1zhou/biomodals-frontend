@@ -63,6 +63,7 @@ import {
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
 const AlphaFold3Results = lazy(() => import("@/components/AlphaFold3Results"))
+const GromacsResults = lazy(() => import("@/components/GromacsResults"))
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -417,6 +418,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
 
           {job.tool === "alphafold3" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading prediction viewer…</p>}><AlphaFold3Results jobId={job.job_id} key={job.job_id} /></Suspense> : null}
           {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
+          {job.tool === "gromacs" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading trajectory overview…</p>}><GromacsResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
             <CardHeader>

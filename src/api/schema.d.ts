@@ -400,6 +400,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/gromacs/jobs/{job_id}/trajectory/{metric}.png": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Trajectory Plot */
+        readonly get: operations["trajectory_plot_api_v1_gromacs_jobs__job_id__trajectory__metric__png_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/health": {
         readonly parameters: {
             readonly query?: never;
@@ -3886,6 +3903,75 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly trajectory_plot_api_v1_gromacs_jobs__job_id__trajectory__metric__png_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+                readonly metric: "rmsd" | "rg" | "rmsf";
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "image/png": string;
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Validation Error */

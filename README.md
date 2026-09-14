@@ -171,6 +171,12 @@ form does not submit or recover an earlier Submission. Completed AlphaFold3
 Jobs offer **Download all results** for the full archive. Humanization candidate
 tables appear before Execution stages.
 
+Completed GROMACS Jobs show a **Trajectory overview** before Execution stages:
+the existing production RMSD, radius-of-gyration, and RMSF PNG figures. The
+browser fetches only these images, restoring the Result cache once if needed;
+it does not download the full archive or recompute the plots. An unavailable
+plot leaves the other figures usable.
+
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown
 remote states, the local Result cache, and optional Modal billing reports.
