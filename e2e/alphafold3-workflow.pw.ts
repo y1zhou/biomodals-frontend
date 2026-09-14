@@ -41,7 +41,8 @@ test("completed offline AF3 publication loads the exact best prediction, native 
   const watchRerun = (request: import("@playwright/test").Request) => { if (request.method() === "POST") rerunPosts.push(request.url()) }
   page.on("request", watchRerun)
   await page.getByRole("link", { name: "Rerun with same inputs" }).click()
-  await expect(page.getByLabel("Edit retained JSON")).toContainText("ACDE")
+  await page.getByRole("button", { name: "Edit JSON", exact: true }).click()
+  await expect(page.getByLabel("JSON editor", { exact: true })).toContainText("ACDE")
   await page.getByText("Advanced prediction settings", { exact: true }).click()
   await expect(page.getByLabel("Recycles", { exact: true })).toHaveValue("10")
   await expect(page.getByLabel("Samples per seed", { exact: true })).toHaveValue("5")

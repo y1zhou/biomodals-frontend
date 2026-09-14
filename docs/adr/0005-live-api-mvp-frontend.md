@@ -676,7 +676,7 @@ The interface does not manufacture server facts that OpenAPI does not supply.
 
 ### AlphaFold3 preview extension (2026-09-12)
 
-The accepted [AlphaFold3 UX specification](../../../biomodals/docs/specs/alphafold3-ux.md)
+The accepted [AlphaFold3 UX specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/alphafold3-ux.md)
 extends Expert input feedback and completed Job Results. Uploaded JSON remains
 authoritative for advanced fields; bounded feedback is local parsing, while
 Retained Validation remains the scientific input authority. Replacement reads

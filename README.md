@@ -145,7 +145,7 @@ Humatch best-family mean, followed by fewer edits and candidate ID. Pairing
 guardrails still apply only to the two pairing scores. Stored v1 results retain
 their original ranks; v2 requires a run using the updated workflow, not a page
 refresh. This frontend change does not deploy that workflow. See the
-[accepted service specification](../biomodals/docs/specs/humanization-service.md).
+[accepted service specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-service.md).
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,
@@ -157,7 +157,7 @@ When available on a failed Job, **Retry fetching results** prepares its
 existing scientific outputs again in the same Job. It does not rerun models or
 submit a new Job. The page shows preparation progress; use **Refresh** to check
 before the next automatic update. Eligibility and recovery behavior follow the
-[shared service specification](../biomodals/docs/specs/api-tool-service.md#explicit-preparation-retry).
+[shared service specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/api-tool-service.md#explicit-preparation-retry).
 AlphaFold3 preview errors show the service error code and detail. **Retry
 preview** is offered for transient read or cache failures; fixed size limits
 and invalid source data need the underlying issue resolved first.
@@ -170,6 +170,12 @@ explicitly to create a new Job; opening the
 form does not submit or recover an earlier Submission. Completed AlphaFold3
 Jobs offer **Download all results** for the full archive. Humanization candidate
 tables appear before Execution stages.
+
+Use **Edit JSON** to change a loaded document, then **Apply JSON changes** to
+check its syntax and update the summary. Typing does not parse the full file.
+Unapplied edits must be applied or discarded before continuing. File replacement
+remains available after applying or discarding edits. Rerun validation, Clear,
+and submission leave unrelated browser drafts and recovery references intact.
 
 Completed GROMACS Jobs show a **Trajectory overview** before Execution stages:
 the existing production RMSD, radius-of-gyration, and RMSF PNG figures. The

@@ -77,7 +77,7 @@ AlphaFold3's archive uses zstd; use format-neutral
 These service findings are attributed to the coordinating backend agent; this
 frontend investigation directly inspected the scientific workflow checkout above.
 See the
-[backend service research](../../../biomodals/docs/research/humanization/service-integration.md).
+[backend service specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-service.md).
 There was no existing frontend research directory; this note follows the
 repository's Markdown-under-`docs/` layout. It is not an ADR or specification.
 
@@ -132,7 +132,7 @@ repository's Markdown-under-`docs/` layout. It is not an ADR or specification.
 
 ## Scientific workflow evidence and UI implications
 
-The backend [humanization specification](../../../biomodals/docs/specs/humanization-workflow.md)
+The backend [humanization specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-workflow.md)
 records complete, explicitly paired VH/VL variable domains, CSV `id,vh,vl`, unique
 parent IDs, four parallel generators, exact-pair deduplication within each parent,
 the unchanged parental baseline, three independent evaluators, and IMGT annotation.
@@ -146,8 +146,8 @@ permit at most twenty-nine. Thus 1,000 parents can imply roughly 14,000–29,000
 before other applicable limits. This is an upper-bound inference, not a measured
 browser benchmark or a recommended API admission limit.
 
-The [selection table builder](../../../biomodals/src/biomodals/workflow/humanization/tables.py)
-and [ranking code](../../../biomodals/src/biomodals/workflow/humanization/ranking.py)
+The [selection table builder](https://github.com/y1zhou/biomodals/blob/main/src/biomodals/workflow/humanization/tables.py)
+and [ranking code](https://github.com/y1zhou/biomodals/blob/main/src/biomodals/workflow/humanization/ranking.py)
 own scientific values and ordering. UI proposals should preserve:
 
 - Parent/candidate identity and both sequences; no chain recombination or
@@ -177,7 +177,7 @@ tie-breaks. With no custom sort, preserve the workflow's original row order.
 Saved experimental panel selections are excluded from this release.
 
 The consolidated implementation plan in the
-[backend service spec](../../../biomodals/docs/specs/humanization-service.md)
+[backend service spec](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-service.md)
 awaits explicit User confirmation: establish the current-main baseline without
 disturbing the reviewed stack; agree typed/OpenAPI contracts; adapt the workflow
 host protocol and reuse the shared Tool lifecycle; implement bounded Polars
@@ -227,7 +227,7 @@ available, without assuming a new lookup-by-idempotency-key API. These are
 consequences of accepted choices, not proposals to persist sequences or add APIs.
 
 Round 2 update: the authoritative accepted product requirements now live in the
-[humanization service spec](../../../biomodals/docs/specs/humanization-service.md).
+[humanization service spec](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-service.md).
 Manual entry has ID/VH/VL fields and editable suggested IDs such as `ab_001`;
 CSV appends to the same editable batch, with row edit/remove and valid unique IDs.
 One scientific configuration applies to the batch. General exposes job name only;
@@ -350,8 +350,8 @@ After round 2, the remaining concrete validation/recovery constraints are:
   The scientific parser also has a 1,000-pair / 3 MiB ceiling, so raising the service
   setting cannot silently promise batches beyond those limits.
 
-Sources: [shared parser](../../../biomodals/src/biomodals/app/design/hudiff_ab/validation.py),
-[workflow parser reuse](../../../biomodals/src/biomodals/workflow/humanization/tables.py),
+Sources: [shared parser](https://github.com/y1zhou/biomodals/blob/main/src/biomodals/app/design/hudiff_ab/validation.py),
+[workflow parser reuse](https://github.com/y1zhou/biomodals/blob/main/src/biomodals/workflow/humanization/tables.py),
 [AF3 recovery](../../src/pages/AlphaFold3SubmissionPage.tsx), and the service spec
 linked above. These are constraints for the coordinating agent, not new questions
 or changes to accepted requirements.
@@ -363,13 +363,13 @@ the input-ID fields and General-control scope:
   CSV parser. Generated versus explicit IDs remains an open UX decision; row
   indexes must not silently replace imported IDs. IDs participate in candidate
   identity and seed derivation, and whitespace-normalized collisions are rejected.
-  See [identifier ADR](../../../biomodals/docs/adr/0011-humanization-output-identifiers.md)
-  and [parser](../../../biomodals/src/biomodals/app/design/hudiff_ab/validation.py).
+  See [identifier ADR](https://github.com/y1zhou/biomodals/blob/main/docs/adr/0011-humanization-output-identifiers.md)
+  and [parser](https://github.com/y1zhou/biomodals/blob/main/src/biomodals/app/design/hudiff_ab/validation.py).
 - Exposing every function argument as an ordinary User setting would include
   deployment identity, coordinator hosting, wait/dry-run and successor-run controls.
   Those are distinct from the settled app-specific scientific knobs and intersect
   existing service/Admin ownership. General must not silently expose all CLI
-  arguments. See [workflow entrypoint](../../../biomodals/src/biomodals/workflow/humanization/workflow.py)
+  arguments. See [workflow entrypoint](https://github.com/y1zhou/biomodals/blob/main/src/biomodals/workflow/humanization/workflow.py)
   and [Admin decisions](../adr/0006-admin-runtime-configuration.md).
 - Similar scientific labels are not interchangeable: Humatch protected positions
   use IMGT; p-AbNatiV2 protected positions use AHo; Sapiens numbering and CDR
@@ -377,7 +377,7 @@ the input-ID fields and General-control scope:
   p-AbNatiV2 generation pairing-decrease knob is not the shared panel-ranking
   guardrail. Keep these distinctions in the app subsections rather than combining
   them into ambiguous General controls. Sources: workflow entrypoint above and
-  [scientific spec](../../../biomodals/docs/specs/humanization-workflow.md).
+  [scientific spec](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-workflow.md).
 - Sorting only the visible page conflicts with presenting a globally sorted
   selection table. Whatever paging contract is chosen must define the sort scope;
   preserve authoritative rank values, numeric nulls, and all retained rows. This
