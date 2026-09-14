@@ -450,6 +450,18 @@ export function alphaFold3JobDocumentUrl(jobId: string) {
   return `/api/v1/alphafold3/jobs/${encodeURIComponent(jobId)}/document`
 }
 
+export async function alphaFold3Inputs(jobId: string, signal?: AbortSignal) {
+  const inputs = await requestJson<components["schemas"]["AlphaFold3JobInputs"]>(
+    `/api/v1/alphafold3/jobs/${encodeURIComponent(jobId)}/inputs`, { signal, cache: "no-store" }
+  )
+  const { recycle, sample, search_msa, search_protein_templates } = inputs.settings
+  // The endpoint always serializes saved settings, despite schema defaults.
+  if (typeof recycle !== "number" || typeof sample !== "number" || typeof search_msa !== "boolean" || typeof search_protein_templates !== "boolean") {
+    throw new Error("The original prediction settings are unavailable.")
+  }
+  return { document_json: inputs.document_json, settings: { recycle, sample, search_msa, search_protein_templates } }
+}
+
 export function submitAlphaFold3Job(
   validationId: string,
   idempotencyKey: string

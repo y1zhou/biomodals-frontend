@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   ArrowDown,
   ArrowLeft,
@@ -18,10 +18,11 @@ import {
   type FormEvent,
   type SetStateAction,
 } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 
 import {
   alphaFold3DocumentUrl,
+  alphaFold3Inputs,
   ApiError,
   deleteAlphaFold3Validation,
   inspectAlphaFold3Validation,
@@ -340,6 +341,37 @@ function Confirmation({
 }
 
 export default function AlphaFold3SubmissionPage() {
+  const [params] = useSearchParams()
+  const sourceJob = params.get("source_job")
+  const owner = authenticatedPrincipal(useCurrentUser().data)?.user_id
+  const inputs = useQuery({
+    queryKey: ["alphafold3-inputs", owner, sourceJob],
+    queryFn: ({ signal }) => alphaFold3Inputs(sourceJob!, signal),
+    enabled: !!owner && !!sourceJob, retry: false, staleTime: Infinity, gcTime: 0,
+  })
+  useExpireSession(inputs.error)
+  const rerunDraft = useMemo(() => {
+    if (!inputs.data) return undefined
+    try {
+      const { document_json, settings } = inputs.data
+      return {
+        ...newAlphaFold3Draft(), mode: "expert" as const,
+        expertJson: document_json, expertFilename: "retained-input.json",
+        jobName: expertAlphaFold3Feedback(document_json).name,
+        seeds: expertAlphaFold3ModelSeeds(document_json),
+        recycle: settings.recycle, sample: settings.sample,
+        searchMsa: settings.search_msa, searchProteinTemplates: settings.search_protein_templates,
+      }
+    } catch { return undefined }
+  }, [inputs.data])
+  if (sourceJob && !rerunDraft) return <main className="mx-auto max-w-2xl px-6 py-10">
+    {inputs.error || inputs.data ? <div role="alert"><p>Retained inputs could not be loaded. {inputs.error ? errorMessage(inputs.error) : "The retained JSON could not be parsed."}</p><Button className="mt-4" disabled={inputs.isFetching} onClick={() => { void inputs.refetch() }}>Retry loading inputs</Button></div> : <p role="status">Loading retained inputs…</p>}
+    <Link className="mt-4 block underline" to="/jobs">My Jobs</Link>
+  </main>
+  return <AlphaFold3SubmissionForm key={`${owner}:${sourceJob ?? "new"}`} rerunDraft={sourceJob ? rerunDraft : undefined} />
+}
+
+function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft }) {
   const navigate = useNavigate()
   const ownerUserId = authenticatedPrincipal(useCurrentUser().data)?.user_id
   const [draft, setDraftState] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
@@ -373,6 +405,11 @@ export default function AlphaFold3SubmissionPage() {
     setExpertReadState("idle")
     setExpertReadError("")
     expertFileSelection.current += 1
+    if (rerunDraft) {
+      setDraftState(rerunDraft)
+      setDraftOwner(ownerUserId)
+      return () => { expertFileSelection.current += 1 }
+    }
     loadAlphaFold3Draft(ownerUserId).then((saved) => {
       if (!active) return
       if (saved && !draftChanged.current) {
@@ -386,12 +423,12 @@ export default function AlphaFold3SubmissionPage() {
       active = false
       expertFileSelection.current += 1
     }
-  }, [ownerUserId])
+  }, [ownerUserId, rerunDraft])
   useEffect(() => {
-    if (!ownerUserId || draftOwner !== ownerUserId) return
+    if (rerunDraft || !ownerUserId || draftOwner !== ownerUserId) return
     const timeout = window.setTimeout(() => void saveAlphaFold3Draft(ownerUserId, draft).catch(() => undefined), 250)
     return () => window.clearTimeout(timeout)
-  }, [draft, draftOwner, ownerUserId])
+  }, [draft, draftOwner, ownerUserId, rerunDraft])
 
   const validationMutation = useMutation({
     mutationFn: ({ document, signal }: { document: object; signal: AbortSignal }) =>
@@ -467,7 +504,7 @@ export default function AlphaFold3SubmissionPage() {
   useExpireSession(submissionMutation.error)
 
   useEffect(() => {
-    if (!ownerUserId) return
+    if (!ownerUserId || rerunDraft) return
     const validationKey = validationStorageKey(ownerUserId)
     const validationId = window.sessionStorage.getItem(validationKey)
     if (!validationId) return
@@ -494,7 +531,7 @@ export default function AlphaFold3SubmissionPage() {
         setFormError(errorMessage(error))
       })
     return () => controller.abort()
-  }, [ownerUserId, submitJob])
+  }, [ownerUserId, submitJob, rerunDraft])
 
   function updateEntity(index: number, entity: AlphaFold3Entity, copies?: number) {
     if (copies !== undefined && (!Number.isInteger(copies) || copies < 1 || copies > MAX_ENTITY_COPIES)) {
@@ -630,7 +667,7 @@ export default function AlphaFold3SubmissionPage() {
     setExpertReadState("idle")
     setExpertReadError("")
     setFormError("")
-    if (ownerUserId) {
+    if (ownerUserId && !rerunDraft) {
       void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
     }
   }
@@ -752,6 +789,7 @@ export default function AlphaFold3SubmissionPage() {
                 onSelect={chooseExpertJson}
               />
               {expertReadState === "reading" ? <p className="mt-4" role="status">Reading JSON file…</p> : null}
+              {rerunDraft ? <div className="mt-4 space-y-2"><p>Retained inputs and prediction settings are loaded for a new job. Edit them below, then continue to review before submitting. Nothing has been submitted.</p><label className="block font-medium" htmlFor="rerun-json">Edit retained JSON</label><textarea id="rerun-json" className="min-h-64 w-full rounded border bg-background p-3 font-mono text-sm" value={draft.expertJson} onChange={(event) => setDraft({ ...draft, expertJson: event.target.value })} /></div> : null}
               {expertReadState === "error" ? (
                 <div className="mt-4 space-y-3 rounded-lg bg-destructive/10 p-4" role="alert">
                   <p>{expertReadError}</p>

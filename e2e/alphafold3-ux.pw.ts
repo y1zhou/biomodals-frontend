@@ -8,7 +8,49 @@ const principal = { user_id: "af3-test", display_name: "Researcher", email: "res
 const document = { name: "Imported complex", modelSeeds: [7, 42], sequences: [{ protein: { id: ["A", "B"], sequence: "ACD", unpairedMsa: "", templates: [] } }, { ligand: { id: "L", ccdCodes: ["ATP"] } }] }
 const prediction = { prediction_id: "fixture-identity", seed: 42, sample_index: 0, prediction_count: 2, ranking_score: 0.87, ptm: 0.7, iptm: null, has_clash: false, summary_error: null, pae_error: null, max_pae_grid_size: 512, token_chain_ids: ["A", "A", "L", "L"], token_res_ids: [1, 2, 1, 1] }
 
-test("same-job preparation recovery never submits scientific work", async ({ page }) => {
+test("failed AF3 rerun restores editable inputs and exact settings without automatic POST", async ({ page }) => {
+  await mockApi(page, { state: "failed" })
+  const posts: string[] = []
+  page.on("request", (request) => { if (request.method() === "POST") posts.push(request.url()) })
+  await page.addInitScript(() => {
+    sessionStorage.setItem("biomodals:alphafold3:validation:af3-test", "stale-validation")
+    sessionStorage.setItem("biomodals:alphafold3:submission:af3-test:stale-validation", "old-intent")
+  })
+  await page.route("**/alphafold3/jobs/*/inputs", (route) => route.fulfill({ json: {
+    document_json: JSON.stringify({ ...document, userCCD: "preserved native extension" }),
+    settings: { recycle: 7, sample: 3, search_msa: false, search_protein_templates: false },
+  } }))
+  await page.goto(`/tools/alphafold3/jobs/${jobId}`)
+  await expect(page.getByRole("link", { name: "Start a new job" })).toHaveCount(0)
+  await page.getByRole("link", { name: "Rerun with same inputs" }).click()
+  await expect(page.getByLabel("Edit retained JSON")).toContainText("preserved native extension")
+  await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("Imported complex")
+  await page.getByText("Advanced prediction settings", { exact: true }).click()
+  await expect(page.getByLabel("Recycles", { exact: true })).toHaveValue("7")
+  await expect(page.getByLabel("Samples per seed", { exact: true })).toHaveValue("3")
+  await expect(page.getByLabel("Model seeds", { exact: true })).toHaveValue("7,42")
+  await expect(page.getByLabel("Search MSAs", { exact: true })).not.toBeChecked()
+  await page.getByLabel("Edit retained JSON").fill(JSON.stringify({ ...document, userCCD: "edited native extension" }))
+  await page.getByLabel("Job name", { exact: true }).fill("Edited rerun")
+  expect(posts).toEqual([])
+  await page.route("**/alphafold3/validations?*", (route) => route.fulfill({ status: 422, json: { detail: "Offline validation stopped before submission" } }))
+  const validationRequest = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith("/alphafold3/validations"))
+  await page.getByRole("button", { name: "Continue and preview job" }).click()
+  const request = await validationRequest
+  expect(Object.fromEntries(new URL(request.url()).searchParams)).toEqual({ recycle: "7", sample: "3", search_msa: "false", search_protein_templates: "false" })
+  expect(request.postDataJSON()).toMatchObject({ name: "Edited rerun", modelSeeds: [7, 42], userCCD: "edited native extension" })
+  expect(posts).toHaveLength(1)
+})
+
+test("unavailable retained AF3 input does not open a blank submission", async ({ page }) => {
+  await mockApi(page)
+  await page.route("**/alphafold3/jobs/*/inputs", (route) => route.fulfill({ status: 404, json: { code: "job_input_unavailable", detail: "Input unavailable" } }))
+  await page.goto(`/tools/alphafold3/new?source_job=${jobId}`)
+  await expect(page.getByRole("alert")).toContainText("Retained inputs could not be loaded")
+  await expect(page.getByRole("button", { name: "Continue and preview job" })).toHaveCount(0)
+})
+
+for (const tool of ["alphafold3", "humanization", "gromacs"]) test(`${tool} same-job preparation recovery never submits scientific work`, async ({ page }) => {
   await mockApi(page)
   let retried = false
   const posts: string[] = []
@@ -20,16 +62,16 @@ test("same-job preparation recovery never submits scientific work", async ({ pag
       retried = true
     }
     await route.fulfill({ status: retry ? 202 : 200, json: {
-      job_id: jobId, display_name: "Recovered AF3", tool: "alphafold3", state: retried ? "finalizing" : "failed",
+      job_id: jobId, display_name: "Recovered job", tool, state: retried ? "finalizing" : "failed",
       can_retry_result_preparation: !retried, can_view_logs: false,
       created_at: "2026-09-12T00:00:00Z", updated_at: "2026-09-12T00:01:00Z", stages: [], warnings: [],
       error_code: retried ? null : "result_preparation_failed", error_message: retried ? null : "Local preparation failed",
     } })
   })
-  await page.goto(`/tools/alphafold3/jobs/${jobId}`)
+  await page.goto(`/tools/${tool}/jobs/${jobId}`)
   await expect(page.getByText("This does not rerun scientific computation", { exact: false })).toBeVisible()
-  await page.getByRole("button", { name: "Retry result preparation", exact: true }).click()
-  await expect(page.getByRole("button", { name: "Retry result preparation", exact: true })).toHaveCount(0)
+  await page.getByRole("button", { name: "Retry fetching results", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Retry fetching results", exact: true })).toHaveCount(0)
   await expect(page.getByText("Preparing result", { exact: true }).first()).toBeVisible()
   expect(posts).toEqual([`/api/v1/jobs/${jobId}/retry-result-preparation`])
 })
@@ -160,7 +202,7 @@ test("oversized PAE is a preview fallback and unfinished jobs never request pred
   const api = await mockApi(page, { paeError: true })
   await page.goto(`/tools/alphafold3/jobs/${jobId}`)
   await expect(page.getByText("This prediction is too large for the PAE preview.", { exact: false })).toBeVisible()
-  await expect(page.getByRole("button", { name: "Download result", exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Download all results", exact: true })).toBeVisible()
   expect(api.requests.some((url) => url.pathname.endsWith("/pae"))).toBe(false)
   await page.unrouteAll()
   const running = await mockApi(page, { state: "running" })
@@ -210,5 +252,5 @@ test("unavailable WebGL does not prevent the PAE preview or native download", as
   await page.goto(`/tools/alphafold3/jobs/${jobId}`)
   await expect(page.getByText("The structure viewer could not load.", { exact: false })).toBeVisible()
   await expect(page.getByLabel("PAE matrix, columns scored tokens, rows aligned tokens")).toBeVisible()
-  await expect(page.getByRole("button", { name: "Download result", exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Download all results", exact: true })).toBeVisible()
 })

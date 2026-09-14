@@ -37,8 +37,21 @@ test("completed offline AF3 publication loads the exact best prediction, native 
   const before = await (await page.request.get(`/api/v1/jobs/${stats.alphafold3_retry_job_id}`)).json()
   expect(before).toMatchObject({ state: "failed", can_retry_result_preparation: true })
   await page.goto(`/tools/alphafold3/jobs/${stats.alphafold3_retry_job_id}`)
+  const rerunPosts: string[] = []
+  const watchRerun = (request: import("@playwright/test").Request) => { if (request.method() === "POST") rerunPosts.push(request.url()) }
+  page.on("request", watchRerun)
+  await page.getByRole("link", { name: "Rerun with same inputs" }).click()
+  await expect(page.getByLabel("Edit retained JSON")).toContainText("ACDE")
+  await page.getByText("Advanced prediction settings", { exact: true }).click()
+  await expect(page.getByLabel("Recycles", { exact: true })).toHaveValue("0")
+  await expect(page.getByLabel("Samples per seed", { exact: true })).toHaveValue("3")
+  await expect(page.getByLabel("Model seeds", { exact: true })).toHaveValue("2,19")
+  await expect(page.getByLabel("Search MSAs", { exact: true })).not.toBeChecked()
+  expect(rerunPosts).toEqual([])
+  page.off("request", watchRerun)
+  await page.goto(`/tools/alphafold3/jobs/${stats.alphafold3_retry_job_id}`)
   const retryResponse = page.waitForResponse((response) => response.url().endsWith("/retry-result-preparation"))
-  await page.getByRole("button", { name: "Retry result preparation", exact: true }).click()
+  await page.getByRole("button", { name: "Retry fetching results", exact: true }).click()
   const retry = await retryResponse
   expect(retry.status()).toBe(202)
   const accepted = await retry.json()

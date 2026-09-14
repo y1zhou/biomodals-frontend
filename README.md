@@ -153,7 +153,7 @@ per-stage Job Logs, My Jobs filtering, and direct Result downloads. AlphaFold3
 drafts remain in the browser while validated documents are retained briefly by
 the backend and never stored in the service database.
 
-When available on a failed Job, **Retry result preparation** prepares its
+When available on a failed Job, **Retry fetching results** prepares its
 existing scientific outputs again in the same Job. It does not rerun models or
 submit a new Job. The page shows preparation progress; use **Refresh** to check
 before the next automatic update. Eligibility and recovery behavior follow the
@@ -161,6 +161,13 @@ before the next automatic update. Eligibility and recovery behavior follow the
 AlphaFold3 preview errors show the service error code and detail. **Retry
 preview** is offered for transient read or cache failures; fixed size limits
 and invalid source data need the underlying issue resolved first.
+
+Failed or cancelled AlphaFold3 Jobs offer **Rerun with same inputs**. This
+loads retained JSON and the original prediction settings into an editable
+Expert form. Review and submit explicitly to create a new Job; opening the
+form does not submit or recover an earlier Submission. Completed AlphaFold3
+Jobs offer **Download all results** for the full archive. Humanization candidate
+tables appear before Execution stages.
 
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown

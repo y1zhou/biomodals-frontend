@@ -58,6 +58,7 @@ import {
   availableTools,
   toolSubmissionPath,
   humanizationPaths,
+  alphafold3Paths,
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
@@ -350,7 +351,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               ) : null}
               <div className="mt-6 flex flex-wrap gap-3">
                 {job.can_retry_result_preparation ? <Button disabled={preparationMutation.isPending} onClick={() => preparationMutation.mutate()}>
-                  {preparationMutation.isPending ? "Requesting preparation…" : "Retry result preparation"}
+                  {preparationMutation.isPending ? "Requesting preparation…" : "Retry fetching results"}
                 </Button> : null}
                 {canCancel ? (
                   <Button
@@ -378,13 +379,16 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                     )}
                     {downloadMutation.isPending
                       ? "Preparing download…"
-                      : "Download result"}
+                      : job.tool === "alphafold3" ? "Download all results" : "Download result"}
                   </Button>
                 ) : null}
                 {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}
-                {canStartAgain && job.tool !== "humanization" ? (
+                {canStartAgain && job.tool === "alphafold3" ? <Link className={buttonVariants({ variant: "outline" })} to={alphafold3Paths.rerun(job.job_id)}>
+                  <RotateCcw aria-hidden="true" /> Rerun with same inputs
+                </Link> : null}
+                {canStartAgain && job.tool !== "humanization" && job.tool !== "alphafold3" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job
@@ -412,6 +416,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
           </Card>
 
           {job.tool === "alphafold3" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading prediction viewer…</p>}><AlphaFold3Results jobId={job.job_id} key={job.job_id} /></Suspense> : null}
+          {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
             <CardHeader>
@@ -633,7 +638,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             </Card>
           </div>
         </section>
-        {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
       </main>
 
       <dialog
