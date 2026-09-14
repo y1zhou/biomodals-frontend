@@ -163,8 +163,10 @@ preview** is offered for transient read or cache failures; fixed size limits
 and invalid source data need the underlying issue resolved first.
 
 Failed or cancelled AlphaFold3 Jobs offer **Rerun with same inputs**. This
-loads retained JSON and the original prediction settings into an editable
-Expert form. Review and submit explicitly to create a new Job; opening the
+copies only the original JSON into an isolated editable Expert form, preserving
+its name, model seeds, and other fields. Settings outside the JSON use current
+form defaults and may differ from the original run. Review and submit
+explicitly to create a new Job; opening the
 form does not submit or recover an earlier Submission. Completed AlphaFold3
 Jobs offer **Download all results** for the full archive. Humanization candidate
 tables appear before Execution stages.

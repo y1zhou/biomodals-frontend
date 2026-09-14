@@ -8,7 +8,7 @@ const principal = { user_id: "af3-test", display_name: "Researcher", email: "res
 const document = { name: "Imported complex", modelSeeds: [7, 42], sequences: [{ protein: { id: ["A", "B"], sequence: "ACD", unpairedMsa: "", templates: [] } }, { ligand: { id: "L", ccdCodes: ["ATP"] } }] }
 const prediction = { prediction_id: "fixture-identity", seed: 42, sample_index: 0, prediction_count: 2, ranking_score: 0.87, ptm: 0.7, iptm: null, has_clash: false, summary_error: null, pae_error: null, max_pae_grid_size: 512, token_chain_ids: ["A", "A", "L", "L"], token_res_ids: [1, 2, 1, 1] }
 
-test("failed AF3 rerun restores editable inputs and exact settings without automatic POST", async ({ page }) => {
+test("failed AF3 rerun copies JSON with current form defaults without automatic POST", async ({ page }) => {
   await mockApi(page, { state: "failed" })
   const posts: string[] = []
   page.on("request", (request) => { if (request.method() === "POST") posts.push(request.url()) })
@@ -16,20 +16,18 @@ test("failed AF3 rerun restores editable inputs and exact settings without autom
     sessionStorage.setItem("biomodals:alphafold3:validation:af3-test", "stale-validation")
     sessionStorage.setItem("biomodals:alphafold3:submission:af3-test:stale-validation", "old-intent")
   })
-  await page.route("**/alphafold3/jobs/*/inputs", (route) => route.fulfill({ json: {
-    document_json: JSON.stringify({ ...document, userCCD: "preserved native extension" }),
-    settings: { recycle: 7, sample: 3, search_msa: false, search_protein_templates: false },
-  } }))
+  await page.route("**/alphafold3/jobs/*/document", (route) => route.fulfill({ json: { ...document, userCCD: "preserved native extension" } }))
   await page.goto(`/tools/alphafold3/jobs/${jobId}`)
   await expect(page.getByRole("link", { name: "Start a new job" })).toHaveCount(0)
   await page.getByRole("link", { name: "Rerun with same inputs" }).click()
   await expect(page.getByLabel("Edit retained JSON")).toContainText("preserved native extension")
   await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("Imported complex")
+  await expect(page.getByRole("status").filter({ hasText: "Inputs copied from a previous job." })).toHaveText("Inputs copied from a previous job. Other settings use current defaults and may differ from the original run. Review the configuration before submitting.")
   await page.getByText("Advanced prediction settings", { exact: true }).click()
-  await expect(page.getByLabel("Recycles", { exact: true })).toHaveValue("7")
-  await expect(page.getByLabel("Samples per seed", { exact: true })).toHaveValue("3")
+  await expect(page.getByLabel("Recycles", { exact: true })).toHaveValue("10")
+  await expect(page.getByLabel("Samples per seed", { exact: true })).toHaveValue("5")
   await expect(page.getByLabel("Model seeds", { exact: true })).toHaveValue("7,42")
-  await expect(page.getByLabel("Search MSAs", { exact: true })).not.toBeChecked()
+  await expect(page.getByLabel("Search MSAs", { exact: true })).toBeChecked()
   await page.getByLabel("Edit retained JSON").fill(JSON.stringify({ ...document, userCCD: "edited native extension" }))
   await page.getByLabel("Job name", { exact: true }).fill("Edited rerun")
   expect(posts).toEqual([])
@@ -37,14 +35,14 @@ test("failed AF3 rerun restores editable inputs and exact settings without autom
   const validationRequest = page.waitForRequest((request) => new URL(request.url()).pathname.endsWith("/alphafold3/validations"))
   await page.getByRole("button", { name: "Continue and preview job" }).click()
   const request = await validationRequest
-  expect(Object.fromEntries(new URL(request.url()).searchParams)).toEqual({ recycle: "7", sample: "3", search_msa: "false", search_protein_templates: "false" })
+  expect(Object.fromEntries(new URL(request.url()).searchParams)).toEqual({ recycle: "10", sample: "5", search_msa: "true", search_protein_templates: "true" })
   expect(request.postDataJSON()).toMatchObject({ name: "Edited rerun", modelSeeds: [7, 42], userCCD: "edited native extension" })
   expect(posts).toHaveLength(1)
 })
 
 test("unavailable retained AF3 input does not open a blank submission", async ({ page }) => {
   await mockApi(page)
-  await page.route("**/alphafold3/jobs/*/inputs", (route) => route.fulfill({ status: 404, json: { code: "job_input_unavailable", detail: "Input unavailable" } }))
+  await page.route("**/alphafold3/jobs/*/document", (route) => route.fulfill({ status: 404, json: { code: "job_input_unavailable", detail: "Input unavailable" } }))
   await page.goto(`/tools/alphafold3/new?source_job=${jobId}`)
   await expect(page.getByRole("heading", { name: "Inputs unavailable" })).toBeVisible()
   await expect(page.getByRole("alert")).toContainText("We couldn’t find saved inputs for this job")

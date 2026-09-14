@@ -212,23 +212,6 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
-    readonly "/api/v1/alphafold3/jobs/{job_id}/inputs": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
-        };
-        /** Job Inputs */
-        readonly get: operations["job_inputs_api_v1_alphafold3_jobs__job_id__inputs_get"];
-        readonly put?: never;
-        readonly post?: never;
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
-    };
     readonly "/api/v1/alphafold3/jobs/{job_id}/prediction": {
         readonly parameters: {
             readonly query?: never;
@@ -996,15 +979,6 @@ export interface components {
              * Format: uuid
              */
             readonly user_id: string;
-        };
-        /**
-         * AlphaFold3JobInputs
-         * @description Retained native JSON and exact scientific settings for an editable rerun.
-         */
-        readonly AlphaFold3JobInputs: {
-            /** Document Json */
-            readonly document_json: string;
-            readonly settings: components["schemas"]["ValidationSettings"];
         };
         /**
          * AlphaFold3JobRequest
@@ -1869,32 +1843,6 @@ export interface components {
             readonly msg: string;
             /** Error Type */
             readonly type: string;
-        };
-        /**
-         * ValidationSettings
-         * @description Operational AlphaFold3 settings retained beside a native document.
-         */
-        readonly ValidationSettings: {
-            /**
-             * Recycle
-             * @default 10
-             */
-            readonly recycle: number;
-            /**
-             * Sample
-             * @default 5
-             */
-            readonly sample: number;
-            /**
-             * Search Msa
-             * @default true
-             */
-            readonly search_msa: boolean;
-            /**
-             * Search Protein Templates
-             * @default true
-             */
-            readonly search_protein_templates: boolean;
         };
         /**
          * ValidationView
@@ -3061,63 +3009,6 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": unknown;
-                };
-            };
-            /** @description Request Entity Too Large */
-            readonly 413: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            readonly 422: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Internal Server Error */
-            readonly 500: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    readonly job_inputs_api_v1_alphafold3_jobs__job_id__inputs_get: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly job_id: string;
-            };
-            readonly cookie?: never;
-        };
-        readonly requestBody?: never;
-        readonly responses: {
-            /** @description Successful Response */
-            readonly 200: {
-                headers: {
-                    /** @description Server-generated request correlation identifier. */
-                    readonly "X-Request-ID"?: string;
-                    readonly [name: string]: unknown;
-                };
-                content: {
-                    readonly "application/json": components["schemas"]["AlphaFold3JobInputs"];
                 };
             };
             /** @description Not Found */

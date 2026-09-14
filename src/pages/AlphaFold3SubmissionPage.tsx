@@ -355,14 +355,12 @@ export default function AlphaFold3SubmissionPage() {
   const rerunDraft = useMemo(() => {
     if (!inputs.data) return undefined
     try {
-      const { document_json, settings } = inputs.data
+      const document_json = inputs.data
       return {
         ...newAlphaFold3Draft(), mode: "expert" as const,
         expertJson: document_json, expertFilename: "retained-input.json",
         jobName: expertAlphaFold3Feedback(document_json).name,
         seeds: expertAlphaFold3ModelSeeds(document_json),
-        recycle: settings.recycle, sample: settings.sample,
-        searchMsa: settings.search_msa, searchProteinTemplates: settings.search_protein_templates,
       }
     } catch { return undefined }
   }, [inputs.data])
@@ -381,7 +379,7 @@ export default function AlphaFold3SubmissionPage() {
             <p className="leading-7 text-muted-foreground">{missing
               ? "We couldn’t find saved inputs for this job. They may no longer be available, or this account may not have access."
               : failed ? "We couldn’t load the inputs needed to rerun this job. Try again, or return to the job to review its details."
-                : "Retrieving the original AlphaFold3 JSON and prediction settings for you to review."}</p>
+                : "Retrieving the original AlphaFold3 JSON for you to review."}</p>
             {failed ? <p className="text-sm text-muted-foreground">No new job has been submitted.</p> : null}
             {apiRequestId(inputs.error) ? <p className="break-all text-xs text-muted-foreground">Support ID: {apiRequestId(inputs.error)}</p> : null}
           </div>
@@ -753,6 +751,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
       <Link className={cn(buttonVariants({ variant: "ghost" }), "mb-8")} to={alphafold3Paths.overview}><ArrowLeft />AlphaFold3 overview</Link>
+      {rerunDraft ? <p role="status" className="mb-6 rounded-xl border border-sky-200 bg-sky-50 p-5 leading-7 text-sky-950">Inputs copied from a previous job. Other settings use current defaults and may differ from the original run. Review the configuration before submitting.</p> : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Badge variant="secondary">{alphafold3Tool.name}</Badge>
@@ -814,7 +813,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
                 onSelect={chooseExpertJson}
               />
               {expertReadState === "reading" ? <p className="mt-4" role="status">Reading JSON file…</p> : null}
-              {rerunDraft ? <div className="mt-4 space-y-2"><p>Retained inputs and prediction settings are loaded for a new job. Edit them below, then continue to review before submitting. Nothing has been submitted.</p><label className="block font-medium" htmlFor="rerun-json">Edit retained JSON</label><textarea id="rerun-json" className="min-h-64 w-full rounded border bg-background p-3 font-mono text-sm" value={draft.expertJson} onChange={(event) => setDraft({ ...draft, expertJson: event.target.value })} /></div> : null}
+              {rerunDraft ? <div className="mt-4 space-y-2"><label className="block font-medium" htmlFor="rerun-json">Edit retained JSON</label><textarea id="rerun-json" className="min-h-64 w-full rounded border bg-background p-3 font-mono text-sm" value={draft.expertJson} onChange={(event) => setDraft({ ...draft, expertJson: event.target.value })} /></div> : null}
               {expertReadState === "error" ? (
                 <div className="mt-4 space-y-3 rounded-lg bg-destructive/10 p-4" role="alert">
                   <p>{expertReadError}</p>
