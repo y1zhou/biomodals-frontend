@@ -674,6 +674,42 @@ The interface does not manufacture server facts that OpenAPI does not supply.
 
 ## Consequences and deferred work
 
+### AlphaFold3 preview extension (2026-09-12)
+
+The accepted [AlphaFold3 UX specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/alphafold3-ux.md)
+extends Expert input feedback and completed Job Results. Uploaded JSON remains
+authoritative for advanced fields; bounded feedback is local parsing, while
+Retained Validation remains the scientific input authority. Replacement reads
+block Continue until successful or explicitly dismissed in favor of the old
+document. A blank visible Job name adopts the document name.
+
+Completed AlphaFold3 Jobs lazily load Mol* 5.11.0 with an owned plugin lifecycle,
+top sequence panel and curated right controls. Polymer colors use residue-mean
+CIF atom pLDDT; ligand colors use elements. The confidence legend appears only
+while all active representation themes use this coloring. The API's exact
+Highest-Ranked Prediction controls identity; the browser never reranks rounded
+scores or chooses from run-wide output.
+
+Native Canvas displays bounded PAE windows without another chart or parser
+dependency. X is scored and Y is aligned/frame. Reduced cells are labeled
+missing-aware block means; exact windows retain directional values and native
+token indices, including repeated ligand residue IDs. Hover never requests
+data, and zoom requests use abortable owner-scoped queries. Preview failures
+remain separate from Job outcome and native downloads. Private result reads
+restore an evicted archive through the shared prepare-download path once.
+
+The desktop browser fixtures cover input races, cache restoration, asymmetric
+PAE/nulls, zoom, ligand mapping, viewer styles and no-WebGL fallback without
+scientific execution. Mol*'s large chunk is confined to completed AF3 Results.
+
+A [version-pinned Bun patch](../../patches/README.md) makes Mol* UI labels
+plain React text, including tooltips and measurement labels. This prevents
+custom CCD identifiers from becoming executable HTML without altering native
+CIF data or adding a sanitizer dependency. Exact native PAE uses one decimal
+place; reduced block means use three.
+
+### Original MVP scope
+
 The frontend can ship a complete path from account setup through GROMACS
 Submission, durable recovery, Cancellation, and Result download without first
 expanding the backend to the longer-term model.

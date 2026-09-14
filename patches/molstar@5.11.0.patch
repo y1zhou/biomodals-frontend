@@ -1,0 +1,238 @@
+diff --git a/lib/commonjs/mol-plugin-ui/controls.js b/lib/commonjs/mol-plugin-ui/controls.js
+index 290d97e1b948b3c4a79de4163c42d334effc94c0..a87b4a94459322cd68b34e2ca3fa8bb4e9f63518 100644
+--- a/lib/commonjs/mol-plugin-ui/controls.js
++++ b/lib/commonjs/mol-plugin-ui/controls.js
+@@ -1,4 +1,5 @@
+ "use strict";
++const { stripTags: plainLabel } = require('../mol-util/string.js');
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.DefaultStructureTools = exports.CustomStructureControls = exports.LociLabels = exports.SelectionViewportControls = exports.AnimationViewportControls = exports.StateSnapshotViewportControls = exports.TrajectoryViewportControls = void 0;
+ exports.ViewportSnapshotDescription = ViewportSnapshotDescription;
+@@ -11,7 +12,6 @@ const jsx_runtime_1 = require("react/jsx-runtime");
+  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+  */
+ const React = tslib_1.__importStar(require("react"));
+-const react_markdown_1 = tslib_1.__importDefault(require("react-markdown"));
+ const structure_1 = require("../mol-plugin-state/actions/structure.js");
+ const transforms_1 = require("../mol-plugin-state/transforms.js");
+ const commands_1 = require("../mol-plugin/commands.js");
+@@ -244,10 +244,7 @@ class LociLabels extends base_1.PluginUIComponent {
+             return null;
+         }
+         return (0, jsx_runtime_1.jsx)("div", { className: 'msp-highlight-info', children: this.state.labels.map((e, i) => {
+-                if (e.indexOf('\n') >= 0) {
+-                    return (0, jsx_runtime_1.jsx)("div", { className: 'msp-highlight-markdown-row', children: (0, jsx_runtime_1.jsx)(react_markdown_1.default, { skipHtml: true, children: e }) }, '' + i);
+-                }
+-                return (0, jsx_runtime_1.jsx)("div", { className: 'msp-highlight-simple-row', dangerouslySetInnerHTML: { __html: e } }, '' + i);
++                return (0, jsx_runtime_1.jsx)("div", { className: 'msp-highlight-simple-row', children: plainLabel(e) }, '' + i);
+             }) });
+     }
+ }
+diff --git a/lib/commonjs/mol-plugin-ui/structure/measurements.js b/lib/commonjs/mol-plugin-ui/structure/measurements.js
+index c232e79684bb278c903a151115b28c5785a454e1..74aee26227a6849674d51c812f53cd9f01e5ecf4 100644
+--- a/lib/commonjs/mol-plugin-ui/structure/measurements.js
++++ b/lib/commonjs/mol-plugin-ui/structure/measurements.js
+@@ -1,4 +1,5 @@
+ "use strict";
++const { stripTags: plainLabel } = require('../../mol-util/string.js');
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.MeasurementControls = exports.MeasurementList = exports.StructureMeasurementsControls = void 0;
+ const jsx_runtime_1 = require("react/jsx-runtime");
+@@ -148,7 +149,7 @@ class MeasurementControls extends base_1.PurePluginUIComponent {
+     }
+     historyEntry(e, idx) {
+         const history = this.plugin.managers.structure.selection.additionsHistory;
+-        return (0, jsx_runtime_1.jsxs)("div", { className: 'msp-flex-row', onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [(0, jsx_runtime_1.jsxs)(common_1.Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, children: [idx, ". ", (0, jsx_runtime_1.jsx)("span", { dangerouslySetInnerHTML: { __html: e.label } })] }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
++        return (0, jsx_runtime_1.jsxs)("div", { className: 'msp-flex-row', onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [(0, jsx_runtime_1.jsxs)(common_1.Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, children: [idx, ". ", (0, jsx_runtime_1.jsx)("span", { children: plainLabel(e.label) })] }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
+     }
+     add() {
+         const history = this.plugin.managers.structure.selection.additionsHistory;
+@@ -284,6 +285,6 @@ class MeasurementEntry extends base_1.PurePluginUIComponent {
+         const { obj } = cell;
+         if (!obj)
+             return null;
+-        return (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: 'msp-flex-row', onMouseEnter: this.highlight, onMouseLeave: this.clearHighlight, children: [(0, jsx_runtime_1.jsx)("button", { className: 'msp-form-control msp-control-button-label msp-no-overflow', title: 'Click to focus. Hover to highlight.', onClick: this.focus, style: { width: 'auto', textAlign: 'left' }, children: (0, jsx_runtime_1.jsx)("span", { dangerouslySetInnerHTML: { __html: this.label } }) }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: cell.state.isHidden ? icons_1.VisibilityOffOutlinedSvg : icons_1.VisibilityOutlinedSvg, toggleState: false, small: true, className: 'msp-form-control', onClick: this.toggleVisibility, flex: true, title: cell.state.isHidden ? 'Show' : 'Hide' }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: this.delete, flex: true, title: 'Delete', toggleState: false }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.MoreHorizSvg, className: 'msp-form-control', onClick: this.toggleUpdate, flex: true, title: 'Actions', toggleState: this.state.showUpdate })] }, obj.id), this.state.showUpdate && cell.parent && (0, jsx_runtime_1.jsx)(jsx_runtime_1.Fragment, { children: (0, jsx_runtime_1.jsxs)("div", { className: 'msp-accent-offset', children: [(0, jsx_runtime_1.jsx)(action_menu_1.ActionMenu, { items: this.actions, onSelect: this.selectAction, noOffset: true }), (0, jsx_runtime_1.jsx)(common_1.ExpandGroup, { header: 'Options', noOffset: true, children: (0, jsx_runtime_1.jsx)(update_transform_1.UpdateTransformControl, { state: cell.parent, transform: cell.transform, customHeader: 'none', autoHideApply: true }) })] }) })] });
++        return (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: 'msp-flex-row', onMouseEnter: this.highlight, onMouseLeave: this.clearHighlight, children: [(0, jsx_runtime_1.jsx)("button", { className: 'msp-form-control msp-control-button-label msp-no-overflow', title: 'Click to focus. Hover to highlight.', onClick: this.focus, style: { width: 'auto', textAlign: 'left' }, children: (0, jsx_runtime_1.jsx)("span", { children: plainLabel(this.label) }) }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: cell.state.isHidden ? icons_1.VisibilityOffOutlinedSvg : icons_1.VisibilityOutlinedSvg, toggleState: false, small: true, className: 'msp-form-control', onClick: this.toggleVisibility, flex: true, title: cell.state.isHidden ? 'Show' : 'Hide' }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: this.delete, flex: true, title: 'Delete', toggleState: false }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.MoreHorizSvg, className: 'msp-form-control', onClick: this.toggleUpdate, flex: true, title: 'Actions', toggleState: this.state.showUpdate })] }, obj.id), this.state.showUpdate && cell.parent && (0, jsx_runtime_1.jsx)(jsx_runtime_1.Fragment, { children: (0, jsx_runtime_1.jsxs)("div", { className: 'msp-accent-offset', children: [(0, jsx_runtime_1.jsx)(action_menu_1.ActionMenu, { items: this.actions, onSelect: this.selectAction, noOffset: true }), (0, jsx_runtime_1.jsx)(common_1.ExpandGroup, { header: 'Options', noOffset: true, children: (0, jsx_runtime_1.jsx)(update_transform_1.UpdateTransformControl, { state: cell.parent, transform: cell.transform, customHeader: 'none', autoHideApply: true }) })] }) })] });
+     }
+ }
+diff --git a/lib/commonjs/mol-plugin-ui/structure/superposition.js b/lib/commonjs/mol-plugin-ui/structure/superposition.js
+index a8177c74a71e314927ab53b9b1d2e592bcc3db52..77f23c929e268e278443bf131aaa06d6ea26f4cf 100644
+--- a/lib/commonjs/mol-plugin-ui/structure/superposition.js
++++ b/lib/commonjs/mol-plugin-ui/structure/superposition.js
+@@ -1,4 +1,5 @@
+ "use strict";
++const { stripTags: plainLabel } = require('../../mol-util/string.js');
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.SuperpositionControls = exports.StructureSuperpositionParams = exports.StructureSuperpositionControls = void 0;
+ const jsx_runtime_1 = require("react/jsx-runtime");
+@@ -281,11 +282,11 @@ class SuperpositionControls extends base_1.PurePluginUIComponent {
+         this.plugin.managers.camera.focusLoci(loci);
+     }
+     lociEntry(e, idx) {
+-        return (0, jsx_runtime_1.jsx)("div", { className: 'msp-flex-row', children: (0, jsx_runtime_1.jsx)(common_1.Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: (0, jsx_runtime_1.jsx)("span", { dangerouslySetInnerHTML: { __html: e.label } }) }) }, idx);
++        return (0, jsx_runtime_1.jsx)("div", { className: 'msp-flex-row', children: (0, jsx_runtime_1.jsx)(common_1.Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: (0, jsx_runtime_1.jsx)("span", { children: plainLabel(e.label) }) }) }, idx);
+     }
+     historyEntry(e, idx) {
+         const history = this.plugin.managers.structure.selection.additionsHistory;
+-        return (0, jsx_runtime_1.jsxs)("div", { className: 'msp-flex-row', children: [(0, jsx_runtime_1.jsxs)(common_1.Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [idx, ". ", (0, jsx_runtime_1.jsx)("span", { dangerouslySetInnerHTML: { __html: e.label } })] }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
++        return (0, jsx_runtime_1.jsxs)("div", { className: 'msp-flex-row', children: [(0, jsx_runtime_1.jsxs)(common_1.Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [idx, ". ", (0, jsx_runtime_1.jsx)("span", { children: plainLabel(e.label) })] }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
+     }
+     atomsLociEntry(e, idx) {
+         return (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("div", { className: 'msp-control-group-header', children: (0, jsx_runtime_1.jsx)("div", { className: 'msp-no-overflow', title: e.label, children: e.label }) }), (0, jsx_runtime_1.jsx)("div", { className: 'msp-control-offset', children: e.atoms.map((h, i) => this.historyEntry(h, i)) })] }, idx);
+diff --git a/lib/commonjs/mol-plugin-ui/toast.js b/lib/commonjs/mol-plugin-ui/toast.js
+index 5d2631c3d69db35fed05d9ecefe1440b6df7f75c..9d4865435e366aed97f18fd4790f831f4577373d 100644
+--- a/lib/commonjs/mol-plugin-ui/toast.js
++++ b/lib/commonjs/mol-plugin-ui/toast.js
+@@ -1,4 +1,5 @@
+ "use strict";
++const { stripTags: plainLabel } = require('../mol-util/string.js');
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.Toasts = void 0;
+ const jsx_runtime_1 = require("react/jsx-runtime");
+@@ -23,7 +24,7 @@ class ToastEntry extends base_1.PluginUIComponent {
+     render() {
+         const entry = this.props.entry;
+         const message = typeof entry.message === 'string'
+-            ? (0, jsx_runtime_1.jsx)("div", { dangerouslySetInnerHTML: { __html: entry.message } })
++            ? (0, jsx_runtime_1.jsx)("div", { children: plainLabel(entry.message) })
+             // @ts-ignore // TODO: handle type better
+             : (0, jsx_runtime_1.jsx)("div", { children: (0, jsx_runtime_1.jsx)(entry.message, {}) });
+         return (0, jsx_runtime_1.jsxs)("div", { className: 'msp-toast-entry', children: [(0, jsx_runtime_1.jsx)("div", { className: 'msp-toast-title', onClick: () => this.hide(), children: entry.title }), (0, jsx_runtime_1.jsx)("div", { className: 'msp-toast-message', children: message }), (0, jsx_runtime_1.jsx)("div", { className: 'msp-toast-clear' }), (0, jsx_runtime_1.jsx)("div", { className: 'msp-toast-hide', children: (0, jsx_runtime_1.jsx)(common_1.IconButton, { svg: icons_1.CancelSvg, onClick: this.hide, title: 'Hide', className: 'msp-no-hover-outline' }) })] });
+diff --git a/lib/commonjs/mol-plugin-ui/viewport/help.js b/lib/commonjs/mol-plugin-ui/viewport/help.js
+index 8fec37be49e830d959bba22eeea34cc9b9ef3d74..6e91da2a57b3acc3f9bfcd097c6098b4031288d2 100644
+--- a/lib/commonjs/mol-plugin-ui/viewport/help.js
++++ b/lib/commonjs/mol-plugin-ui/viewport/help.js
+@@ -1,4 +1,5 @@
+ "use strict";
++const { stripTags: plainLabel } = require('../../mol-util/string.js');
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.HelpContent = exports.ViewportHelpContent = exports.HelpGroup = exports.HelpText = exports.BindingsHelp = void 0;
+ const tslib_1 = require("tslib");
+@@ -26,7 +27,7 @@ class BindingsHelp extends React.PureComponent {
+         return (0, jsx_runtime_1.jsx)(jsx_runtime_1.Fragment, { children: bindingsList.map(value => {
+                 const [name, binding] = value;
+                 return !binding_1.Binding.isEmpty(binding)
+-                    ? (0, jsx_runtime_1.jsxs)("div", { style: { marginBottom: '6px' }, children: [(0, jsx_runtime_1.jsx)("b", { children: binding.action }), (0, jsx_runtime_1.jsx)("br", {}), (0, jsx_runtime_1.jsx)("span", { dangerouslySetInnerHTML: { __html: binding_1.Binding.format(binding, name) } })] }, name)
++                    ? (0, jsx_runtime_1.jsxs)("div", { style: { marginBottom: '6px' }, children: [(0, jsx_runtime_1.jsx)("b", { children: binding.action }), (0, jsx_runtime_1.jsx)("br", {}), (0, jsx_runtime_1.jsx)("span", { children: plainLabel(binding_1.Binding.format(binding, name)) })] }, name)
+                     : null;
+             }) });
+     }
+diff --git a/lib/mol-plugin-ui/controls.js b/lib/mol-plugin-ui/controls.js
+index caf78236887bc8216a9ad8749c9c570ab2859736..6d21fde68aaa4e1feebc44ccc96a8a1ea3dfcb44 100644
+--- a/lib/mol-plugin-ui/controls.js
++++ b/lib/mol-plugin-ui/controls.js
+@@ -1,4 +1,5 @@
+ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
++import { stripTags as plainLabel } from '../mol-util/string.js';
+ /**
+  * Copyright (c) 2018-2026 mol* contributors, licensed under MIT, See LICENSE file for more info.
+  *
+@@ -6,7 +7,6 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
+  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+  */
+ import * as React from 'react';
+-import ReactMarkdown from 'react-markdown';
+ import { UpdateTrajectory } from '../mol-plugin-state/actions/structure.js';
+ import { StateTransforms } from '../mol-plugin-state/transforms.js';
+ import { PluginCommands } from '../mol-plugin/commands.js';
+@@ -235,10 +235,7 @@ export class LociLabels extends PluginUIComponent {
+             return null;
+         }
+         return _jsx("div", { className: 'msp-highlight-info', children: this.state.labels.map((e, i) => {
+-                if (e.indexOf('\n') >= 0) {
+-                    return _jsx("div", { className: 'msp-highlight-markdown-row', children: _jsx(ReactMarkdown, { skipHtml: true, children: e }) }, '' + i);
+-                }
+-                return _jsx("div", { className: 'msp-highlight-simple-row', dangerouslySetInnerHTML: { __html: e } }, '' + i);
++                return _jsx("div", { className: 'msp-highlight-simple-row', children: plainLabel(e) }, '' + i);
+             }) });
+     }
+ }
+diff --git a/lib/mol-plugin-ui/structure/measurements.js b/lib/mol-plugin-ui/structure/measurements.js
+index 3bd5847818ff6e8d677954dd28dc078c03369c92..9dc3b958b0a034623c09e250e4b125f0eeb61dd9 100644
+--- a/lib/mol-plugin-ui/structure/measurements.js
++++ b/lib/mol-plugin-ui/structure/measurements.js
+@@ -1,4 +1,5 @@
+ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
++import { stripTags as plainLabel } from '../../mol-util/string.js';
+ import { Loci } from '../../mol-model/loci.js';
+ import { StructureMeasurementParams } from '../../mol-plugin-state/manager/structure/measurement.js';
+ import { PluginCommands } from '../../mol-plugin/commands.js';
+@@ -143,7 +144,7 @@ export class MeasurementControls extends PurePluginUIComponent {
+     }
+     historyEntry(e, idx) {
+         const history = this.plugin.managers.structure.selection.additionsHistory;
+-        return _jsxs("div", { className: 'msp-flex-row', onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [_jsxs(Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, children: [idx, ". ", _jsx("span", { dangerouslySetInnerHTML: { __html: e.label } })] }), history.length > 1 && _jsx(IconButton, { svg: ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && _jsx(IconButton, { svg: ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), _jsx(IconButton, { svg: DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
++        return _jsxs("div", { className: 'msp-flex-row', onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [_jsxs(Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, children: [idx, ". ", _jsx("span", { children: plainLabel(e.label) })] }), history.length > 1 && _jsx(IconButton, { svg: ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && _jsx(IconButton, { svg: ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), _jsx(IconButton, { svg: DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
+     }
+     add() {
+         const history = this.plugin.managers.structure.selection.additionsHistory;
+@@ -278,6 +279,6 @@ class MeasurementEntry extends PurePluginUIComponent {
+         const { obj } = cell;
+         if (!obj)
+             return null;
+-        return _jsxs(_Fragment, { children: [_jsxs("div", { className: 'msp-flex-row', onMouseEnter: this.highlight, onMouseLeave: this.clearHighlight, children: [_jsx("button", { className: 'msp-form-control msp-control-button-label msp-no-overflow', title: 'Click to focus. Hover to highlight.', onClick: this.focus, style: { width: 'auto', textAlign: 'left' }, children: _jsx("span", { dangerouslySetInnerHTML: { __html: this.label } }) }), _jsx(IconButton, { svg: cell.state.isHidden ? VisibilityOffOutlinedSvg : VisibilityOutlinedSvg, toggleState: false, small: true, className: 'msp-form-control', onClick: this.toggleVisibility, flex: true, title: cell.state.isHidden ? 'Show' : 'Hide' }), _jsx(IconButton, { svg: DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: this.delete, flex: true, title: 'Delete', toggleState: false }), _jsx(IconButton, { svg: MoreHorizSvg, className: 'msp-form-control', onClick: this.toggleUpdate, flex: true, title: 'Actions', toggleState: this.state.showUpdate })] }, obj.id), this.state.showUpdate && cell.parent && _jsx(_Fragment, { children: _jsxs("div", { className: 'msp-accent-offset', children: [_jsx(ActionMenu, { items: this.actions, onSelect: this.selectAction, noOffset: true }), _jsx(ExpandGroup, { header: 'Options', noOffset: true, children: _jsx(UpdateTransformControl, { state: cell.parent, transform: cell.transform, customHeader: 'none', autoHideApply: true }) })] }) })] });
++        return _jsxs(_Fragment, { children: [_jsxs("div", { className: 'msp-flex-row', onMouseEnter: this.highlight, onMouseLeave: this.clearHighlight, children: [_jsx("button", { className: 'msp-form-control msp-control-button-label msp-no-overflow', title: 'Click to focus. Hover to highlight.', onClick: this.focus, style: { width: 'auto', textAlign: 'left' }, children: _jsx("span", { children: plainLabel(this.label) }) }), _jsx(IconButton, { svg: cell.state.isHidden ? VisibilityOffOutlinedSvg : VisibilityOutlinedSvg, toggleState: false, small: true, className: 'msp-form-control', onClick: this.toggleVisibility, flex: true, title: cell.state.isHidden ? 'Show' : 'Hide' }), _jsx(IconButton, { svg: DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: this.delete, flex: true, title: 'Delete', toggleState: false }), _jsx(IconButton, { svg: MoreHorizSvg, className: 'msp-form-control', onClick: this.toggleUpdate, flex: true, title: 'Actions', toggleState: this.state.showUpdate })] }, obj.id), this.state.showUpdate && cell.parent && _jsx(_Fragment, { children: _jsxs("div", { className: 'msp-accent-offset', children: [_jsx(ActionMenu, { items: this.actions, onSelect: this.selectAction, noOffset: true }), _jsx(ExpandGroup, { header: 'Options', noOffset: true, children: _jsx(UpdateTransformControl, { state: cell.parent, transform: cell.transform, customHeader: 'none', autoHideApply: true }) })] }) })] });
+     }
+ }
+diff --git a/lib/mol-plugin-ui/structure/superposition.js b/lib/mol-plugin-ui/structure/superposition.js
+index 34782c4d5d95e3d9c45f5076b39359eb0cee1b0d..c34adbf4c8027fad1d7d16cdc65fb0257198d68f 100644
+--- a/lib/mol-plugin-ui/structure/superposition.js
++++ b/lib/mol-plugin-ui/structure/superposition.js
+@@ -1,4 +1,5 @@
+ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-runtime";
++import { stripTags as plainLabel } from '../../mol-util/string.js';
+ import { Mat4 } from '../../mol-math/linear-algebra.js';
+ import { SIFTSMapping } from '../../mol-model-props/sequence/sifts-mapping.js';
+ import { QueryContext, StructureElement, StructureProperties, StructureSelection } from '../../mol-model/structure.js';
+@@ -277,11 +278,11 @@ export class SuperpositionControls extends PurePluginUIComponent {
+         this.plugin.managers.camera.focusLoci(loci);
+     }
+     lociEntry(e, idx) {
+-        return _jsx("div", { className: 'msp-flex-row', children: _jsx(Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: _jsx("span", { dangerouslySetInnerHTML: { __html: e.label } }) }) }, idx);
++        return _jsx("div", { className: 'msp-flex-row', children: _jsx(Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: _jsx("span", { children: plainLabel(e.label) }) }) }, idx);
+     }
+     historyEntry(e, idx) {
+         const history = this.plugin.managers.structure.selection.additionsHistory;
+-        return _jsxs("div", { className: 'msp-flex-row', children: [_jsxs(Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [idx, ". ", _jsx("span", { dangerouslySetInnerHTML: { __html: e.label } })] }), history.length > 1 && _jsx(IconButton, { svg: ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && _jsx(IconButton, { svg: ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), _jsx(IconButton, { svg: DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
++        return _jsxs("div", { className: 'msp-flex-row', children: [_jsxs(Button, { noOverflow: true, title: 'Click to focus. Hover to highlight.', onClick: () => this.focusLoci(e.loci), style: { width: 'auto', textAlign: 'left' }, onMouseEnter: () => this.highlight(e.loci), onMouseLeave: () => this.plugin.managers.interactivity.lociHighlights.clearHighlights(), children: [idx, ". ", _jsx("span", { children: plainLabel(e.label) })] }), history.length > 1 && _jsx(IconButton, { svg: ArrowUpwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'up'), flex: '20px', title: 'Move up' }), history.length > 1 && _jsx(IconButton, { svg: ArrowDownwardSvg, small: true, className: 'msp-form-control', onClick: () => this.moveHistory(e, 'down'), flex: '20px', title: 'Move down' }), _jsx(IconButton, { svg: DeleteOutlinedSvg, small: true, className: 'msp-form-control', onClick: () => this.plugin.managers.structure.selection.modifyHistory(e, 'remove'), flex: true, title: 'Remove' })] }, e.id);
+     }
+     atomsLociEntry(e, idx) {
+         return _jsxs("div", { children: [_jsx("div", { className: 'msp-control-group-header', children: _jsx("div", { className: 'msp-no-overflow', title: e.label, children: e.label }) }), _jsx("div", { className: 'msp-control-offset', children: e.atoms.map((h, i) => this.historyEntry(h, i)) })] }, idx);
+diff --git a/lib/mol-plugin-ui/toast.js b/lib/mol-plugin-ui/toast.js
+index 1098a4155f2f310d2d4120e61b0b3a43ffdfda0b..fd677a89833ddc0d1015c2100a88ab88ea2d097f 100644
+--- a/lib/mol-plugin-ui/toast.js
++++ b/lib/mol-plugin-ui/toast.js
+@@ -1,4 +1,5 @@
+ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
++import { stripTags as plainLabel } from '../mol-util/string.js';
+ /**
+  * Copyright (c) 2019 mol* contributors, licensed under MIT, See LICENSE file for more info.
+  *
+@@ -20,7 +21,7 @@ class ToastEntry extends PluginUIComponent {
+     render() {
+         const entry = this.props.entry;
+         const message = typeof entry.message === 'string'
+-            ? _jsx("div", { dangerouslySetInnerHTML: { __html: entry.message } })
++            ? _jsx("div", { children: plainLabel(entry.message) })
+             // @ts-ignore // TODO: handle type better
+             : _jsx("div", { children: _jsx(entry.message, {}) });
+         return _jsxs("div", { className: 'msp-toast-entry', children: [_jsx("div", { className: 'msp-toast-title', onClick: () => this.hide(), children: entry.title }), _jsx("div", { className: 'msp-toast-message', children: message }), _jsx("div", { className: 'msp-toast-clear' }), _jsx("div", { className: 'msp-toast-hide', children: _jsx(IconButton, { svg: CancelSvg, onClick: this.hide, title: 'Hide', className: 'msp-no-hover-outline' }) })] });
+diff --git a/lib/mol-plugin-ui/viewport/help.js b/lib/mol-plugin-ui/viewport/help.js
+index 91a2241a04b409021397a7203dbfb78c909103dd..18394c375f64853a61935b78b3db5119aa08a8a4 100644
+--- a/lib/mol-plugin-ui/viewport/help.js
++++ b/lib/mol-plugin-ui/viewport/help.js
+@@ -1,4 +1,5 @@
+ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
++import { stripTags as plainLabel } from '../../mol-util/string.js';
+ /**
+  * Copyright (c) 2019-2025 mol* contributors, licensed under MIT, See LICENSE file for more info.
+  *
+@@ -22,7 +23,7 @@ export class BindingsHelp extends React.PureComponent {
+         return _jsx(_Fragment, { children: bindingsList.map(value => {
+                 const [name, binding] = value;
+                 return !Binding.isEmpty(binding)
+-                    ? _jsxs("div", { style: { marginBottom: '6px' }, children: [_jsx("b", { children: binding.action }), _jsx("br", {}), _jsx("span", { dangerouslySetInnerHTML: { __html: Binding.format(binding, name) } })] }, name)
++                    ? _jsxs("div", { style: { marginBottom: '6px' }, children: [_jsx("b", { children: binding.action }), _jsx("br", {}), _jsx("span", { children: plainLabel(Binding.format(binding, name)) })] }, name)
+                     : null;
+             }) });
+     }

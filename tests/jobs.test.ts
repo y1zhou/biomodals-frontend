@@ -28,6 +28,7 @@ function job(jobId: string, state: Job["state"], createdAt: string): Job {
     tool: "gromacs",
     display_name: `Job ${jobId}`,
     can_view_logs: false,
+    can_retry_result_preparation: false,
     state,
     stages: [],
     created_at: createdAt,

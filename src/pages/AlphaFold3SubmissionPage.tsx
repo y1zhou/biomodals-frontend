@@ -1,10 +1,11 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
   ChevronRight,
   Download,
+  FileQuestion,
   LoaderCircle,
   Plus,
   RotateCcw,
@@ -12,16 +13,19 @@ import {
 } from "lucide-react"
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
   type SetStateAction,
 } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 
 import {
   alphaFold3DocumentUrl,
+  alphaFold3Inputs,
   ApiError,
+  apiRequestId,
   deleteAlphaFold3Validation,
   inspectAlphaFold3Validation,
   submitAlphaFold3Job,
@@ -32,6 +36,7 @@ import {
   clearAlphaFold3Draft,
   expandEntityRecords,
   expertAlphaFold3Document,
+  expertAlphaFold3Feedback,
   expertAlphaFold3ModelSeeds,
   formatSequence,
   loadAlphaFold3Draft,
@@ -337,7 +342,96 @@ function Confirmation({
   )
 }
 
+function JsonEditor({ value, disabled, onApply, onPendingChange }: {
+  value: string
+  disabled: boolean
+  onApply: (value: string) => void
+  onPendingChange: (pending: boolean) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [changed, setChanged] = useState(false)
+  const [error, setError] = useState("")
+  const input = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { setEditing(false); setChanged(false); setError("") }, [value])
+  if (!editing) return <Button disabled={disabled} onClick={() => setEditing(true)} type="button" variant="outline">Edit JSON</Button>
+  function discard() {
+    setEditing(false)
+    setChanged(false)
+    setError("")
+    onPendingChange(false)
+  }
+  return <div className="space-y-3">
+    <label className="block font-medium" htmlFor="edit-af3-json">JSON editor</label>
+    <textarea ref={input} id="edit-af3-json" className="min-h-64 w-full rounded border bg-background p-3 font-mono text-sm" defaultValue={value} disabled={disabled} onChange={() => { setChanged(true); onPendingChange(true) }} />
+    {changed ? <p role="status">Unapplied JSON changes. Apply or discard them before continuing. The summary still shows the applied JSON.</p> : null}
+    {error ? <p role="alert" className="text-destructive">{error}</p> : null}
+    <div className="flex flex-wrap gap-3">
+      <Button disabled={disabled || !changed} type="button" onClick={() => {
+        const next = input.current?.value ?? ""
+        try {
+          expertAlphaFold3Feedback(next)
+          onApply(next)
+          discard()
+        } catch (cause) { setError(errorMessage(cause)) }
+      }}>Apply JSON changes</Button>
+      <Button disabled={disabled} type="button" variant="outline" onClick={discard}>Discard JSON changes</Button>
+    </div>
+  </div>
+}
+
 export default function AlphaFold3SubmissionPage() {
+  const [params] = useSearchParams()
+  const sourceJob = params.get("source_job")
+  const owner = authenticatedPrincipal(useCurrentUser().data)?.user_id
+  const inputs = useQuery({
+    queryKey: ["alphafold3-inputs", owner, sourceJob],
+    queryFn: ({ signal }) => alphaFold3Inputs(sourceJob!, signal),
+    enabled: !!owner && !!sourceJob, retry: false, staleTime: Infinity, gcTime: 0,
+  })
+  useExpireSession(inputs.error)
+  const rerunDraft = useMemo(() => {
+    if (!inputs.data) return undefined
+    try {
+      const document_json = inputs.data
+      return {
+        ...newAlphaFold3Draft(), mode: "expert" as const,
+        expertJson: document_json, expertFilename: "retained-input.json",
+        jobName: expertAlphaFold3Feedback(document_json).name,
+        seeds: expertAlphaFold3ModelSeeds(document_json),
+      }
+    } catch { return undefined }
+  }, [inputs.data])
+  if (sourceJob && !rerunDraft) {
+    const failed = !!inputs.error || !!inputs.data
+    const missing = inputs.error instanceof ApiError && inputs.error.status === 404
+    return <main className="mx-auto max-w-2xl px-6 py-12 lg:py-20">
+      <Link className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to={alphafold3Paths.job(sourceJob)}><ArrowLeft className="size-4" aria-hidden="true" />Back to job</Link>
+      <Card>
+        <CardContent className="space-y-6 p-6 sm:p-8">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            {failed ? <FileQuestion aria-hidden="true" className="size-6" /> : <LoaderCircle aria-hidden="true" className="size-6 animate-spin" />}
+          </div>
+          <div className="space-y-3" role={failed ? "alert" : "status"}>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">{failed ? "Inputs unavailable" : "Loading saved inputs"}</h1>
+            <p className="leading-7 text-muted-foreground">{missing
+              ? "We couldn’t find saved inputs for this job. They may no longer be available, or this account may not have access."
+              : failed ? "We couldn’t load the inputs needed to rerun this job. Try again, or return to the job to review its details."
+                : "Retrieving the original AlphaFold3 JSON for you to review."}</p>
+            {failed ? <p className="text-sm text-muted-foreground">No new job has been submitted.</p> : null}
+            {apiRequestId(inputs.error) ? <p className="break-all text-xs text-muted-foreground">Support ID: {apiRequestId(inputs.error)}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {failed ? <Button disabled={inputs.isFetching} onClick={() => { void inputs.refetch() }}><RotateCcw aria-hidden="true" className={inputs.isFetching ? "animate-spin" : undefined} />{inputs.isFetching ? "Loading inputs…" : "Try again"}</Button> : null}
+            <Link className={buttonVariants({ variant: "outline" })} to="/jobs">My Jobs</Link>
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  }
+  return <AlphaFold3SubmissionForm key={`${owner}:${sourceJob ?? "new"}`} rerunDraft={sourceJob ? rerunDraft : undefined} />
+}
+
+function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft }) {
   const navigate = useNavigate()
   const ownerUserId = authenticatedPrincipal(useCurrentUser().data)?.user_id
   const [draft, setDraftState] = useState<AlphaFold3Draft>(newAlphaFold3Draft)
@@ -345,9 +439,16 @@ export default function AlphaFold3SubmissionPage() {
   const [validation, setValidation] = useState<AlphaFold3Validation | null>(null)
   const [recoveryValidationId, setRecoveryValidationId] = useState<string | null>(null)
   const [formError, setFormError] = useState("")
+  const [expertReadState, setExpertReadState] = useState<"idle" | "reading" | "error">("idle")
+  const [expertReadError, setExpertReadError] = useState("")
+  const [jsonPending, setJsonPending] = useState(false)
   const validationController = useRef<AbortController | null>(null)
   const draftChanged = useRef(false)
   const expertFileSelection = useRef(0)
+  const expertFeedback = useMemo(() => {
+    if (!draft.expertJson) return null
+    try { return expertAlphaFold3Feedback(draft.expertJson) } catch { return null }
+  }, [draft.expertJson])
 
   function setDraft(update: SetStateAction<AlphaFold3Draft>) {
     draftChanged.current = true
@@ -362,6 +463,14 @@ export default function AlphaFold3SubmissionPage() {
     setDraftState(newAlphaFold3Draft())
     setValidation(null)
     setRecoveryValidationId(null)
+    setExpertReadState("idle")
+    setExpertReadError("")
+    expertFileSelection.current += 1
+    if (rerunDraft) {
+      setDraftState(rerunDraft)
+      setDraftOwner(ownerUserId)
+      return () => { expertFileSelection.current += 1 }
+    }
     loadAlphaFold3Draft(ownerUserId).then((saved) => {
       if (!active) return
       if (saved && !draftChanged.current) {
@@ -373,13 +482,14 @@ export default function AlphaFold3SubmissionPage() {
     })
     return () => {
       active = false
+      expertFileSelection.current += 1
     }
-  }, [ownerUserId])
+  }, [ownerUserId, rerunDraft])
   useEffect(() => {
-    if (!ownerUserId || draftOwner !== ownerUserId) return
+    if (rerunDraft || !ownerUserId || draftOwner !== ownerUserId) return
     const timeout = window.setTimeout(() => void saveAlphaFold3Draft(ownerUserId, draft).catch(() => undefined), 250)
     return () => window.clearTimeout(timeout)
-  }, [draft, draftOwner, ownerUserId])
+  }, [draft, draftOwner, ownerUserId, rerunDraft])
 
   const validationMutation = useMutation({
     mutationFn: ({ document, signal }: { document: object; signal: AbortSignal }) =>
@@ -397,7 +507,7 @@ export default function AlphaFold3SubmissionPage() {
     onSuccess: (result) => {
       validationController.current = null
       setValidation(result)
-      if (ownerUserId) {
+      if (ownerUserId && !rerunDraft) {
         window.sessionStorage.setItem(
           validationStorageKey(ownerUserId),
           result.validation_id
@@ -446,7 +556,7 @@ export default function AlphaFold3SubmissionPage() {
         if (window.sessionStorage.getItem(validationKey) === validationId) {
           window.sessionStorage.removeItem(validationKey)
         }
-        void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
+        if (!rerunDraft) void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
       }
       navigate(alphafold3Paths.job(job.job_id), { replace: true })
     },
@@ -455,7 +565,7 @@ export default function AlphaFold3SubmissionPage() {
   useExpireSession(submissionMutation.error)
 
   useEffect(() => {
-    if (!ownerUserId) return
+    if (!ownerUserId || rerunDraft) return
     const validationKey = validationStorageKey(ownerUserId)
     const validationId = window.sessionStorage.getItem(validationKey)
     if (!validationId) return
@@ -482,7 +592,7 @@ export default function AlphaFold3SubmissionPage() {
         setFormError(errorMessage(error))
       })
     return () => controller.abort()
-  }, [ownerUserId, submitJob])
+  }, [ownerUserId, submitJob, rerunDraft])
 
   function updateEntity(index: number, entity: AlphaFold3Entity, copies?: number) {
     if (copies !== undefined && (!Number.isInteger(copies) || copies < 1 || copies > MAX_ENTITY_COPIES)) {
@@ -541,33 +651,43 @@ export default function AlphaFold3SubmissionPage() {
   function chooseExpertJson(file: File | null) {
     if (!file) return
     const selection = ++expertFileSelection.current
+    setExpertReadError("")
     if (file.size > 256 * 1024 * 1024) {
-      setFormError("AlphaFold3 JSON files may not exceed 256 MiB.")
+      setExpertReadState("error")
+      setExpertReadError("AlphaFold3 JSON files may not exceed 256 MiB.")
       return
     }
+    setExpertReadState("reading")
     file.text().then((text) => {
       if (selection !== expertFileSelection.current) return
       try {
         const seeds = expertAlphaFold3ModelSeeds(text)
+        const feedback = expertAlphaFold3Feedback(text)
         setDraft((current) => ({
           ...current,
           expertFilename: file.name,
           expertJson: text,
+          jobName: current.jobName.trim() ? current.jobName : feedback.name,
           seeds,
         }))
+        setExpertReadState("idle")
         setFormError("")
       } catch (error) {
-        setFormError(errorMessage(error))
+        setExpertReadState("error")
+        setExpertReadError(errorMessage(error))
       }
     }).catch(() => {
       if (selection === expertFileSelection.current) {
-        setFormError("The JSON file could not be read.")
+        setExpertReadState("error")
+        setExpertReadError("The JSON file could not be read.")
       }
     })
   }
 
   function validate(event: FormEvent) {
     event.preventDefault()
+    if (jsonPending) return
+    if (draft.mode === "expert" && expertReadState !== "idle") return
     try {
       const document = draft.mode === "regular"
         ? regularAlphaFold3Document(draft)
@@ -589,7 +709,9 @@ export default function AlphaFold3SubmissionPage() {
       window.sessionStorage.removeItem(
         submissionStorageKey(ownerUserId, validation.validation_id)
       )
-      window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
+      if (window.sessionStorage.getItem(validationStorageKey(ownerUserId)) === validation.validation_id) {
+        window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
+      }
       setValidation(null)
       submissionMutation.reset()
       if (clear) reset()
@@ -602,12 +724,15 @@ export default function AlphaFold3SubmissionPage() {
   function reset() {
     validationController.current?.abort()
     expertFileSelection.current += 1
-    if (ownerUserId) {
+    if (ownerUserId && !rerunDraft) {
       window.sessionStorage.removeItem(validationStorageKey(ownerUserId))
     }
     setDraft(newAlphaFold3Draft())
+    setExpertReadState("idle")
+    setExpertReadError("")
+    setJsonPending(false)
     setFormError("")
-    if (ownerUserId) {
+    if (ownerUserId && !rerunDraft) {
       void clearAlphaFold3Draft(ownerUserId).catch(() => undefined)
     }
   }
@@ -668,6 +793,7 @@ export default function AlphaFold3SubmissionPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
       <Link className={cn(buttonVariants({ variant: "ghost" }), "mb-8")} to={alphafold3Paths.overview}><ArrowLeft />AlphaFold3 overview</Link>
+      {rerunDraft ? <p role="status" className="mb-6 rounded-xl border border-sky-200 bg-sky-50 p-5 leading-7 text-sky-950">Inputs copied from a previous job. Other settings use current defaults and may differ from the original run. Review the configuration before submitting.</p> : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Badge variant="secondary">{alphafold3Tool.name}</Badge>
@@ -686,6 +812,7 @@ export default function AlphaFold3SubmissionPage() {
               <span>Expert mode</span>
               <input
                 checked={draft.mode === "expert"}
+                disabled={jsonPending}
                 className="peer sr-only"
                 onChange={(event) => setDraft({ ...draft, mode: event.target.checked ? "expert" : "regular" })}
                 role="switch"
@@ -721,13 +848,31 @@ export default function AlphaFold3SubmissionPage() {
             <CardContent>
               <FileDropZone
                 accept=".json,application/json"
-                disabled={validationMutation.isPending}
+                disabled={validationMutation.isPending || jsonPending}
                 fileName={draft.expertFilename}
                 help="You can also drag and drop a JSON file here · maximum 256 MiB."
                 id="alphafold3-json"
                 label="AlphaFold3 JSON file"
                 onSelect={chooseExpertJson}
               />
+              {expertReadState === "reading" ? <p className="mt-4" role="status">Reading JSON file…</p> : null}
+              {expertReadState === "error" ? (
+                <div className="mt-4 space-y-3 rounded-lg bg-destructive/10 p-4" role="alert">
+                  <p>{expertReadError}</p>
+                  <p>{draft.expertJson ? `The previous file (${draft.expertFilename || "restored draft"}) is still loaded. Choose another file or explicitly keep it.` : "Choose another JSON file to continue."}</p>
+                  {draft.expertJson ? <Button onClick={() => { setExpertReadState("idle"); setExpertReadError("") }} type="button" variant="outline">Keep loaded JSON</Button> : null}
+                </div>
+              ) : null}
+              {expertFeedback ? (
+                <div className="mt-5 space-y-4 rounded-lg border bg-muted/30 p-4">
+                  <div role="status"><p className="font-semibold">JSON loaded: {draft.expertFilename || "restored draft"}</p><p className="mt-1 text-muted-foreground">{expertFeedback.entityCount} entity entries. File loading is complete; AlphaFold3 validation runs when you continue.</p></div>
+                  <ul className="max-h-48 space-y-1 overflow-auto text-sm">{expertFeedback.entities.map((entity, index) => <li key={index}>{entity}</li>)}</ul>
+                  {expertFeedback.entityCount > expertFeedback.entities.length ? <p className="text-sm text-muted-foreground">Showing the first {expertFeedback.entities.length} entries.</p> : null}
+                  <p className="text-muted-foreground">The visible Job name and Model seeds override the JSON values. All other JSON fields are retained.</p>
+                  <details><summary className="cursor-pointer font-medium">Preview loaded JSON</summary><pre className="mt-3 max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs">{expertFeedback.preview}</pre>{expertFeedback.truncated ? <p className="mt-2 text-sm text-muted-foreground">Preview truncated. The complete document is retained.</p> : null}</details>
+                  <JsonEditor value={draft.expertJson} disabled={validationMutation.isPending || expertReadState !== "idle"} onPendingChange={setJsonPending} onApply={(expertJson) => setDraft({ ...draft, expertJson })} />
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         )}
@@ -745,7 +890,7 @@ export default function AlphaFold3SubmissionPage() {
 
         {formError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
         <div className="flex justify-end">
-          <Button disabled={validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson)} size="lg" type="submit">
+          <Button disabled={jsonPending || validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson || expertReadState !== "idle")} size="lg" type="submit">
             {validationMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
             Continue and preview job
           </Button>

@@ -266,6 +266,33 @@ export function expertAlphaFold3ModelSeeds(input: string) {
   return parseModelSeeds(seeds.join(",")).join(",")
 }
 
+export function expertAlphaFold3Feedback(input: string) {
+  const document = parseExpertAlphaFold3Document(input)
+  const entries = Array.isArray(document.sequences) ? document.sequences : []
+  const entities = entries.slice(0, 50).map((entry: unknown, index) => {
+    if (!entry || typeof entry !== "object") return `Entity ${index + 1}: unrecognized entry`
+    const [kind, value] = Object.entries(entry)[0] ?? []
+    if (!value || typeof value !== "object") return `Entity ${index + 1}: unrecognized entry`
+    const entity = value as Record<string, unknown>
+    const ids = typeof entity.id === "string" ? entity.id : Array.isArray(entity.id)
+      ? entity.id.filter((id): id is string => typeof id === "string").slice(0, 20).join(", ")
+      : "ID unavailable"
+    const size = typeof entity.sequence === "string" ? ` · ${entity.sequence.length} residues`
+      : Array.isArray(entity.ccdCodes) ? ` · ${entity.ccdCodes.length} CCD component(s)`
+      : typeof entity.smiles === "string" ? " · SMILES ligand" : ""
+    return `${kind} · ${ids.slice(0, 200)}${size}`
+  })
+  const previewLimit = 32_000
+  const preview = input.length <= previewLimit ? JSON.stringify(document, null, 2) : input
+  return {
+    name: typeof document.name === "string" ? document.name : "",
+    entities,
+    entityCount: entries.length,
+    preview: preview.slice(0, previewLimit),
+    truncated: preview.length > previewLimit,
+  }
+}
+
 export function expertAlphaFold3Document(
   input: string,
   jobName: string,

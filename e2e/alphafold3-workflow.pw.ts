@@ -1,0 +1,74 @@
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { expect, test } from "@playwright/test"
+
+test.use({ viewport: { width: 1440, height: 1080 }, launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] } })
+
+test("completed offline AF3 publication loads the exact best prediction, native CIF and PAE", async ({ page }) => {
+  test.setTimeout(60_000)
+  const stats = JSON.parse(await readFile(path.join(process.env.BIOMODALS_BROWSER_ROOT!, "stats.json"), "utf8"))
+  const errors: string[] = []
+  page.on("pageerror", (error) => errors.push(error.message))
+  const scientificSubmissions: string[] = []
+  page.on("request", (request) => { if (request.method() === "POST" && request.url().endsWith("/alphafold3/jobs")) scientificSubmissions.push(request.url()) })
+  await page.goto(stats.alphafold3_password_link)
+  await page.getByLabel("New password", { exact: true }).fill("correct horse battery staple")
+  await page.getByLabel("Confirm password", { exact: true }).fill("correct horse battery staple")
+  await page.getByRole("button", { name: "Set password", exact: true }).click()
+  await expect(page).toHaveURL(process.env.BIOMODALS_BROWSER_ORIGIN + "/")
+  const summaryResponse = page.waitForResponse((response) => response.url().endsWith(`/alphafold3/jobs/${stats.alphafold3_job_id}/prediction`))
+  await page.goto(`/tools/alphafold3/jobs/${stats.alphafold3_job_id}`)
+  const summary = await (await summaryResponse).json()
+  expect(summary).toMatchObject({ seed: 2, sample_index: 0, ranking_score: 0.91234, ptm: 0.81, iptm: null, has_clash: false })
+  await expect(page.getByRole("button", { name: "Residue pLDDT", exact: true })).toBeEnabled({ timeout: 20_000 })
+  const matrix = page.getByLabel("PAE matrix, columns scored tokens, rows aligned tokens")
+  await expect(matrix).toBeVisible()
+  await matrix.focus()
+  // Token 2 (X), token 1 (Y) is null, not the transposed value 0.7.
+  await page.keyboard.press("ArrowRight")
+  await expect(page.getByRole("tooltip")).toContainText("X scored — Token 2: chain A, GLY 2 · residue-mean pLDDT 85.0")
+  await expect(page.getByRole("tooltip")).toContainText("PAE of X when aligned on Y: Unavailable")
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight")
+  await expect(page.getByRole("tooltip")).toContainText("X scored — Token 6: chain C, LIG 1 · residue-mean pLDDT 70.0")
+  await page.keyboard.press("ArrowRight")
+  await expect(page.getByRole("tooltip")).toContainText("X scored — Token 7: chain C, LIG 1")
+  await expect(page.getByRole("tooltip")).toContainText("PAE of X when aligned on Y: 0.6 Å")
+  await page.screenshot({ path: test.info().outputPath("af3-native-offline.png"), fullPage: true })
+  const before = await (await page.request.get(`/api/v1/jobs/${stats.alphafold3_retry_job_id}`)).json()
+  expect(before).toMatchObject({ state: "failed", can_retry_result_preparation: true })
+  await page.goto(`/tools/alphafold3/jobs/${stats.alphafold3_retry_job_id}`)
+  const rerunPosts: string[] = []
+  const watchRerun = (request: import("@playwright/test").Request) => { if (request.method() === "POST") rerunPosts.push(request.url()) }
+  page.on("request", watchRerun)
+  await page.getByRole("link", { name: "Rerun with same inputs" }).click()
+  await page.getByRole("button", { name: "Edit JSON", exact: true }).click()
+  await expect(page.getByLabel("JSON editor", { exact: true })).toContainText("ACDE")
+  await page.getByText("Advanced prediction settings", { exact: true }).click()
+  await expect(page.getByLabel("Recycles", { exact: true })).toHaveValue("10")
+  await expect(page.getByLabel("Samples per seed", { exact: true })).toHaveValue("5")
+  await expect(page.getByLabel("Model seeds", { exact: true })).toHaveValue("2,19")
+  await expect(page.getByLabel("Search MSAs", { exact: true })).toBeChecked()
+  expect(rerunPosts).toEqual([])
+  page.off("request", watchRerun)
+  await page.goto(`/tools/alphafold3/jobs/${stats.alphafold3_retry_job_id}`)
+  const retryResponse = page.waitForResponse((response) => response.url().endsWith("/retry-result-preparation"))
+  await page.getByRole("button", { name: "Retry fetching results", exact: true }).click()
+  const retry = await retryResponse
+  expect(retry.status()).toBe(202)
+  const accepted = await retry.json()
+  expect(accepted).toMatchObject({ job_id: before.job_id, state: "finalizing", can_retry_result_preparation: false })
+  expect(accepted.stages).toEqual(before.stages)
+  // Shared UI polling is once per minute; use the normal explicit refresh
+  // after observing local publication instead of changing that policy.
+  await expect.poll(async () => (await (await page.request.get(`/api/v1/jobs/${stats.alphafold3_retry_job_id}`)).json()).state).toBe("succeeded")
+  await page.getByRole("button", { name: "Refresh", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Residue pLDDT", exact: true })).toBeEnabled({ timeout: 20_000 })
+  await expect(matrix).toBeVisible()
+  const after = await (await page.request.get(`/api/v1/jobs/${stats.alphafold3_retry_job_id}`)).json()
+  expect(after.state).toBe("succeeded")
+  expect(after.stages).toEqual(before.stages)
+  const finalStats = JSON.parse(await readFile(path.join(process.env.BIOMODALS_BROWSER_ROOT!, "stats.json"), "utf8"))
+  expect(finalStats.submit_calls).toBe(stats.submit_calls)
+  expect(scientificSubmissions).toEqual([])
+  expect(errors).toEqual([])
+})

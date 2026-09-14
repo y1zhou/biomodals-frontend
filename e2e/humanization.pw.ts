@@ -164,6 +164,9 @@ test("Result table delegates paging and sorting and lets readers choose columns"
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
   await expect(page).toHaveTitle("Job details · Antibody humanization | BioModals")
   const stages = page.getByRole("table", { name: "Execution stages", exact: true })
+  await expect(page.getByText("Humanization candidates", { exact: true })).toBeVisible()
+  const candidatesTop = await page.getByText("Humanization candidates", { exact: true }).evaluate((element) => element.getBoundingClientRect().top)
+  expect(candidatesTop).toBeLessThan(await stages.evaluate((element) => element.getBoundingClientRect().top))
   await expect(stages.locator("tbody tr")).toHaveCount(6)
   for (const model of ["Sapiens", "Humatch", "p-AbNatiV2", "HuDiff"]) {
     await expect(stages.getByRole("row").filter({ hasText: model })).toContainText("Completed")

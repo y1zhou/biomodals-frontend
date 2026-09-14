@@ -70,6 +70,7 @@ export const gromacsPaths = {
 const alphafold3OverviewPath = toolOverviewPath(alphafold3Tool)
 
 export const alphafold3Paths = {
+  rerun: (jobId: string) => `${alphafold3OverviewPath}/new?source_job=${encodeURIComponent(jobId)}`,
   overview: alphafold3OverviewPath,
   submission: `${alphafold3OverviewPath}/new`,
   jobRoute: `${alphafold3OverviewPath}/jobs/:jobId`,

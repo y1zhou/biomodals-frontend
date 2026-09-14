@@ -145,7 +145,7 @@ Humatch best-family mean, followed by fewer edits and candidate ID. Pairing
 guardrails still apply only to the two pairing scores. Stored v1 results retain
 their original ranks; v2 requires a run using the updated workflow, not a page
 refresh. This frontend change does not deploy that workflow. See the
-[accepted service specification](../biomodals/docs/specs/humanization-service.md).
+[accepted service specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/humanization-service.md).
 
 The implemented path includes administrator-provisioned accounts, protected
 idempotent Submission, durable Job detail, active-only polling, cancellation,
@@ -153,11 +153,46 @@ per-stage Job Logs, My Jobs filtering, and direct Result downloads. AlphaFold3
 drafts remain in the browser while validated documents are retained briefly by
 the backend and never stored in the service database.
 
+When available on a failed Job, **Retry fetching results** prepares its
+existing scientific outputs again in the same Job. It does not rerun models or
+submit a new Job. The page shows preparation progress; use **Refresh** to check
+before the next automatic update. Eligibility and recovery behavior follow the
+[shared service specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/api-tool-service.md#explicit-preparation-retry).
+AlphaFold3 preview errors show the service error code and detail. **Retry
+preview** is offered for transient read or cache failures; fixed size limits
+and invalid source data need the underlying issue resolved first.
+
+Failed or cancelled AlphaFold3 Jobs offer **Rerun with same inputs**. This
+copies only the original JSON into an isolated editable Expert form, preserving
+its name, model seeds, and other fields. Settings outside the JSON use current
+form defaults and may differ from the original run. Review and submit
+explicitly to create a new Job; opening the
+form does not submit or recover an earlier Submission. Completed AlphaFold3
+Jobs offer **Download all results** for the full archive. Humanization candidate
+tables appear before Execution stages.
+
+Use **Edit JSON** to change a loaded document, then **Apply JSON changes** to
+check its syntax and update the summary. Typing does not parse the full file.
+Unapplied edits must be applied or discarded before continuing. File replacement
+remains available after applying or discarding edits. Rerun validation, Clear,
+and submission leave unrelated browser drafts and recovery references intact.
+
+Completed GROMACS Jobs show a **Trajectory overview** before Execution stages:
+the existing production RMSD, radius-of-gyration, and RMSF PNG figures. The
+browser fetches only these images, restoring the Result cache once if needed;
+it does not download the full archive or recompute the plots. An unavailable
+plot leaves the other figures usable.
+
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown
 remote states, the local Result cache, and optional Modal billing reports.
-Per-Job container ceilings are derived from each Tool's active-Job limit;
-deployed Modal App names remain backend startup configuration. API types in
+Per-Job provider-call ceilings are derived from each Tool's active-Job limit,
+not the Global limit. For a positive Tool limit `N`, the updated backend admits
+humanization jobs with up to `5N` concurrent GPU calls and `8N` total calls;
+other Tools retain `N` GPU calls and `8N` total calls. These are per-Job bounds,
+not a shared per-Tool pool. Zero pauses admission. Existing Jobs retain their
+saved limits; the new humanization multiplier requires the updated API process.
+Deployed Modal App names remain backend startup configuration. API types in
 `src/api/schema.d.ts` come from the live FastAPI OpenAPI document.
 
 To add another Tool, add its metadata to `src/tools.ts` and introduce a

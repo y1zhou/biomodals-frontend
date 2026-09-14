@@ -25,6 +25,7 @@ import {
   jobDownloadUrl,
   prepareJobDownload,
   refreshJob,
+  retryJobResultPreparation,
   type Job,
 } from "@/api/client"
 import { adminStorageKey } from "@/admin"
@@ -57,9 +58,12 @@ import {
   availableTools,
   toolSubmissionPath,
   humanizationPaths,
+  alphafold3Paths,
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
+const AlphaFold3Results = lazy(() => import("@/components/AlphaFold3Results"))
+const GromacsResults = lazy(() => import("@/components/GromacsResults"))
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -161,6 +165,19 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
   useExpireSession(jobQuery.error)
   useExpireSession(cancelMutation.error)
   useExpireSession(downloadMutation.error)
+  const preparationMutation = useMutation({
+    mutationFn: () => retryJobResultPreparation(jobId),
+    retry: false,
+    onMutate: () => queryClient.cancelQueries({ queryKey: jobKey(jobId) }),
+    onSuccess(job) {
+      queryClient.setQueryData(jobKey(jobId), job)
+      queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
+        jobs?.map((candidate) => candidate.job_id === job.job_id ? job : candidate)
+      )
+    },
+    onError() { void jobQuery.refetch() },
+  })
+  useExpireSession(preparationMutation.error)
 
   if (jobQuery.isPending) {
     return (
@@ -236,7 +253,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
 
   return (
     <>
-      <main className="mx-auto max-w-5xl px-6 py-10 lg:px-8 lg:py-14">
+      <main className={cn("mx-auto px-6 py-10 lg:px-8 lg:py-14", job.tool === "alphafold3" && job.state === "succeeded" ? "max-w-7xl" : "max-w-5xl")}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link className={buttonVariants({ variant: "ghost" })} to="/jobs">
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
@@ -334,6 +351,9 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                 </div>
               ) : null}
               <div className="mt-6 flex flex-wrap gap-3">
+                {job.can_retry_result_preparation ? <Button disabled={preparationMutation.isPending} onClick={() => preparationMutation.mutate()}>
+                  {preparationMutation.isPending ? "Requesting preparation…" : "Retry fetching results"}
+                </Button> : null}
                 {canCancel ? (
                   <Button
                     onClick={() => {
@@ -360,19 +380,27 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                     )}
                     {downloadMutation.isPending
                       ? "Preparing download…"
-                      : "Download result"}
+                      : job.tool === "alphafold3" ? "Download all results" : "Download result"}
                   </Button>
                 ) : null}
                 {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}
-                {canStartAgain && job.tool !== "humanization" ? (
+                {canStartAgain && job.tool === "alphafold3" ? <Link className={buttonVariants({ variant: "outline" })} to={alphafold3Paths.rerun(job.job_id)}>
+                  <RotateCcw aria-hidden="true" /> Rerun with same inputs
+                </Link> : null}
+                {canStartAgain && job.tool !== "humanization" && job.tool !== "alphafold3" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job
                   </Link>
                 ) : null}
               </div>
+              {job.can_retry_result_preparation ? <p className="mt-3 text-muted-foreground">Retry preparing the existing scientific outputs for this job. This does not rerun scientific computation or submit a new job.</p> : null}
+              {preparationMutation.error ? <p className="mt-4 text-destructive" role="alert">
+                {apiErrorCode(preparationMutation.error) === "result_retry_not_allowed" ? "Result preparation cannot be retried in the current job state." : "The preparation request could not be confirmed. Check the job status before trying again."}
+                {apiRequestId(preparationMutation.error) ? ` Support ID: ${apiRequestId(preparationMutation.error)}.` : ""}
+              </p> : null}
               {downloadError ? (
                 <p className="mt-4 text-sm text-destructive" role="alert">
                   {downloadError}
@@ -387,6 +415,10 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               ) : null}
             </CardContent>
           </Card>
+
+          {job.tool === "alphafold3" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading prediction viewer…</p>}><AlphaFold3Results jobId={job.job_id} key={job.job_id} /></Suspense> : null}
+          {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
+          {job.tool === "gromacs" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading trajectory overview…</p>}><GromacsResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
             <CardHeader>
@@ -608,7 +640,6 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             </Card>
           </div>
         </section>
-        {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
       </main>
 
       <dialog
