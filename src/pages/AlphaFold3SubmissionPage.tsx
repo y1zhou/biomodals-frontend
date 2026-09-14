@@ -5,6 +5,7 @@ import {
   ArrowUp,
   ChevronRight,
   Download,
+  FileQuestion,
   LoaderCircle,
   Plus,
   RotateCcw,
@@ -24,6 +25,7 @@ import {
   alphaFold3DocumentUrl,
   alphaFold3Inputs,
   ApiError,
+  apiRequestId,
   deleteAlphaFold3Validation,
   inspectAlphaFold3Validation,
   submitAlphaFold3Job,
@@ -364,10 +366,33 @@ export default function AlphaFold3SubmissionPage() {
       }
     } catch { return undefined }
   }, [inputs.data])
-  if (sourceJob && !rerunDraft) return <main className="mx-auto max-w-2xl px-6 py-10">
-    {inputs.error || inputs.data ? <div role="alert"><p>Retained inputs could not be loaded. {inputs.error ? errorMessage(inputs.error) : "The retained JSON could not be parsed."}</p><Button className="mt-4" disabled={inputs.isFetching} onClick={() => { void inputs.refetch() }}>Retry loading inputs</Button></div> : <p role="status">Loading retained inputs…</p>}
-    <Link className="mt-4 block underline" to="/jobs">My Jobs</Link>
-  </main>
+  if (sourceJob && !rerunDraft) {
+    const failed = !!inputs.error || !!inputs.data
+    const missing = inputs.error instanceof ApiError && inputs.error.status === 404
+    return <main className="mx-auto max-w-2xl px-6 py-12 lg:py-20">
+      <Link className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to={alphafold3Paths.job(sourceJob)}><ArrowLeft className="size-4" aria-hidden="true" />Back to job</Link>
+      <Card>
+        <CardContent className="space-y-6 p-6 sm:p-8">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            {failed ? <FileQuestion aria-hidden="true" className="size-6" /> : <LoaderCircle aria-hidden="true" className="size-6 animate-spin" />}
+          </div>
+          <div className="space-y-3" role={failed ? "alert" : "status"}>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">{failed ? "Inputs unavailable" : "Loading saved inputs"}</h1>
+            <p className="leading-7 text-muted-foreground">{missing
+              ? "We couldn’t find saved inputs for this job. They may no longer be available, or this account may not have access."
+              : failed ? "We couldn’t load the inputs needed to rerun this job. Try again, or return to the job to review its details."
+                : "Retrieving the original AlphaFold3 JSON and prediction settings for you to review."}</p>
+            {failed ? <p className="text-sm text-muted-foreground">No new job has been submitted.</p> : null}
+            {apiRequestId(inputs.error) ? <p className="break-all text-xs text-muted-foreground">Support ID: {apiRequestId(inputs.error)}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {failed ? <Button disabled={inputs.isFetching} onClick={() => { void inputs.refetch() }}><RotateCcw aria-hidden="true" className={inputs.isFetching ? "animate-spin" : undefined} />{inputs.isFetching ? "Loading inputs…" : "Try again"}</Button> : null}
+            <Link className={buttonVariants({ variant: "outline" })} to="/jobs">My Jobs</Link>
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  }
   return <AlphaFold3SubmissionForm key={`${owner}:${sourceJob ?? "new"}`} rerunDraft={sourceJob ? rerunDraft : undefined} />
 }
 

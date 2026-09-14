@@ -46,7 +46,10 @@ test("unavailable retained AF3 input does not open a blank submission", async ({
   await mockApi(page)
   await page.route("**/alphafold3/jobs/*/inputs", (route) => route.fulfill({ status: 404, json: { code: "job_input_unavailable", detail: "Input unavailable" } }))
   await page.goto(`/tools/alphafold3/new?source_job=${jobId}`)
-  await expect(page.getByRole("alert")).toContainText("Retained inputs could not be loaded")
+  await expect(page.getByRole("heading", { name: "Inputs unavailable" })).toBeVisible()
+  await expect(page.getByRole("alert")).toContainText("We couldn’t find saved inputs for this job")
+  await expect(page.getByRole("link", { name: "Back to job" })).toHaveAttribute("href", `/tools/alphafold3/jobs/${jobId}`)
+  await expect(page.getByRole("button", { name: "Try again", exact: true })).toBeVisible()
   await expect(page.getByRole("button", { name: "Continue and preview job" })).toHaveCount(0)
 })
 
