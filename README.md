@@ -18,13 +18,18 @@ The Vite development server keeps its default port `5173` and listens on
 `0.0.0.0` so the MVP can be opened from another machine on the development
 network.
 
-`BIOMODALS_PUBLIC_URL` sets the allowed reverse-proxy hostname and the Origin
-forwarded to FastAPI. `BIOMODALS_API_PROXY_TARGET` sets the server-only API
+`BIOMODALS_PUBLIC_URL` accepts comma-separated public URLs, such as
+`https://biomodals.example.com,192.168.1.10:5173`. Bare hostnames/IPs use HTTP.
+Vite allows the configured hostnames and forwards the first URL's Origin
+to FastAPI. `BIOMODALS_API_PROXY_TARGET` sets the server-only API
 upstream, which defaults to `http://127.0.0.1:4144`.
 
 Vite proxies `/api/*`, `/docs`, `/redoc`, and `/openapi.json`. Do not expose
-this development server to an untrusted network. Use the same public URL in
-the backend's configured `.env` file.
+this development server to an untrusted network. Use the same public URL
+list in the backend's configured `.env` file. Any HTTP origin requires the
+backend's `BIOMODALS_SECURE_COOKIES=false` setting. Admin Users displays one Password
+Link per configured origin; choose the URL the recipient can reach. All choices
+share a single-use token, so consuming one invalidates the others.
 
 ## Production deployment
 

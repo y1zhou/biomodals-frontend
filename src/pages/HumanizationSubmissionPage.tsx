@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { randomUUID } from "@/lib/uuid"
 import { ArrowLeft, ChevronLeft, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Link, useBeforeUnload, useBlocker, useNavigate, useSearchParams } from "react-router"
@@ -75,7 +76,7 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
   useEffect(() => {
     const input = sourceInputs.data
     if (!input || inputsLoaded) return
-    setPairs(input.pairs.map((pair) => ({ ...pair, key: crypto.randomUUID() })))
+    setPairs(input.pairs.map((pair) => ({ ...pair, key: randomUUID() })))
     setEntry({ id: nextPairId(input.pairs), vh: "", vl: "" })
     setDisplayName(input.display_name ?? "")
     setSettingsEdits(Object.fromEntries(Object.entries(input.settings ?? {}).filter(([, value]) => value !== undefined).map(([name, value]) => [name, typeof value === "boolean" ? value : String(value)])))
@@ -131,7 +132,7 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
 
   function addPair() {
     editIntent()
-    const added = { ...entry, vh: normalizeSequence(entry.vh), vl: normalizeSequence(entry.vl), key: crypto.randomUUID() }
+    const added = { ...entry, vh: normalizeSequence(entry.vh), vl: normalizeSequence(entry.vl), key: randomUUID() }
     const next = [...pairs, added]
     setPairs(next)
     setBatchPage(Math.floor((next.length - 1) / batchPageSize))
@@ -153,7 +154,7 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
       const imported = parsePairCsv(new TextDecoder("utf-8", { fatal: true }).decode(bytes))
       if (!mounted.current || version !== importVersion.current) return
       editIntent()
-      setPairs((current) => [...current, ...imported.map((pair) => ({ ...pair, key: crypto.randomUUID() }))])
+      setPairs((current) => [...current, ...imported.map((pair) => ({ ...pair, key: randomUUID() }))])
     } catch (error) {
       if (mounted.current && version === importVersion.current) {
         setImportError(error instanceof Error ? error.message : "Unable to read CSV. The batch was not changed.")
@@ -192,7 +193,7 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
     event?.preventDefault()
     if (inFlight.current || busy || !principal || !defaults || invalid) return
     const submission = intent.current ?? {
-      key: crypto.randomUUID(),
+      key: randomUUID(),
       input: { display_name: name, pairs: pairs.map(({ id, vh, vl }) => ({ id, vh: normalizeSequence(vh), vl: normalizeSequence(vl) })), settings: { ...defaults, ...settings } as HumanizationSettings },
     }
     intent.current = submission

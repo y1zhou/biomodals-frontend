@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query"
+import { randomUUID } from "@/lib/uuid"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -176,7 +177,7 @@ export default function GromacsSubmissionPage() {
     }
 
     const controller = new AbortController()
-    const key = idempotencyKey.current ?? crypto.randomUUID()
+    const key = idempotencyKey.current ?? randomUUID()
     allowNavigation.current = false
     idempotencyKey.current = key
     rememberPendingIdempotencyKey(window.sessionStorage, key)

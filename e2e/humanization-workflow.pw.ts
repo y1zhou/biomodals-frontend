@@ -3,6 +3,7 @@ import path from "node:path"
 import { expect, test } from "@playwright/test"
 
 test("humanization uses the real offline API for 100 pairs, bounded Results, and downloads", async ({ page, context, browser }) => {
+  await page.addInitScript(() => Object.defineProperty(crypto, "randomUUID", { value: undefined }))
   test.setTimeout(90_000)
   const root = process.env.BIOMODALS_BROWSER_ROOT!
   let setup = ""

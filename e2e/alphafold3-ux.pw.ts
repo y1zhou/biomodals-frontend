@@ -72,6 +72,7 @@ test("JSON changes are applied explicitly, invalid edits stay local and discard 
 })
 
 test("rerun Clear, validation, discard and submission preserve an unrelated draft and recovery pointer", async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(crypto, "randomUUID", { value: undefined }))
   await mockApi(page)
   await page.route("**/alphafold3/jobs/*/document", (route) => route.fulfill({ json: document }))
   await page.route((url) => url.pathname.includes("/alphafold3/validations"), (route) => route.request().method() === "DELETE"
@@ -215,6 +216,7 @@ test("Expert upload feedback preserves visible overrides and resolves failed rep
   await expect(page.locator("pre")).toContainText('"unpairedMsa": ""')
   await page.getByLabel("Job name", { exact: true }).fill("My chosen name")
   await page.locator("#alphafold3-json").setInputFiles({ name: "replacement.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ ...document, name: "Another name" })) })
+  await expect(page.getByText("JSON loaded: replacement.json", { exact: true })).toBeVisible()
   await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("My chosen name")
   await page.locator("#alphafold3-json").setInputFiles({ name: "broken.json", mimeType: "application/json", buffer: Buffer.from("{broken") })
   await expect(page.getByRole("alert")).toContainText("previous file (replacement.json) is still loaded")

@@ -54,6 +54,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   page,
 }) => {
   test.setTimeout(60_000)
+  await page.addInitScript(() => Object.defineProperty(crypto, "randomUUID", { value: undefined }))
   const origin = process.env.BIOMODALS_BROWSER_ORIGIN
   if (!origin) throw new Error("BIOMODALS_BROWSER_ORIGIN is missing")
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {

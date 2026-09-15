@@ -87,9 +87,9 @@ function PasswordLinkDialog({
   link: PasswordLinkDialogState | null
   onClose: () => void
 }) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
 
-  useEffect(() => setCopied(false), [link])
+  useEffect(() => setCopied(null), [link])
 
   return (
     <Dialog.Root
@@ -115,36 +115,38 @@ function PasswordLinkDialog({
             {link ? (
               <>
                 <Dialog.Description className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Give this link for {link.displayName} ({link.email}) through a trusted channel. Closing this dialog clears it from this page.
+                  Choose a URL reachable by {link.displayName} ({link.email}) and share it through a trusted channel. These URLs share one token: using any one invalidates all of them. Closing this dialog clears them from this page.
                 </Dialog.Description>
-                <label className="mt-5 block text-sm font-medium" htmlFor="password-link-value">
-                  Password link
+                {link.password_links.map((url, index) => <div key={url}>
+                <label className="mt-5 block text-sm font-medium" htmlFor={`password-link-value-${index}`}>
+                  Password link — {new URL(url).origin}
                 </label>
                 <div className="mt-1.5 flex">
                   <Input
                     className="rounded-r-none font-mono text-xs"
-                    id="password-link-value"
+                    id={`password-link-value-${index}`}
                     readOnly
-                    value={link.password_link}
+                    value={url}
                   />
                   <Button
                     aria-live="polite"
                     className="rounded-l-none border-l-0"
                     onClick={() => {
-                      void copyText(link.password_link)
+                      void copyText(url)
                         .then(() => {
-                          setCopied(true)
-                          window.setTimeout(() => setCopied(false), 2_000)
+                          setCopied(url)
+                          window.setTimeout(() => setCopied((current) => current === url ? null : current), 2_000)
                         })
-                        .catch(() => setCopied(false))
+                        .catch(() => setCopied(null))
                     }}
                     type="button"
                     variant="outline"
                   >
-                    {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                    {copied ? "Copied" : "Copy"}
+                    {copied === url ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                    {copied === url ? "Copied" : "Copy"}
                   </Button>
                 </div>
+                </div>)}
                 <p className="mt-3 text-sm leading-5 text-muted-foreground">
                   Expires {formatTimestamp(link.expires_at)}. Valid for approximately one hour.
                 </p>
@@ -565,7 +567,7 @@ export default function UsersAdminPage() {
       setPasswordLink({
         displayName: result.user.display_name,
         email: result.user.email,
-        password_link: result.password_link,
+        password_links: result.password_links,
         expires_at: result.expires_at,
         triggerId: "create-user-button",
       })
@@ -768,7 +770,7 @@ export default function UsersAdminPage() {
                       setPasswordLink({
                         displayName: linkUser.display_name,
                         email: linkUser.email,
-                        password_link: result.password_link,
+                        password_links: result.password_links,
                         expires_at: result.expires_at,
                         triggerId,
                       })

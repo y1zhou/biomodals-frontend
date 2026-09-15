@@ -19,12 +19,14 @@ function backendProxy(target: string, origin: string): ProxyOptions {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'BIOMODALS_')
-  const publicUrl = new URL(
-    env.BIOMODALS_PUBLIC_URL ?? 'http://localhost:5173',
-  )
+  const publicUrls = (env.BIOMODALS_PUBLIC_URL ?? 'http://localhost:5173')
+    .split(',').map((entry) => {
+      const value = entry.trim()
+      return new URL(value.includes('://') ? value : `http://${value}`)
+    })
   const proxyTarget =
     env.BIOMODALS_API_PROXY_TARGET ?? 'http://127.0.0.1:4144'
-  const proxy = backendProxy(proxyTarget, publicUrl.origin)
+  const proxy = backendProxy(proxyTarget, publicUrls[0]!.origin)
 
   return {
     plugins: [react(), tailwindcss()],
@@ -35,7 +37,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: '0.0.0.0',
-      allowedHosts: [publicUrl.hostname],
+      allowedHosts: publicUrls.map((url) => url.hostname),
       proxy: {
         '/api': proxy,
         '/docs': proxy,
@@ -45,7 +47,7 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: '127.0.0.1',
-      allowedHosts: [publicUrl.hostname],
+      allowedHosts: publicUrls.map((url) => url.hostname),
       proxy: {
         '/api': proxy,
         '/docs': proxy,

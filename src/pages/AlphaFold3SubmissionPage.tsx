@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { randomUUID } from "@/lib/uuid"
 import {
   ArrowDown,
   ArrowLeft,
@@ -524,7 +525,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
       const keyName = submissionStorageKey(ownerUserId, validationId)
       let key = window.sessionStorage.getItem(keyName)
       if (!key) {
-        key = crypto.randomUUID()
+        key = randomUUID()
         window.sessionStorage.setItem(keyName, key)
       }
       return submitAlphaFold3Job(validationId, key)

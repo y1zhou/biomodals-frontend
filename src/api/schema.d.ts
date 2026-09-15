@@ -1090,7 +1090,7 @@ export interface components {
         };
         /**
          * CreatedAdminUserView
-         * @description New User plus the one-time Password Link shown exactly once.
+         * @description New User plus alternative URLs for one one-time Password Link.
          */
         readonly CreatedAdminUserView: {
             /**
@@ -1098,8 +1098,8 @@ export interface components {
              * Format: date-time
              */
             readonly expires_at: string;
-            /** Password Link */
-            readonly password_link: string;
+            /** Password Links */
+            readonly password_links: readonly string[];
             readonly user: components["schemas"]["AdminUserView"];
         };
         /**
@@ -1596,7 +1596,7 @@ export interface components {
         };
         /**
          * PasswordLinkView
-         * @description One newly issued one-time Password Link.
+         * @description Alternative URLs sharing one newly issued one-time Password Link token.
          */
         readonly PasswordLinkView: {
             /**
@@ -1604,8 +1604,8 @@ export interface components {
              * Format: date-time
              */
             readonly expires_at: string;
-            /** Password Link */
-            readonly password_link: string;
+            /** Password Links */
+            readonly password_links: readonly string[];
         };
         /**
          * PayloadTooLargeResponse

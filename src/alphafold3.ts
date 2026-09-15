@@ -1,3 +1,5 @@
+import { randomUUID } from "./lib/uuid"
+
 export type EntityType = "protein" | "dna" | "rna" | "ligand"
 export type LigandFormat = "ccd" | "smiles"
 
@@ -59,7 +61,7 @@ export function newAlphaFold3Entity(type: EntityType): AlphaFold3Entity {
     chainIds: ["A"],
     copies: 1,
     description: "",
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     ligandFormat: "ccd",
     sequence: "",
     type,
@@ -151,7 +153,7 @@ export function expandEntityRecords(
     chainIds: [],
     copies: records.length === 1 ? source.copies : 1,
     description: record.description,
-    id: recordIndex === 0 ? source.id : crypto.randomUUID(),
+    id: recordIndex === 0 ? source.id : randomUUID(),
     sequence: record.sequence,
   }))
   return reindexEntities([
