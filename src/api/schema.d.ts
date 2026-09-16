@@ -400,6 +400,40 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/gromacs/jobs/{job_id}/continuation": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Continuation Info */
+        readonly get: operations["continuation_info_api_v1_gromacs_jobs__job_id__continuation_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/gromacs/jobs/{job_id}/continue": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Continue Job */
+        readonly post: operations["continue_job_api_v1_gromacs_jobs__job_id__continue_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/gromacs/jobs/{job_id}/trajectory/{metric}.png": {
         readonly parameters: {
             readonly query?: never;
@@ -1109,6 +1143,53 @@ export interface components {
         readonly ErrorResponse: {
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * GromacsContinuationInfo
+         * @description Read-only source evidence and inherited defaults for the continuation form.
+         */
+        readonly GromacsContinuationInfo: {
+            /** Code */
+            readonly code: string | null;
+            /** Cpu Only */
+            readonly cpu_only: boolean | null;
+            /** Detail */
+            readonly detail: string;
+            /** Eligible */
+            readonly eligible: boolean;
+            /**
+             * Max Additional Time Ns
+             * @default 250
+             */
+            readonly max_additional_time_ns: number;
+            /**
+             * Min Additional Time Ns
+             * @default 1
+             */
+            readonly min_additional_time_ns: number;
+            /** Parent Job Id */
+            readonly parent_job_id: string | null;
+            /** Simulation Time Ns */
+            readonly simulation_time_ns: number | null;
+            /** Source Display Name */
+            readonly source_display_name: string;
+            /**
+             * Source Job Id
+             * Format: uuid
+             */
+            readonly source_job_id: string;
+        };
+        /**
+         * GromacsContinuationSubmission
+         * @description One explicit new production interval; all physical settings are inherited.
+         */
+        readonly GromacsContinuationSubmission: {
+            /** Additional Time Ns */
+            readonly additional_time_ns: number;
+            /** Cpu Only */
+            readonly cpu_only: boolean;
+            /** Display Name */
+            readonly display_name?: string | null;
         };
         /**
          * HealthView
@@ -3884,6 +3965,128 @@ export interface operations {
         };
         readonly responses: {
             /** @description Job durably admitted for asynchronous staging and launch */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly continuation_info_api_v1_gromacs_jobs__job_id__continuation_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["GromacsContinuationInfo"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly continue_job_api_v1_gromacs_jobs__job_id__continue_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["GromacsContinuationSubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
             readonly 202: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */

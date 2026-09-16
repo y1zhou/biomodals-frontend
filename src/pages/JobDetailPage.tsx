@@ -59,6 +59,7 @@ import {
   toolSubmissionPath,
   humanizationPaths,
   alphafold3Paths,
+  gromacsPaths,
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
@@ -383,6 +384,9 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       : job.tool === "alphafold3" ? "Download all results" : "Download result"}
                   </Button>
                 ) : null}
+                {job.tool === "gromacs" && job.state === "succeeded" ? <Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.continuation(job.job_id)}>
+                  <RotateCcw aria-hidden="true" /> Continue production
+                </Link> : null}
                 {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}

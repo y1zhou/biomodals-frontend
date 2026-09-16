@@ -57,6 +57,21 @@ export interface GromacsSubmission {
   simulationTimeNs: number
 }
 
+export type GromacsContinuationInput = components["schemas"]["GromacsContinuationSubmission"]
+export type GromacsContinuationInfo = components["schemas"]["GromacsContinuationInfo"]
+
+export function gromacsContinuationInfo(sourceJobId: string, signal?: AbortSignal) {
+  return requestJson<GromacsContinuationInfo>(`/api/v1/gromacs/jobs/${encodeURIComponent(sourceJobId)}/continuation`, { signal, cache: "no-store" })
+}
+
+export function continueGromacsJob(sourceJobId: string, input: GromacsContinuationInput, idempotencyKey: string) {
+  return requestJson<Job>(`/api/v1/gromacs/jobs/${encodeURIComponent(sourceJobId)}/continue`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken(), "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(input),
+  })
+}
+
 export interface AlphaFold3ValidationSettings {
   recycle: number
   sample: number

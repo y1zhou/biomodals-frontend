@@ -188,6 +188,21 @@ browser fetches only these images, restoring the Result cache once if needed;
 it does not download the full archive or recompute the plots. An unavailable
 plot leaves the other figures usable.
 
+Use **Continue production** on a completed GROMACS Job to check whether its
+native restart state is available. An eligible source opens a new continuation
+form with an editable name, additional duration, and CPU/GPU mode inherited
+from the source. Fresh simulations and additional segments each accept whole
+durations of 1–250 ns; cumulative history may exceed 250 ns.
+
+Submitting creates a new linked Job and preserves the source. Its archive and
+plots cover the full cumulative production history, keeping the original RMSD
+reference and recalculating RMSF over the full history. Completed continuations
+can themselves be continued, and a source can have multiple children.
+**Check submission** reuses an unconfirmed request's key and exact settings;
+opening the form never submits work. Continuation recovery is isolated from
+fresh GROMACS submissions. Availability and scientific behavior follow the
+[continuation specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-continuation.md).
+
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown
 remote states, the local Result cache, and optional Modal billing reports.
