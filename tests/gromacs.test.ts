@@ -47,11 +47,13 @@ describe("GROMACS Submission validation", () => {
     expect(pdbFileError(largeFile)).toBe("Choose a PDB file up to 10 MiB.")
   })
 
-  test("requires an integer simulation time from 1 to 200", () => {
+  test("requires an integer simulation time from 1 to 250", () => {
     expect(simulationTimeError("1")).toBeNull()
-    expect(simulationTimeError("200")).toBeNull()
+    expect(simulationTimeError("250")).toBeNull()
     expect(simulationTimeError("1.5")).not.toBeNull()
-    expect(simulationTimeError("201")).not.toBeNull()
+    expect(simulationTimeError("251")).not.toBeNull()
+    expect(simulationTimeError("0")).not.toBeNull()
+    expect(simulationTimeError("")).not.toBeNull()
   })
 
   test("maps FastAPI validation locations to form fields", () => {
@@ -59,14 +61,14 @@ describe("GROMACS Submission validation", () => {
       detail: [
         {
           loc: ["body", "simulation_time_ns"],
-          msg: "Input should be less than or equal to 200",
+          msg: "Input should be less than or equal to 250",
           type: "less_than_equal",
         },
       ],
     })
 
     expect(apiFieldErrors(error)).toEqual({
-      simulation_time_ns: "Input should be less than or equal to 200",
+      simulation_time_ns: "Input should be less than or equal to 250",
     })
   })
 

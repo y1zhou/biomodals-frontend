@@ -94,8 +94,8 @@ export function pdbFileError(file: File | null) {
 
 export function simulationTimeError(value: string) {
   const number = Number(value)
-  if (!Number.isInteger(number) || number < 1 || number > 200) {
-    return "Enter a whole number from 1 to 200."
+  if (!Number.isInteger(number) || number < 1 || number > 250) {
+    return "Enter a whole number from 1 to 250."
   }
   return null
 }
