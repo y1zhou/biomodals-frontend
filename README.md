@@ -190,14 +190,23 @@ plot leaves the other figures usable.
 
 Use **Extend simulation** on a completed GROMACS Job to check whether its
 native restart state is available. An eligible source opens a new continuation
-form with an editable name, additional duration, and CPU/GPU mode inherited
-from the source. Fresh simulations and additional segments each accept whole
-durations of 1–250 ns; cumulative history may exceed 250 ns.
+form with an editable name and additional duration. CPU/GPU mode defaults to
+the source's mode and can be changed. Fresh simulations and additional
+segments each accept whole durations of 1–250 ns; cumulative history may
+exceed 250 ns.
 
-Submitting creates a new linked Job and preserves the source. Its archive and
-plots cover the full cumulative production history, keeping the original RMSD
-reference and recalculating RMSF over the full history. Completed continuations
-can themselves be continued, and a source can have multiple children.
+The read-only source check runs on Modal and returns small availability
+metadata, without downloading source file contents to the API. It shows
+progress and can take up to 45 seconds. If it times out, **Check again**
+repeats only that check; it never submits a simulation.
+
+Submitting creates a new linked Job and preserves the source. Only after
+submission does Modal copy the required files into the child directory,
+validate them, and continue production with native append. The archive and
+plots cover the full cumulative production history, keeping the original
+RMSD reference and recalculating RMSF over the full history. Completed
+continuations can themselves be continued, and a source can have multiple
+children.
 **Check submission** reuses an unconfirmed request's key and exact settings;
 opening the form never submits work. Continuation recovery is isolated from
 fresh GROMACS submissions. Availability and scientific behavior follow the

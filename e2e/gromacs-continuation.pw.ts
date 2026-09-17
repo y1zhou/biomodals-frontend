@@ -69,6 +69,110 @@ test("unavailable and foreign sources cannot open a submission form", async ({ p
   await expect(page.getByLabel("Additional production time (ns)", { exact: true })).toHaveCount(0)
 })
 
+test("an incompatible deployment displays its upgrade guidance without retrying", async ({ page }) => {
+  await mockApi(page)
+  const detail = "Deploy and pin the updated GROMACS app before extending simulations"
+  let checks = 0
+  const posts: string[] = []
+  page.on("request", (request) => { if (request.method() === "POST") posts.push(request.url()) })
+  await page.route("**/continuation", (route) => {
+    checks++
+    return route.fulfill({ status: 409, json: { code: "deployment_incompatible", detail } })
+  })
+  await page.goto(`/tools/gromacs/jobs/${sourceId}/continue`)
+  await expect(page.getByRole("alert")).toHaveText(detail)
+  await expect(page.getByText("Code: deployment_incompatible", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Submit continuation", exact: true })).toHaveCount(0)
+  expect(checks).toBe(1)
+  expect(posts).toEqual([])
+})
+
+test("a pending source check resolves to its unavailable explanation without retrying or submitting", async ({ page }) => {
+  const reads = await mockApi(page)
+  const release = Promise.withResolvers<void>()
+  let checks = 0
+  await page.route("**/continuation", async (route) => {
+    checks++
+    await release.promise
+    return route.fulfill({ json: { ...info, eligible: false, code: "source_unavailable", detail: "Source has no valid completed scientific publication." } })
+  })
+  await page.goto(`/tools/gromacs/jobs/${sourceId}/continue`)
+  await expect(page.getByRole("status")).toHaveText("Checking the source simulation’s availability. This can take up to 45 seconds. No simulation is submitted.")
+  await expect(page.getByRole("status").locator("svg.animate-spin")).toHaveAttribute("aria-hidden", "true")
+  await expect.poll(() => checks).toBe(1)
+  release.resolve()
+  await expect(page.getByRole("alert")).toHaveText("Source has no valid completed scientific publication.")
+  await expect(page.getByText("Code: source_unavailable", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Check again", exact: true })).toBeEnabled()
+  await expect(page.getByRole("button", { name: "Submit continuation", exact: true })).toHaveCount(0)
+  expect(checks).toBe(1)
+  expect(reads.filter((path) => path.endsWith("/continue"))).toEqual([])
+})
+
+test("source check timeout is visible and rechecks only after an explicit click", async ({ page }) => {
+  await mockApi(page)
+  const timeout = Promise.withResolvers<void>()
+  const retry = Promise.withResolvers<void>()
+  const requests: string[] = []
+  page.on("request", (request) => { if (new URL(request.url()).pathname.startsWith("/api/")) requests.push(request.method()) })
+  let checks = 0
+  await page.route("**/continuation", async (route) => {
+    checks++
+    if (checks === 1) return route.fulfill({ json: { ...info, eligible: false, code: "source_unavailable", detail: "Source state was unavailable." } })
+    if (checks === 2) {
+      await timeout.promise
+      return route.fulfill({ status: 504, headers: { "X-Request-ID": "timeout-support" }, json: { code: "source_check_timeout", detail: "Checking the source simulation timed out after 45 seconds. Please try again." } })
+    }
+    await retry.promise
+    return route.fulfill({ json: info })
+  })
+  await page.goto(`/tools/gromacs/jobs/${sourceId}/continue`)
+  await expect(page.getByRole("alert")).toHaveText("Source state was unavailable.")
+  expect(checks).toBe(1)
+  await page.getByRole("button", { name: "Check again", exact: true }).click()
+  await expect(page.getByRole("status")).toContainText("Rechecking the source simulation")
+  await expect(page.getByRole("status")).toContainText("up to 45 seconds")
+  await expect(page.getByRole("status").locator("svg.animate-spin")).toBeVisible()
+  await expect(page.getByRole("alert")).toHaveCount(0)
+  timeout.resolve()
+  await expect(page.getByRole("alert")).toHaveText("Checking the source simulation timed out after 45 seconds. Please try again.")
+  await expect(page.getByText("Code: source_check_timeout", { exact: true })).toBeVisible()
+  await expect(page.getByText("Support ID: timeout-support", { exact: true })).toBeVisible()
+  expect(checks).toBe(2)
+  await page.getByRole("button", { name: "Check again", exact: true }).click()
+  await expect(page.getByRole("status")).toContainText("Rechecking the source simulation")
+  await expect(page.getByRole("alert")).toHaveCount(0)
+  retry.resolve()
+  await expect(page.getByLabel("Additional production time (ns)", { exact: true })).toBeVisible()
+  expect(checks).toBe(3)
+  expect(requests.every((method) => method === "GET")).toBe(true)
+})
+
+test("leaving a pending source check aborts its read", async ({ page }) => {
+  await mockApi(page)
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch
+    window.fetch = (input, init) => {
+      if (typeof input === "string" && input.endsWith("/continuation")) {
+        init?.signal?.addEventListener("abort", () => console.info("source-check-aborted"), { once: true })
+      }
+      return nativeFetch(input, init)
+    }
+  })
+  const release = Promise.withResolvers<void>()
+  await page.route("**/continuation", async (route) => {
+    await release.promise
+    await route.fulfill({ json: info })
+  })
+  await page.goto(`/tools/gromacs/jobs/${sourceId}/continue`)
+  await expect(page.getByRole("status")).toContainText("Checking the source simulation")
+  const aborted = page.waitForEvent("console", (message) => message.text() === "source-check-aborted")
+  await page.getByRole("link", { name: "Back to source job", exact: true }).click()
+  await aborted
+  release.resolve()
+  await expect(page).toHaveURL(new RegExp(`/jobs/${sourceId}$`))
+})
+
 test("lost response restores the exact continuation intent without touching fresh submission storage", async ({ page }) => {
   await mockApi(page)
   const freshKey = "44444444-4444-4444-8444-444444444444"

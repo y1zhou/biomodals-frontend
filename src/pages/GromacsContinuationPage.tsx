@@ -39,18 +39,27 @@ function ContinuationSourcePage({ ownerId, sourceJobId }: { ownerId: string; sou
   if (source && (canStart || pending)) {
     return <ContinuationForm ownerId={ownerId} sourceJobId={sourceJobId} sourceName={source.source_display_name} sourceTimeNs={source.simulation_time_ns} sourceCpuOnly={source.cpu_only ?? pending!.input.cpu_only} parentJobId={source.parent_job_id} eligible={canStart} sourceDetail={source.detail} />
   }
-  const failed = !!source || !!query.error
+  const failed = !query.isFetching && (!!source || !!query.error)
   const missing = query.error instanceof ApiError && query.error.status === 404
+  const code = query.error ? apiErrorCode(query.error) : source?.code
+  const timedOut = code === "source_check_timeout"
+  const checking = query.isFetched ? "Rechecking" : "Checking"
+  const errorMessage = missing ? "This job does not exist or is not available to you."
+    : (timedOut || code === "deployment_incompatible") && query.error instanceof ApiError ? query.error.message
+    : query.error ? "The source could not be checked. Sign in if needed, then try again."
+    : source?.detail
   return <main className="mx-auto max-w-2xl space-y-6 px-6 py-12">
     <Link className={buttonVariants({ variant: "ghost" })} to={gromacsPaths.job(sourceJobId)}><ArrowLeft aria-hidden="true" />Back to source job</Link>
     <Card>
-      <CardHeader><CardTitle className="text-2xl">{failed ? "Continuation unavailable" : "Checking continuation source"}</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-2xl">{failed ? timedOut ? "Source check timed out" : "Continuation unavailable" : `${checking} source simulation`}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <p role={failed ? "alert" : "status"} className="leading-7">{source?.detail || (missing ? "This job does not exist or is not available to you." : query.error ? "The source could not be checked. Sign in if needed, then try again." : "Checking the completed job and its retained native restart state. No simulation is submitted.")}</p>
-        {source?.code || apiErrorCode(query.error) ? <p className="text-sm text-muted-foreground">Code: {source?.code || apiErrorCode(query.error)}</p> : null}
-        {apiRequestId(query.error) ? <p className="text-sm">Support ID: {apiRequestId(query.error)}</p> : null}
+        {failed ? <p role="alert" className="leading-7">{errorMessage}</p> : <p role="status" aria-atomic="true" className="flex items-start gap-3 leading-7">
+          <LoaderCircle aria-hidden="true" className="mt-1 size-5 shrink-0 animate-spin motion-reduce:animate-none" />
+          <span>{checking} the source simulation’s availability. This can take up to 45 seconds. No simulation is submitted.</span>
+        </p>}
+        {failed && code ? <p className="text-sm text-muted-foreground">Code: {code}</p> : null}
+        {failed && apiRequestId(query.error) ? <p className="text-sm">Support ID: {apiRequestId(query.error)}</p> : null}
         {failed && !missing ? <Button variant="outline" disabled={query.isFetching || !principal} onClick={() => void query.refetch()}>Check again</Button> : null}
-        <Link className={buttonVariants({ variant: "outline" })} to="/jobs">My Jobs</Link>
       </CardContent>
     </Card>
   </main>
@@ -196,6 +205,7 @@ function ContinuationForm({ ownerId, sourceJobId, sourceName, sourceTimeNs, sour
         <CardHeader><CardTitle>Review continuation</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {!invalidDuration && sourceTimeNs !== null ? <p className="text-lg"><strong>{sourceTimeNs} ns</strong> completed + <strong>{Number(duration)} ns</strong> additional = <strong>{sourceTimeNs + Number(duration)} ns</strong> cumulative production</p> : <p>{sourceTimeNs === null ? "The source endpoint is currently unavailable." : "Enter the additional duration to review the new endpoint."}</p>}
+          <p className="leading-7 text-muted-foreground">After submission, the required source files are copied and validated before production continues.</p>
           <p className="leading-7 text-muted-foreground">The new archive and plots cover the full cumulative production trajectory. RMSD keeps the original reference; RMSF is recalculated over the full history. Longer histories also increase copying and analysis work.</p>
           {pendingCheck ? <p role="status" className="rounded-lg bg-muted p-4">A previous submission is unconfirmed. Check submission reuses its original request and key; it does not intentionally create a second job.</p> : null}
           {!eligible ? <p role="alert">New continuations are unavailable: {sourceDetail} You can still check the previously sent request.</p> : null}
