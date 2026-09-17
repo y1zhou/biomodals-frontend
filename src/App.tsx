@@ -187,7 +187,7 @@ export default function App() {
         titles[path] = `Job details · ${tool.name}`
       }
       if (tool.slug === "gromacs" && /^\/tools\/gromacs\/jobs\/[^/]+\/continue$/.test(path)) {
-        titles[path] = "Continue production · GROMACS"
+        titles[path] = "Extend simulation · GROMACS"
       }
     }
     document.title = `${titles[path] ?? "Page not found"} | BioModals`

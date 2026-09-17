@@ -188,7 +188,7 @@ browser fetches only these images, restoring the Result cache once if needed;
 it does not download the full archive or recompute the plots. An unavailable
 plot leaves the other figures usable.
 
-Use **Continue production** on a completed GROMACS Job to check whether its
+Use **Extend simulation** on a completed GROMACS Job to check whether its
 native restart state is available. An eligible source opens a new continuation
 form with an editable name, additional duration, and CPU/GPU mode inherited
 from the source. Fresh simulations and additional segments each accept whole

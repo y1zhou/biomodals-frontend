@@ -772,7 +772,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const beforeContinuations = (await browserStats()).submit_calls
   async function continueProduction(source: string, additional: number, name: string) {
     await page.goto(`/tools/gromacs/jobs/${source}`)
-    await page.getByRole("link", { name: "Continue production", exact: true }).click()
+    await page.getByRole("link", { name: "Extend simulation", exact: true }).click()
     await page.getByLabel("Additional production time (ns)", { exact: true }).fill(String(additional))
     await page.getByLabel("Job name (optional)", { exact: true }).fill(name)
     await page.getByRole("button", { name: "Submit continuation", exact: true }).click()
@@ -793,7 +793,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(continuationStages).not.toContainText("Analyze NVT")
   await expect(continuationStages).not.toContainText("Analyze NPT")
   await expect(page.getByRole("img", { name: "RMSD production trajectory plot", exact: true })).toBeVisible()
-  await page.getByRole("link", { name: "Continue production", exact: true }).click()
+  await page.getByRole("link", { name: "Extend simulation", exact: true }).click()
   await expect(page.getByText("255 ns", { exact: true })).toBeVisible()
   await expect(page.getByRole("link", { name: "View its parent job" })).toHaveAttribute("href", `/tools/gromacs/jobs/${completedJobId}`)
   const chained = await continueProduction(firstContinuation, 1, "Browser chained continuation")

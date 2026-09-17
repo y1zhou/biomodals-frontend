@@ -8,6 +8,7 @@ import {
   Download,
   LoaderCircle,
   RotateCcw,
+  StepForward,
   XCircle,
 } from "lucide-react"
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from "react"
@@ -385,7 +386,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                   </Button>
                 ) : null}
                 {job.tool === "gromacs" && job.state === "succeeded" ? <Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.continuation(job.job_id)}>
-                  <RotateCcw aria-hidden="true" /> Continue production
+                  <StepForward aria-hidden="true" /> Extend simulation
                 </Link> : null}
                 {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs

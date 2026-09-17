@@ -160,7 +160,7 @@ function ContinuationForm({ ownerId, sourceJobId, sourceName, sourceTimeNs, sour
     : submissionErrorMessage(mutation.error, false)
   return <main className="mx-auto max-w-3xl space-y-6 px-6 py-10 lg:py-14">
     <Link className={buttonVariants({ variant: "ghost" })} to={gromacsPaths.job(sourceJobId)}><ArrowLeft aria-hidden="true" />Back to source job</Link>
-    <div><h1 className="font-heading text-3xl font-semibold">Continue production</h1>
+    <div><h1 className="font-heading text-3xl font-semibold">Extend simulation</h1>
       <p className="mt-3 leading-7 text-muted-foreground">Create a new linked GROMACS job from the completed molecular state. The source job and its results stay unchanged.</p></div>
     <Card>
       <CardHeader><CardTitle>Source simulation</CardTitle></CardHeader>
