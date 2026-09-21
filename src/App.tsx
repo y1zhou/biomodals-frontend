@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
   alphafold3Paths,
+  antibodyAnalysisPath,
   filterToolCatalog,
   gromacsPaths,
   humanizationPaths,
@@ -31,6 +32,7 @@ const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3Submission
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
 const HumanizationOverviewPage = lazy(() => import("@/pages/HumanizationOverviewPage"))
 const HumanizationSubmissionPage = lazy(() => import("@/pages/HumanizationSubmissionPage"))
+const AntibodyAnalysisPage = lazy(() => import("@/pages/AntibodyAnalysisPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
 const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
@@ -204,6 +206,7 @@ export default function App() {
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
+            <Route element={<AntibodyAnalysisPage />} path={antibodyAnalysisPath} />
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
             <Route element={<GromacsContinuationPage />} path={gromacsPaths.continuationRoute} />

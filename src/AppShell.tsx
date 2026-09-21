@@ -30,6 +30,7 @@ import {
   type CurrentUserState,
 } from "@/auth-state"
 import { buttonVariants } from "@/components/ui/button"
+import AntibodyTransferProvider from "@/components/AntibodyTransferProvider"
 import { cn } from "@/lib/utils"
 
 export function Brand() {
@@ -178,7 +179,7 @@ export default function AppShell() {
         </div>
       </header>
       <Fragment key={outletPrincipal.current}>
-        <Outlet />
+        {currentUser || reauthenticationRequired ? <AntibodyTransferProvider><Outlet /></AntibodyTransferProvider> : <Outlet />}
       </Fragment>
       <ReauthenticationDialog
         description="Your session is no longer usable. This page will stay in place while you sign in again; retry your action afterward."

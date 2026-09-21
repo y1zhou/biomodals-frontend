@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 
 import {
   availableTools,
+  jobTools,
   filterToolCatalog,
   toolCatalog,
   toolName,
@@ -15,7 +16,7 @@ describe("filterToolCatalog", () => {
     expect(
       filterToolCatalog(toolCatalog, "molecular").map((tool) => tool.slug)
     ).toEqual(["gromacs", "alphafold3"])
-    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization"])
+    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization", "antibody-sequence-analysis"])
   })
 
   test("returns all tools for blank input", () => {
@@ -40,7 +41,13 @@ describe("filterToolCatalog", () => {
       "gromacs",
       "alphafold3",
       "humanization",
+      "antibody-sequence-analysis",
     ])
+  })
+
+  test("keeps immediate analysis out of Job filters", () => {
+    expect(jobTools.map((tool) => tool.slug)).toEqual(["gromacs", "alphafold3", "humanization"])
+    expect(toolName("antibody-sequence-analysis")).toBe("Antibody sequence analysis")
   })
 
   test("keeps catalog tags specific to each tool", () => {

@@ -1,4 +1,4 @@
-import { Atom, Dna, UserRoundArrowLeft, type LucideIcon } from "lucide-react"
+import { Atom, Dna, ScanText, UserRoundArrowLeft, type LucideIcon } from "lucide-react"
 
 interface ToolCatalogEntryBase {
   slug: string
@@ -10,6 +10,7 @@ interface ToolCatalogEntryBase {
 
 export interface AvailableTool extends ToolCatalogEntryBase {
   status: "available"
+  createsJobs: boolean
 }
 
 export interface ToolCatalogPlaceholder extends ToolCatalogEntryBase {
@@ -25,6 +26,7 @@ export const gromacsTool = {
   tags: ["PDB", "Molecular dynamics", "Protein structure"],
   icon: Atom,
   status: "available",
+  createsJobs: true,
 } satisfies AvailableTool
 
 export const alphafold3Tool = {
@@ -34,6 +36,7 @@ export const alphafold3Tool = {
   tags: ["Protein structure", "Structure prediction"],
   icon: Dna,
   status: "available",
+  createsJobs: true,
 } satisfies AvailableTool
 
 export function toolOverviewPath(tool: AvailableTool) {
@@ -47,7 +50,19 @@ export const humanizationTool = {
   tags: ["Antibody", "Humanization", "Sequence"],
   icon: UserRoundArrowLeft,
   status: "available",
+  createsJobs: true,
 } satisfies AvailableTool
+
+export const antibodyAnalysisTool = {
+  slug: "antibody-sequence-analysis",
+  name: "Antibody sequence analysis",
+  description: "Compare antibody sequences, physicochemical properties, germline matches and numbered CDRs.",
+  tags: ["Antibody", "Sequence", "Analysis"],
+  icon: ScanText,
+  status: "available",
+  createsJobs: false,
+} satisfies AvailableTool
+export const antibodyAnalysisPath = toolOverviewPath(antibodyAnalysisTool)
 
 const humanizationOverviewPath = toolOverviewPath(humanizationTool)
 export const humanizationPaths = {
@@ -94,11 +109,12 @@ export function toolSubmissionPath(tool: string) {
   return "/"
 }
 
-export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool, humanizationTool]
+export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool, humanizationTool, antibodyAnalysisTool]
 
 export const availableTools = toolCatalog.filter(
   (entry): entry is AvailableTool => entry.status === "available"
 )
+export const jobTools = availableTools.filter((tool) => tool.createsJobs)
 
 export function toolName(workload: string) {
   return toolCatalog.find((entry) => entry.slug === workload)?.name ?? workload

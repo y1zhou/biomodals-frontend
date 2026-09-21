@@ -41,7 +41,7 @@ import {
   type JobTableSort,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-import { availableTools, toolJobPath, toolName } from "@/tools"
+import { availableTools, jobTools, toolJobPath, toolName } from "@/tools"
 
 function JobRow({
   job: initialJob,
@@ -117,7 +117,7 @@ function JobRow({
 
 const toolFilterOptions = [
   { label: "All tools", value: "" },
-  ...availableTools.map((tool) => ({ label: tool.name, value: tool.slug })),
+  ...jobTools.map((tool) => ({ label: tool.name, value: tool.slug })),
 ]
 
 const statusFilterOptions = [
@@ -200,7 +200,7 @@ export default function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, normalized, sort } = jobTableViewFromSearchParams(
     searchParams,
-    availableTools.map((tool) => tool.slug)
+    jobTools.map((tool) => tool.slug)
   )
   const jobsQuery = useQuery({
     queryKey: jobListKey,

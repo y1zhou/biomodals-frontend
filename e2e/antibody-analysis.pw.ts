@@ -1,0 +1,130 @@
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { expect, test, type BrowserContext } from "@playwright/test"
+
+const vh = "QVQLVQSGAEVKKPGASVKVSCKASGYTFTSYAMHWVRQAPGQGLEWMGWINPNSGGTNYAQKFQGRVTMTRDTSISTAYMELSRLRSDDTAVYYCARGGYFDYWGQGTLVTVSS"
+const vl = "DIQMTQSPSSLSASVGDRVTITCRASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYCQQHYTTPPTFGQGTKVEIK"
+let cookies: Awaited<ReturnType<BrowserContext["cookies"]>> = []
+// These tests share the dedicated account's single-use setup link.
+test.describe.configure({ mode: "serial" })
+
+test.beforeAll(async ({ browser }) => {
+  const stats = JSON.parse(await readFile(path.join(process.env.BIOMODALS_BROWSER_ROOT!, "stats.json"), "utf8"))
+  expect(stats.antibody_analysis_password_link).toBeTruthy()
+  const page = await browser.newPage()
+  await page.goto(stats.antibody_analysis_password_link)
+  await page.getByLabel("New password", { exact: true }).fill("correct horse battery staple")
+  await page.getByLabel("Confirm password", { exact: true }).fill("correct horse battery staple")
+  await page.getByRole("button", { name: "Set password", exact: true }).click()
+  await expect(page).toHaveURL(process.env.BIOMODALS_BROWSER_ORIGIN + "/")
+  cookies = await page.context().cookies()
+  await page.close()
+})
+test.beforeEach(async ({ context }) => { await context.addCookies(cookies) })
+
+test("real stateless analysis preserves partial entries and compares independent groups", async ({ page }) => {
+  const errors: string[] = []
+  page.on("pageerror", (error) => errors.push(error.message))
+  const jobsBefore = await (await page.request.get("/api/v1/jobs")).json()
+  await page.goto("/")
+  await page.getByRole("link", { name: "Antibody sequence analysis", exact: true }).click()
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(`>pair description ignored\n${vh.toLowerCase()}:${vl}\n>solo\n${vh}\n>failed_numbering\nACDE`)
+  await page.getByRole("button", { name: "Add comparison group" }).click()
+  await page.getByLabel("Group 2 FASTA", { exact: true }).fill(`>pair_vh\n${vh}\n>pair_vl\n${vl}\n>invalid\nAXZ`)
+  const response = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/analyze"))
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  const analyzed = await response
+  expect(analyzed.status()).toBe(200)
+  const payload = await analyzed.json()
+  expect(payload.groups[0].entries[0]).toMatchObject({ id: "pair", vh: { sequence: vh }, vl: { sequence: vl } })
+  const first = page.getByRole("region", { name: "Analysis results: Group 1", exact: true })
+  const second = page.getByRole("region", { name: "Analysis results: Group 2", exact: true })
+  await expect(first.locator("tbody tr")).toHaveCount(3)
+  await expect(second.locator("tbody tr")).toHaveCount(2)
+  await expect(first.getByRole("row").filter({ hasText: "failed_numbering" })).toContainText("Unassigned chain")
+  await expect(second.getByRole("row").filter({ hasText: "invalid" })).not.toContainText("None")
+  await expect(page.getByText("How are germline matches and therapeutic frequencies interpreted?", { exact: true })).toHaveCount(1)
+  await first.getByRole("button", { name: "VH pI", exact: true }).click()
+  await expect(first.getByRole("columnheader", { name: "VH pI", exact: true })).toHaveAttribute("aria-sort", "ascending")
+  await expect(second.getByRole("columnheader", { name: "VH pI", exact: true })).toHaveAttribute("aria-sort", "none")
+  await first.getByRole("row").filter({ hasText: "pair" }).getByRole("button", { name: /^V gene:/ }).first().click()
+  await expect(page.getByRole("dialog", { name: "V germline matches" })).toContainText("Therapeutic usage:")
+  await page.keyboard.press("Escape")
+  await page.getByText("Columns · shared across groups", { exact: true }).click()
+  await page.getByRole("checkbox", { name: "VH mass (kDa)", exact: true }).uncheck()
+  await expect(first.getByRole("columnheader", { name: "VH mass (kDa)" })).toHaveCount(0)
+  await expect(second.getByRole("columnheader", { name: "VH mass (kDa)" })).toHaveCount(0)
+  const downloadEvent = page.waitForEvent("download")
+  await first.getByRole("button", { name: "Download CSV" }).click()
+  const download = await downloadEvent
+  const csv = await readFile((await download.path())!, "utf8")
+  expect(csv).toContain(String(payload.groups[0].entries[0].vh.metrics.pi))
+  expect(csv).toContain(vh)
+  expect(csv).not.toContain("quality_tier")
+  await page.screenshot({ path: test.info().outputPath("antibody-analysis.png"), fullPage: true })
+  expect(await (await page.request.get("/api/v1/jobs")).json()).toEqual(jobsBefore)
+  expect(errors).toEqual([])
+  await page.reload()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue("")
+  await expect(page.getByRole("region", { name: "Analysis results", exact: true })).toHaveCount(0)
+})
+
+test("sequence dialog uses native positions for five schemes, tails and liabilities", async ({ page }) => {
+  const sequenceCalls: string[] = []
+  page.on("request", (request) => { if (request.url().endsWith("/antibody-sequence-analysis/sequence")) sequenceCalls.push(request.postDataJSON().scheme) })
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(`>tagged\nGG${vh}HHHHHH`)
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(page.getByRole("button", { name: "VH sequence", exact: true })).toBeVisible()
+  expect(sequenceCalls).toEqual([])
+  await page.getByRole("button", { name: "VH sequence", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "tagged · VH", exact: true })
+  await expect(dialog.getByRole("heading", { name: "Unnumbered prefix" })).toBeVisible()
+  await expect(dialog.getByRole("heading", { name: "Unnumbered suffix" })).toBeVisible()
+  await expect(dialog.getByText("CDR1", { exact: true })).toBeVisible()
+  const methionine = dialog.locator('span[tabindex="0"]').filter({ has: page.locator("span", { hasText: /^M$/ }) }).first()
+  await methionine.focus()
+  await expect(dialog.getByRole("status")).toContainText("Methionine")
+  for (const scheme of ["kabat", "chothia", "martin", "aho"]) {
+    const returned = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence") && response.request().postDataJSON().scheme === scheme)
+    await dialog.getByLabel("Numbering scheme").selectOption(scheme)
+    const data = await (await returned).json()
+    expect(data.scheme).toBe(scheme)
+    await expect(dialog.getByRole("heading", { name: /^Numbered domain/ })).toBeVisible()
+    const first = data.residues[0]
+    await expect(dialog.locator(`span[tabindex="0"][aria-label*="input residue ${first.input_index + 1}, position ${first.label},"]`)).toBeVisible()
+  }
+  expect(sequenceCalls).toEqual(["imgt", "kabat", "chothia", "martin", "aho"])
+  await page.screenshot({ path: test.info().outputPath("antibody-sequence-dialog.png"), fullPage: true })
+  await page.keyboard.press("Escape")
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "VH sequence", exact: true })).toBeFocused()
+})
+
+test("group failures leave other results usable and bounded tables page locally", async ({ page }) => {
+  test.setTimeout(60_000)
+  let analyzes = 0
+  page.on("request", (request) => { if (request.url().endsWith("/antibody-sequence-analysis/analyze")) analyzes++ })
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill("not FASTA")
+  await page.getByRole("button", { name: "Add comparison group" }).click()
+  await page.getByLabel("Group 2 FASTA", { exact: true }).fill(Array.from({ length: 1000 }, (_, index) => `>domain_${index}\n${vh}`).join("\n"))
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  const second = page.getByRole("region", { name: "Analysis results: Group 2", exact: true })
+  await expect(second.getByText("1–50 of 1000", { exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole("region", { name: "Analysis results: Group 1", exact: true }).getByRole("status")).toBeVisible()
+  await second.getByLabel("Page", { exact: true }).selectOption({ label: "20" })
+  await expect(second.getByText("951–1000 of 1000", { exact: true })).toBeVisible()
+  expect(analyzes).toBe(1)
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(Array.from({ length: 1000 }, (_, index) => `>domain_${index}\n${vl}`).join("\n"))
+  await expect(page.getByText("Inputs changed. Analyze again to update these results.", { exact: true })).toBeVisible()
+  const maximum = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/analyze"))
+  const started = performance.now()
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  const maximumResponse = await maximum
+  await expect(page.getByText("1–50 of 1000", { exact: true })).toHaveCount(2)
+  console.log(`Offline two-group analysis: 2000 entries, ${(await maximumResponse.body()).length} response bytes, ${Math.round(performance.now() - started)} ms through first-page render`)
+  await page.getByLabel("Group 2 FASTA", { exact: true }).fill(Array.from({ length: 1001 }, (_, index) => `>domain_${index}\n${vh}`).join("\n"))
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(second.getByRole("status")).toContainText("1000")
+})

@@ -315,6 +315,57 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/antibody-sequence-analysis/analyze": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Analyze */
+        readonly post: operations["analyze_api_v1_antibody_sequence_analysis_analyze_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/antibody-sequence-analysis/options": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Options */
+        readonly get: operations["options_api_v1_antibody_sequence_analysis_options_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/antibody-sequence-analysis/sequence": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Sequence */
+        readonly post: operations["sequence_api_v1_antibody_sequence_analysis_sequence_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/auth/login": {
         readonly parameters: {
             readonly query?: never;
@@ -1043,6 +1094,123 @@ export interface components {
             readonly validation_id: string;
         };
         /**
+         * AnalysisEntry
+         * @description One pair or standalone domain, with no inherited ranking information.
+         */
+        readonly AnalysisEntry: {
+            /** Id */
+            readonly id: string;
+            /** Issues */
+            readonly issues?: readonly components["schemas"]["AnalysisIssue"][];
+            readonly unassigned?: components["schemas"]["AnalyzedChain"] | null;
+            readonly vh?: components["schemas"]["AnalyzedChain"] | null;
+            /** Vh Vl Pi */
+            readonly vh_vl_pi?: number | null;
+            readonly vl?: components["schemas"]["AnalyzedChain"] | null;
+        };
+        /**
+         * AnalysisGroup
+         * @description Independent valid/error entries in original FASTA order.
+         */
+        readonly AnalysisGroup: {
+            /** Entries */
+            readonly entries: readonly components["schemas"]["AnalysisEntry"][];
+            /** Id */
+            readonly id: string;
+            /** Issues */
+            readonly issues?: readonly components["schemas"]["AnalysisIssue"][];
+        };
+        /**
+         * AnalysisIssue
+         * @description Safe record/group validation diagnostic, without discarding other rows.
+         */
+        readonly AnalysisIssue: {
+            /** Code */
+            readonly code: string;
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AnalysisOptions
+         * @description Authoritative admission limits and supported conventions.
+         */
+        readonly AnalysisOptions: {
+            /**
+             * Analysis Version
+             * @default 1
+             */
+            readonly analysis_version: string;
+            /**
+             * Arpeggia Version
+             * @default 0.10.1
+             */
+            readonly arpeggia_version: string;
+            /**
+             * Default Scheme
+             * @default imgt
+             * @enum {string}
+             */
+            readonly default_scheme: "imgt" | "kabat" | "chothia" | "martin" | "aho";
+            /**
+             * Max Chain Length
+             * @default 512
+             */
+            readonly max_chain_length: number;
+            /**
+             * Max Entries Per Group
+             * @default 1000
+             */
+            readonly max_entries_per_group: number;
+            /**
+             * Max Groups
+             * @default 2
+             */
+            readonly max_groups: number;
+            /**
+             * Max Request Bytes
+             * @default 4194304
+             */
+            readonly max_request_bytes: number;
+            /**
+             * Schemes
+             * @default [
+             *       "imgt",
+             *       "kabat",
+             *       "chothia",
+             *       "martin",
+             *       "aho"
+             *     ]
+             */
+            readonly schemes: readonly ("imgt" | "kabat" | "chothia" | "martin" | "aho")[];
+        };
+        /**
+         * AnalysisRequest
+         * @description Analyze one or two bounded FASTA groups without creating a Job.
+         */
+        readonly AnalysisRequest: {
+            /** Groups */
+            readonly groups: readonly components["schemas"]["FastaGroup"][];
+        };
+        /**
+         * AnalysisResponse
+         * @description Ephemeral metrics and one common therapeutic reference provenance block.
+         */
+        readonly AnalysisResponse: {
+            /** Groups */
+            readonly groups: readonly components["schemas"]["AnalysisGroup"][];
+            readonly reference: components["schemas"]["ReferenceInfo"];
+        };
+        /**
+         * AnalyzedChain
+         * @description Untrimmed sequence and independent chain-level scientific results.
+         */
+        readonly AnalyzedChain: {
+            readonly germlines: components["schemas"]["GermlinePresentation"];
+            readonly metrics: components["schemas"]["ProteinMetrics"];
+            /** Sequence */
+            readonly sequence: string;
+        };
+        /**
          * AuthenticationBusyResponse
          * @description Bounded Argon2 capacity is temporarily exhausted.
          */
@@ -1096,6 +1264,14 @@ export interface components {
             readonly value: boolean;
         };
         /**
+         * CandidateGermlines
+         * @description Page-bounded heavy/light assignments and therapeutic usage.
+         */
+        readonly CandidateGermlines: {
+            readonly vh: components["schemas"]["GermlinePresentation"];
+            readonly vl: components["schemas"]["GermlinePresentation"];
+        };
+        /**
          * CodedErrorResponse
          * @description Recoverable error with a stable machine-readable code.
          */
@@ -1143,6 +1319,94 @@ export interface components {
         readonly ErrorResponse: {
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * FastaGroup
+         * @description One independent input group; identifiers are scoped to this group.
+         */
+        readonly FastaGroup: {
+            /** Fasta */
+            readonly fasta: string;
+            /** Id */
+            readonly id: string;
+        };
+        /**
+         * GeneUsage
+         * @description Weighted fraction of unique approved chains assigned to this gene.
+         */
+        readonly GeneUsage: {
+            /** Frequency */
+            readonly frequency: number | null;
+            /** Gene */
+            readonly gene: string;
+            /** Species */
+            readonly species: string;
+        };
+        /**
+         * GermlineAssignment
+         * @description All best V/J reference ties, never an arbitrary representative.
+         */
+        readonly GermlineAssignment: {
+            /** Chain Type */
+            readonly chain_type: string | null;
+            /** Diagnostics */
+            readonly diagnostics: readonly string[];
+            /** Error */
+            readonly error: string | null;
+            /** J */
+            readonly j: readonly components["schemas"]["GermlineEvidence"][];
+            /** J Gene */
+            readonly j_gene: string | null;
+            /** V */
+            readonly v: readonly components["schemas"]["GermlineEvidence"][];
+            /** V Gene */
+            readonly v_gene: string | null;
+        };
+        /**
+         * GermlineEvidence
+         * @description One tied reference with its native similarity/coverage evidence.
+         */
+        readonly GermlineEvidence: {
+            /** Accession */
+            readonly accession: string;
+            /** Allele */
+            readonly allele: string;
+            /** Gene */
+            readonly gene: string;
+            /** Imgt Span */
+            readonly imgt_span: readonly [
+                number,
+                number
+            ];
+            /** Known Fr4 Pairs */
+            readonly known_fr4_pairs: number;
+            /** Known Matches */
+            readonly known_matches: number;
+            /** Known Pairs */
+            readonly known_pairs: number;
+            /** Query Coverage */
+            readonly query_coverage: number;
+            /** Query Input Start */
+            readonly query_input_start: number;
+            /** Reference Coverage */
+            readonly reference_coverage: number;
+            /** Reference Id */
+            readonly reference_id: string;
+            /** Score */
+            readonly score: number;
+            /** Species */
+            readonly species: string;
+        };
+        /**
+         * GermlinePresentation
+         * @description Frozen assignment plus current local reference frequencies.
+         */
+        readonly GermlinePresentation: {
+            readonly assignment: components["schemas"]["GermlineAssignment"];
+            /** J Usage */
+            readonly j_usage: readonly components["schemas"]["GeneUsage"][];
+            /** V Usage */
+            readonly v_usage: readonly components["schemas"]["GeneUsage"][];
         };
         /**
          * GromacsContinuationInfo
@@ -1584,6 +1848,18 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * Liability
+         * @description Potential sequence motif, using zero-based half-open input intervals.
+         */
+        readonly Liability: {
+            /** End */
+            readonly end: number;
+            /** Kind */
+            readonly kind: string;
+            /** Start */
+            readonly start: number;
+        };
+        /**
          * LoginRequest
          * @description Credentials submitted only by the browser login form.
          */
@@ -1615,6 +1891,18 @@ export interface components {
             readonly max: number;
             /** Min */
             readonly min: number;
+        };
+        /**
+         * NumberedResidue
+         * @description One supplied residue in native order; no imputed positions.
+         */
+        readonly NumberedResidue: {
+            /** Input Index */
+            readonly input_index: number;
+            /** Label */
+            readonly label: string;
+            /** Region */
+            readonly region: string;
         };
         /**
          * OriginErrorResponse
@@ -1754,6 +2042,51 @@ export interface components {
             readonly user_id: string;
         };
         /**
+         * ProteinMetrics
+         * @description Full supplied-chain metrics; extinction is molar at 280 nm.
+         */
+        readonly ProteinMetrics: {
+            /** Extinction Oxidized */
+            readonly extinction_oxidized: number;
+            /** Extinction Reduced */
+            readonly extinction_reduced: number;
+            /** Gravy */
+            readonly gravy: number;
+            /** Molecular Weight Kda */
+            readonly molecular_weight_kda: number;
+            /** Pi */
+            readonly pi: number;
+        };
+        /**
+         * ReferenceInfo
+         * @description Shared FAQ provenance, never repeated per gene cell.
+         */
+        readonly ReferenceInfo: {
+            /** Detail */
+            readonly detail?: string | null;
+            /** Downloaded At */
+            readonly downloaded_at?: string | null;
+            /** Engine Version */
+            readonly engine_version?: string | null;
+            /** Germline Reference */
+            readonly germline_reference?: string | null;
+            /** Heavy Sequences */
+            readonly heavy_sequences?: number | null;
+            /** Light Sequences */
+            readonly light_sequences?: number | null;
+            /** Policy Version */
+            readonly policy_version?: string | null;
+            /** Source Sha256 */
+            readonly source_sha256?: string | null;
+            /** Source Url */
+            readonly source_url: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            readonly status: "available" | "unavailable";
+        };
+        /**
          * ResolveStateUnknownJobRequest
          * @description One explicit safe outcome after an Administrator checks Modal.
          */
@@ -1791,6 +2124,13 @@ export interface components {
              * @description Data-dependent defaults computed over the full result before filtering or pagination.
              */
             readonly default_hidden_columns: readonly string[];
+            /**
+             * Germlines
+             * @description Page-only evidence keyed by candidate_id; null for historical publications.
+             */
+            readonly germlines?: {
+                readonly [key: string]: components["schemas"]["CandidateGermlines"];
+            } | null;
             /** Limit */
             readonly limit: number;
             /**
@@ -1804,12 +2144,58 @@ export interface components {
             readonly offset: number;
             /** Parent Ids */
             readonly parent_ids: readonly string[];
+            /** @description One therapeutic reference provenance block for new germline-annotated publications. */
+            readonly reference?: components["schemas"]["ReferenceInfo"] | null;
             /** Rows */
             readonly rows: readonly {
                 readonly [key: string]: string | number | boolean | null;
             }[];
             /** Total Rows */
             readonly total_rows: number;
+        };
+        /**
+         * SequenceDetail
+         * @description Lazy numbering/CDR and liability overlays on the untrimmed sequence.
+         */
+        readonly SequenceDetail: {
+            /** Cdr Definition */
+            readonly cdr_definition: string;
+            /** Chain Type */
+            readonly chain_type: string | null;
+            /** Diagnostics */
+            readonly diagnostics: readonly string[];
+            /** Domain Span */
+            readonly domain_span: readonly [
+                number,
+                number
+            ] | null;
+            /** Error */
+            readonly error: string | null;
+            /** Liabilities */
+            readonly liabilities: readonly components["schemas"]["Liability"][];
+            /** Residues */
+            readonly residues: readonly components["schemas"]["NumberedResidue"][];
+            /**
+             * Scheme
+             * @enum {string}
+             */
+            readonly scheme: "imgt" | "kabat" | "chothia" | "martin" | "aho";
+            /** Sequence */
+            readonly sequence: string;
+        };
+        /**
+         * SequenceRequest
+         * @description Number only the single chain currently opened in a sequence dialog.
+         */
+        readonly SequenceRequest: {
+            /**
+             * Scheme
+             * @default imgt
+             * @enum {string}
+             */
+            readonly scheme: "imgt" | "kabat" | "chothia" | "martin" | "aho";
+            /** Sequence */
+            readonly sequence: string;
         };
         /**
          * SetPasswordRequest
@@ -3585,6 +3971,174 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": unknown;
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly analyze_api_v1_antibody_sequence_analysis_analyze_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["AnalysisRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AnalysisResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly options_api_v1_antibody_sequence_analysis_options_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AnalysisOptions"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly sequence_api_v1_antibody_sequence_analysis_sequence_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["SequenceRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SequenceDetail"];
                 };
             };
             /** @description Request Entity Too Large */

@@ -1,5 +1,26 @@
 import type { components } from "@/api/schema"
 import type { HumanizationOptions, HumanizationSubmission, HumanizationSelection, SelectionQuery } from "@/humanization"
+import type { AnalysisOptions, AnalysisRequest, AnalysisResponse, SequenceDetail, SequenceRequest } from "@/antibody-analysis"
+
+export function antibodyAnalysisOptions(signal?: AbortSignal) {
+  return requestJson<AnalysisOptions>("/api/v1/antibody-sequence-analysis/options", { signal, cache: "no-store" })
+}
+
+export function analyzeAntibodies(input: AnalysisRequest, signal?: AbortSignal) {
+  return requestJson<AnalysisResponse>("/api/v1/antibody-sequence-analysis/analyze", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
+
+export function antibodySequenceDetail(input: SequenceRequest, signal?: AbortSignal) {
+  return requestJson<SequenceDetail>("/api/v1/antibody-sequence-analysis/sequence", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
 
 export type Job = components["schemas"]["JobView"]
 export type JobPage = components["schemas"]["JobPageView"]
