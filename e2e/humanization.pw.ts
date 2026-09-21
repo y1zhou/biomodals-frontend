@@ -11,6 +11,8 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
   { code: "evaluate", label: "Evaluate and rank candidates", outcome: "partial", started_at: "2026-09-07T00:00:45Z", ended_at: "2026-09-07T00:01:00Z" },
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "sapiens_vh_mean_probability"].map((name) => ({ name, type: ["quality_tier", "panel_order", "sapiens_vh_mean_probability"].includes(name) ? "number" : "string" }))
+const analysisOptions = { max_groups: 2, max_entries_per_group: 1000, max_chain_length: 512, max_request_bytes: 4194304, schemes: ["imgt", "kabat", "chothia", "martin", "aho"], default_scheme: "imgt", analysis_version: "1", arpeggia_version: "0.10.1" }
+const emptyAnalysis = { groups: [{ id: "Group 1", entries: [], issues: [] }], reference: { status: "unavailable", source_url: "https://example.test/reference.csv", detail: "Offline reference unavailable" } }
 
 async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0, legacyOptions = false } = {}) {
   const submissions: { body: unknown; key: string | undefined }[] = []
@@ -26,6 +28,11 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
     requests.push(`${request.method()} ${url.pathname}${url.search}`)
     const respond = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (url.pathname.endsWith("/auth/me") || url.pathname.endsWith("/auth/login")) return respond(principal)
+    if (url.pathname.endsWith("/antibody-sequence-analysis/options")) return respond(analysisOptions)
+    if (url.pathname.endsWith("/antibody-sequence-analysis/sequence")) {
+      const input = request.postDataJSON()
+      return respond({ ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], liabilities: [], diagnostics: [], error: "No antibody domain in this short fixture sequence." })
+    }
     if (url.pathname.endsWith("/humanization/options")) return respond({ ...options, max_pairs: maxPairs, defaults: legacyOptions ? Object.fromEntries(Object.entries(options.defaults).filter(([name]) => name !== "pabnativ2_num_seeds")) : options.defaults })
     if (url.pathname.endsWith("/humanization/jobs") && request.method() === "POST") {
       submissions.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] })
@@ -310,6 +317,69 @@ test("job rows omit the ID and copy button", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Copy job ID", exact: true })).toHaveCount(0)
 })
 
+test("chain selections survive pages and filters and transfer only within-parent FASTA", async ({ page }) => {
+  const api = await mockApi(page)
+  const rows = [
+    { parent_id: "parent_a", candidate_id: "first", vh: "AAA", vl: "CCC" },
+    { parent_id: "parent_a", candidate_id: "second", vh: "GGG", vl: "CCC" },
+    { parent_id: "parent_a", candidate_id: "third", vh: "GGG", vl: "DDD" },
+    { parent_id: "parent_b", candidate_id: "fourth", vh: "AAA", vl: "EEE" },
+  ]
+  await page.route("**/selection?*", (route) => {
+    const url = new URL(route.request().url())
+    const offset = Number(url.searchParams.get("offset"))
+    const filtered = url.searchParams.get("parent_id") === "parent_b"
+    return route.fulfill({ json: { columns, rows: filtered ? [rows[3]] : offset ? rows.slice(2) : rows.slice(0, 2), total_rows: filtered ? 1 : 52, offset, limit: 50, parent_ids: ["parent_a", "parent_b"], default_hidden_columns: [], nativeness_ranges: {}, germlines: null, reference: null } })
+  })
+  const analyzed: { groups: { id: string; fasta: string }[] }[] = []
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyzed.push(route.request().postDataJSON()); return route.fulfill({ json: emptyAnalysis }) })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("checkbox", { name: "Select VH from first (parent parent_a)", exact: true }).check()
+  await page.getByRole("checkbox", { name: "Select VL from first (parent parent_a)", exact: true }).check()
+  await expect(page.getByRole("checkbox", { name: "Select VL from second (parent parent_a)", exact: true })).toBeChecked()
+  await page.getByRole("checkbox", { name: "Select VH from second (parent parent_a)", exact: true }).check()
+  await page.getByRole("button", { name: "Next page", exact: true }).click()
+  await expect(page.getByRole("checkbox", { name: "Select VH from third (parent parent_a)", exact: true })).toBeChecked()
+  await page.getByRole("checkbox", { name: "Select VL from third (parent parent_a)", exact: true }).check()
+  await page.getByRole("checkbox", { name: "Select VH from fourth (parent parent_b)", exact: true }).check()
+  await page.getByRole("button", { name: /^Filter by parent/ }).click()
+  await page.getByLabel("Parent", { exact: true }).selectOption("parent_b")
+  await expect(page.getByRole("region", { name: "Selected antibody chains" })).toContainText("4 pairs and 1 single chains")
+  await expect(page.getByRole("button", { name: "vh_v_gene", exact: true })).toHaveCount(0)
+  expect(api.requests.some((request) => request.includes("/sequence"))).toBe(false)
+  await page.getByRole("button", { name: "Analyze selected sequences", exact: true }).click()
+  await expect(page).toHaveURL(/\/tools\/antibody-sequence-analysis$/)
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeVisible()
+  expect(analyzed).toEqual([{ groups: [{ id: "Group 1", fasta: ">selected_0001\nAAA:CCC\n>selected_0002\nAAA:DDD\n>selected_0003\nGGG:CCC\n>selected_0004\nGGG:DDD\n>selected_0005\nAAA" }] }])
+  expect(api.submissions).toHaveLength(0)
+  expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage }, history: history.state }))).not.toContain("AAA")
+  await page.reload()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue("")
+  expect(analyzed).toHaveLength(1)
+})
+
+for (const differentUser of [false, true]) test(`analysis draft ${differentUser ? "clears for another user" : "survives same-user reauthentication"}`, async ({ page }) => {
+  await mockApi(page)
+  let attempts = 0
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { attempts++; return route.fulfill({ status: attempts === 1 ? 401 : 200, json: attempts === 1 ? { detail: "Authentication required" } : emptyAnalysis }) })
+  if (differentUser) await page.route("**/auth/login", (route) => route.fulfill({ json: { ...principal, user_id: "user-two" } }))
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">private_domain\nACDE")
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Sign in again" })
+  await dialog.getByLabel("Email", { exact: true }).fill("researcher@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("correct horse battery staple")
+  await dialog.getByRole("button", { name: "Sign in and return" }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue(differentUser ? "" : ">private_domain\nACDE")
+  expect(attempts).toBe(1)
+  if (!differentUser) {
+    await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+    await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeVisible()
+    expect(attempts).toBe(2)
+  }
+})
+
 test("candidate presentation preserves values and respects whole-result visibility defaults", async ({ page, context }) => {
   await mockApi(page)
   await context.grantPermissions(["clipboard-read", "clipboard-write"])
@@ -342,17 +412,16 @@ test("candidate presentation preserves values and respects whole-result visibili
   await parent.getByRole("button", { name: "Copy ID", exact: true }).click()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(candidateId)
   await expect(parent.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
-  for (const sequence of [row.vh, row.vl]) {
-    const details = parent.locator("details").filter({ has: page.locator("summary").filter({ hasText: new RegExp(`^${sequence.slice(0, 16)}${sequence.length > 16 ? "…" : ""}$`) }) })
-    await details.locator("summary").click()
-    await expect(details.getByText(`${sequence.length} residues`, { exact: true })).toBeVisible()
-    await details.getByRole("button", { name: "Copy sequence", exact: true }).click()
-    await expect(details.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sequence)
+  for (const role of ["vh", "vl"] as const) {
+    await parent.getByRole("button", { name: new RegExp(`^Inspect ${role.toUpperCase()} from`) }).click()
+    const dialog = page.getByRole("dialog", { name: new RegExp(`^${role.toUpperCase()} from`) })
+    await expect(dialog.getByText(`${row[role].length} residues · Full input retained`, { exact: true })).toBeVisible()
+    await dialog.getByRole("button", { name: "Close sequence details" }).click()
   }
   await expect(parent.getByRole("button", { name: "Copied", exact: true })).toHaveCount(0, { timeout: 4000 })
   await expect(parent.getByRole("button", { name: "Copy ID", exact: true })).toBeVisible()
-  await expect(parent.getByRole("button", { name: "Copy sequence", exact: true })).toHaveCount(2)
+  await expect(parent.getByRole("button", { name: "Copy sequence", exact: true })).toHaveCount(0)
+  await expect(parent.getByRole("checkbox", { name: /^Select (VH|VL) from/ })).toHaveCount(2)
   await expect(parent.getByText("-0.250", { exact: true })).toBeVisible()
   await expect(parent.locator('[title="-0.25"] .bg-neutral-200\\/70')).toHaveAttribute("style", "left: 0%; width: 87.5%;")
   await expect(parent.getByText("0.877", { exact: true })).toBeVisible()

@@ -2,6 +2,9 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { expect, test } from "@playwright/test"
 
+const vh = "QVQLVQSGAEVKKPGASVKVSCKASGYTFTSYAMHWVRQAPGQGLEWMGWINPNSGGTNYAQKFQGRVTMTRDTSISTAYMELSRLRSDDTAVYYCARGGYFDYWGQGTLVTVSS"
+const vl = "DIQMTQSPSSLSASVGDRVTITCRASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYCQQHYTTPPTFGQGTKVEIK"
+
 test("humanization uses the real offline API for 100 pairs, bounded Results, and downloads", async ({ page, context, browser }) => {
   await page.addInitScript(() => Object.defineProperty(crypto, "randomUUID", { value: undefined }))
   test.setTimeout(90_000)
@@ -18,7 +21,7 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   await page.getByRole("button", { name: "Set password", exact: true }).click()
   await expect(page).toHaveURL(process.env.BIOMODALS_BROWSER_ORIGIN + "/")
   await page.goto("/tools/humanization/new")
-  const csv = "id,vh,vl\n" + Array.from({ length: 100 }, (_, index) => `ab_${String(index).padStart(3, "0")},${"A".repeat(120)},${"G".repeat(110)}`).join("\n")
+  const csv = "id,vh,vl\n" + Array.from({ length: 100 }, (_, index) => `ab_${String(index).padStart(3, "0")},${index ? "A".repeat(120) : vh},${index ? "G".repeat(110) : vl}`).join("\n")
   await page.locator("#humanization-csv").setInputFiles({ name: "batch.csv", mimeType: "text/csv", buffer: Buffer.from(csv) })
   const submitted = page.waitForResponse((response) => response.url().endsWith("/api/v1/humanization/jobs") && response.request().method() === "POST")
   await page.getByRole("button", { name: "Submit humanization" }).click()
@@ -44,6 +47,10 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   expect(result.rows).toHaveLength(50)
   expect(result.total_rows).toBe(300)
   expect(result.columns.length).toBeGreaterThan(20)
+  expect(result.columns.map((column: { name: string }) => column.name)).toEqual(expect.arrayContaining(["vh_v_gene", "vh_j_gene", "vl_v_gene", "vl_j_gene"]))
+  expect(Object.keys(result.germlines)).toHaveLength(50)
+  expect(result.reference.status).toBe("available")
+  await expect(page.getByText("How are germline matches and therapeutic frequencies interpreted?", { exact: true })).toHaveCount(1)
   console.log(`Offline Result first page: ${result.rows.length}/${result.total_rows} rows, ${(await response.body()).length} bytes`)
   await expect(page.getByText("1–50 of 300 rows")).toBeVisible()
   await page.getByRole("button", { name: "Next page", exact: true }).click()
@@ -67,4 +74,18 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   expect((await anonymous.request.get(`/api/v1/humanization/jobs/${job.job_id}/selection`)).status()).toBe(401)
   expect((await anonymous.request.get(`/api/v1/humanization/jobs/${job.job_id}/selection.csv`)).status()).toBe(401)
   await anonymous.close()
+  // Analyze selected native fixture chains without creating another Job.
+  const beforeAnalysis = JSON.parse(await readFile(path.join(root, "stats.json"), "utf8")).submit_calls
+  const table = page.getByRole("table", { name: "Humanization selection.csv, page 1", exact: true })
+  await table.getByRole("checkbox", { name: /^Select VH from/ }).first().check()
+  await table.getByRole("checkbox", { name: /^Select VL from/ }).first().check()
+  await table.getByRole("checkbox", { name: /^Select VH from/ }).nth(1).check()
+  await table.getByRole("checkbox", { name: /^Select VL from/ }).nth(2).check()
+  await expect(page.getByRole("region", { name: "Selected antibody chains" })).toContainText("4 pairs")
+  const analysis = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/analyze"))
+  await page.getByRole("button", { name: "Analyze selected sequences", exact: true }).click()
+  expect((await analysis).status()).toBe(200)
+  await expect(page).toHaveURL(/\/tools\/antibody-sequence-analysis$/)
+  await expect(page.getByRole("region", { name: "Analysis results: Group 1", exact: true }).locator("tbody tr")).toHaveCount(4)
+  expect(JSON.parse(await readFile(path.join(root, "stats.json"), "utf8")).submit_calls).toBe(beforeAnalysis)
 })

@@ -3,16 +3,24 @@ import { Menu } from "@base-ui/react/menu"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Copy, ListFilter } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
 
-import { apiErrorCode, humanizationSelection } from "@/api/client"
+import { antibodyAnalysisOptions, apiErrorCode, humanizationSelection } from "@/api/client"
+import { selectedEntries, selectChain, type SelectedChain } from "@/antibody-selection"
+import { useAntibodyTransfer } from "@/antibody-transfer"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCandidateNumber, type HumanizationSelection, type SelectionQuery } from "@/humanization"
 import { shouldRetryJobQuery } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
+import AntibodyGeneCell from "@/components/AntibodyGeneCell"
+import AntibodyReferenceFaq from "@/components/AntibodyReferenceFaq"
+import AntibodySequenceDialog from "@/components/AntibodySequenceDialog"
+import { ChainSelectionCell, ChainSelectionPanel } from "@/components/HumanizationChainSelection"
+import { antibodyAnalysisPath } from "@/tools"
 
-function ExpandableCell({ value, sequence = false }: { value: string; sequence?: boolean }) {
+function ExpandableCell({ value }: { value: string }) {
   const [copyStatus, setCopyStatus] = useState("")
   useEffect(() => {
     if (copyStatus !== "Copied") return
@@ -20,10 +28,9 @@ function ExpandableCell({ value, sequence = false }: { value: string; sequence?:
     return () => window.clearTimeout(timer)
   }, [copyStatus])
   return <details className="w-64">
-    <summary className="cursor-pointer truncate font-mono text-xs">{sequence ? `${value.slice(0, 16)}${value.length > 16 ? "…" : ""}` : value}</summary>
+    <summary className="cursor-pointer truncate font-mono text-xs">{value}</summary>
     <p className="mt-2 break-all font-mono text-xs">{value}</p>
-    {sequence ? <p className="mt-1 text-xs text-muted-foreground">{value.length} residues</p> : null}
-    <Button aria-live="polite" disabled={copyStatus === "Copied"} className="mt-2" onClick={() => void copyText(value).then(() => setCopyStatus("Copied"), () => setCopyStatus("Copy failed; select the text to copy it."))} type="button" variant="outline">{copyStatus === "Copied" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />} {copyStatus === "Copied" ? "Copied" : sequence ? "Copy sequence" : "Copy ID"}</Button>
+    <Button aria-live="polite" disabled={copyStatus === "Copied"} className="mt-2" onClick={() => void copyText(value).then(() => setCopyStatus("Copied"), () => setCopyStatus("Copy failed; select the text to copy it."))} type="button" variant="outline">{copyStatus === "Copied" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />} {copyStatus === "Copied" ? "Copied" : "Copy ID"}</Button>
     {copyStatus && copyStatus !== "Copied" ? <p role="alert" className="mt-1 text-sm">{copyStatus}</p> : null}
   </details>
 }
@@ -62,6 +69,12 @@ function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: n
 
 export default function HumanizationResults({ jobId }: { jobId: string }) {
   const user = useCurrentUser()
+  const navigate = useNavigate()
+  const { setTransfer } = useAntibodyTransfer()
+  const [selection, setSelection] = useState<SelectedChain[]>([])
+  const [selectionError, setSelectionError] = useState<string | null>(null)
+  const [inspected, setInspected] = useState<{ sequence: string; label: string } | null>(null)
+  const analysisOptions = useQuery({ queryKey: ["antibody-analysis-options"], queryFn: ({ signal }) => antibodyAnalysisOptions(signal), enabled: !!authenticatedPrincipal(user.data), staleTime: Infinity, retry: false })
   const [parentFilterOpen, setParentFilterOpen] = useState(false)
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({})
   const [view, setView] = useState<SelectionQuery>({ offset: 0, limit: 50, parentId: "", sortBy: "", descending: false })
@@ -74,7 +87,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
     gcTime: 0,
     placeholderData: keepPreviousData,
   })
-  useExpireSession(query.error)
+  useExpireSession(query.error ?? analysisOptions.error)
   const data = query.data
   const loadingPage = query.isPending || query.isPlaceholderData
   function columnVisible(name: string) {
@@ -87,6 +100,15 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
     setView((current) => ({ ...current, offset: 0, sortBy: column, descending: current.sortBy === column ? !current.descending : false }))
   }
   const selectClass = "h-9 max-w-full rounded-lg border border-input bg-background px-2 text-sm"
+
+  function analyzeSelection() {
+    if (!analysisOptions.data) return
+    try {
+      const entries = selectedEntries(selection, analysisOptions.data.max_entries_per_group)
+      setTransfer({ sourceJobId: jobId, entries })
+      navigate(antibodyAnalysisPath)
+    } catch (error) { setSelectionError(error instanceof Error ? error.message : "The selection could not be analyzed.") }
+  }
 
   return <Card className="mt-6 min-w-0">
     <CardHeader>
@@ -163,6 +185,9 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
       </section>
     </CardHeader>
     <CardContent className="min-w-0 space-y-4">
+      {data?.reference ? <AntibodyReferenceFaq reference={data.reference} /> : null}
+      <ChainSelectionPanel selection={selection} maxEntries={analysisOptions.data?.max_entries_per_group} onClear={(parentId) => { setSelection((current) => parentId ? current.filter((chain) => chain.parentId !== parentId) : []); setSelectionError(null) }} onAnalyze={analyzeSelection} busy={!authenticatedPrincipal(user.data)} error={selectionError ?? (analysisOptions.error ? "Analysis limits could not be loaded. Reload them to analyze selected chains." : null)} />
+      {analysisOptions.error ? <Button variant="outline" onClick={() => void analysisOptions.refetch()}>Reload analysis limits</Button> : null}
       <div className="flex flex-wrap items-end gap-3">
         <Menu.Root modal={false}>
           <Menu.Trigger aria-label="Columns" className={buttonVariants({ variant: "outline" })} disabled={!data}>
@@ -213,7 +238,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
             {/* Keep the previous page geometry during requests without exposing stale rows. */}
             <tbody aria-hidden={loadingPage || undefined} className={loadingPage ? "invisible divide-y" : "divide-y"}>{data.rows.map((row, index) => <tr className={row.is_parent === true ? "bg-muted/60" : undefined} key={`${row.parent_id}:${row.candidate_id}:${data.offset + index}`}>
               {visibleColumns.map((column) => <td className="max-w-sm px-3 py-3 align-top" key={column.name}>
-                {row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : ["vh", "vl"].includes(column.name) && typeof row[column.name] === "string" ? <ExpandableCell sequence value={String(row[column.name])} /> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
+                {(column.name === "vh" || column.name === "vl") && typeof row[column.name] === "string" && typeof row.parent_id === "string" && typeof row.candidate_id === "string" ? <ChainSelectionCell chain={{ parentId: row.parent_id, role: column.name, sequence: String(row[column.name]), candidateIds: [row.candidate_id] }} selection={selection} onChange={(chain, selected) => { setSelection((current) => selectChain(current, chain, selected)); setSelectionError(null) }} onInspect={(sequence, label) => setInspected({ sequence, label })} /> : /^(vh|vl)_[vj]_gene$/.test(column.name) && data.germlines?.[String(row.candidate_id)] ? <AntibodyGeneCell germlines={data.germlines[String(row.candidate_id)][column.name.startsWith("vh") ? "vh" : "vl"]} segment={column.name.includes("_v_") ? "v" : "j"} /> : row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
               </td>)}
             </tr>)}</tbody>
           </table>
@@ -237,6 +262,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
           </div>
         </div>
       </> : null}
+      {inspected ? <AntibodySequenceDialog key={inspected.sequence} {...inspected} onClose={() => setInspected(null)} /> : null}
     </CardContent>
   </Card>
 }

@@ -106,7 +106,8 @@ bun run preview  # preview dist/ locally
 ## Current state
 
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
-prediction`, and `Antibody humanization`. AlphaFold3 accepts a guided protein, DNA, RNA, and
+prediction`, `Antibody humanization`, and `Antibody sequence analysis`.
+AlphaFold3 accepts a guided protein, DNA, RNA, and
 small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating
 a Job.
@@ -140,6 +141,34 @@ nonzero magnitudes below 0.001 or at least 1,000,000. Hover values, server-side
 sorting, and the archive retain full precision. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser.
+
+New humanization publications add four germline gene columns with page-bounded
+species, allele ties and therapeutic reference frequencies. Historical tables
+keep their original columns. Clicking a sequence opens a numbered dialog with
+IMGT, Kabat, Chothia, Martin or AHo conventions, CDR backgrounds and potential
+liability motifs. These display choices do not alter workflow mutation scores.
+Independent VH/VL selections survive pages and filters. **Analyze selected
+sequences** forms combinations within each parent; a parent with one selected
+role contributes standalone chains. The entry limit is checked before expansion,
+and no original ranks or paired scores accompany recombined entries.
+
+Antibody sequence analysis accepts one or two independent FASTA groups: paired
+`VH:VL` records, matched `_vh`/`_vl` records, or standalone domains. The service
+advertises limits of 1000 entries per group, 512 residues per chain and 4 MiB
+per request. Analysis creates no Job or Modal work. Invalid entries stay visible
+alongside usable results; failed numbering leaves computable metrics labeled as
+unassigned rather than assuming a heavy chain. Tables share column visibility,
+sort independently at full precision, and page locally in groups of 50. Each
+group has a full-precision CSV download. A shared FAQ records the therapeutic
+snapshot and its counting policy; unavailable frequencies remain missing.
+
+Analysis drafts, results and chain handoff exist only in memory. They survive
+mounted same-user reauthentication, but leaving or reloading loses them. Inputs
+never travel in URLs, browser history or persistent browser storage. The
+[accepted sequence-analysis specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/antibody-sequence-analysis.md)
+owns scientific semantics and API behavior. Rollout requires the matching API,
+frontend assets and updated humanization workflow deployment/pin for new gene
+publications; historical results are not backfilled.
 
 Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
 and `humatch_vl_best_family_probability` as a fifth Pareto objective to
