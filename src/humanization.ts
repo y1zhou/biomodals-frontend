@@ -116,11 +116,11 @@ export const generalSettingSources: Partial<Record<keyof HumanizationSettings, k
 }
 
 export const settingGroups = [
-  { name: "General", prefix: "", help: "CDR mutations apply to Sapiens, Humatch, and p-AbNatiV2. The root seed applies to p-AbNatiV2 and HuDiff." },
-  { name: "Sapiens", prefix: "sapiens_", help: "Numbering and CDR definitions are independent controls." },
-  { name: "Humatch", prefix: "humatch_", help: "Protected positions use IMGT. Auto families are resolved separately for each parent." },
-  { name: "p-AbNatiV2", prefix: "pabnativ2_", help: "Protected positions use AHo. Pairing decrease controls generation, not the panel-ranking guardrail." },
-  { name: "HuDiff", prefix: "hudiff_ab_", help: "Sampling attempts are per parent, not a guaranteed number of unique candidates." },
+  { name: "General", prefix: "", help: "CDR mutations apply to Sapiens, Humatch, and p-AbNatiV2. The root seed applies to p-AbNatiV2 and HuDiff, not every model." },
+  { name: "Sapiens", prefix: "sapiens_", help: "Separate heavy- and light-chain language models refine the sequences greedily. Iterations follow one refinement path; they are not independent random attempts." },
+  { name: "Humatch", prefix: "humatch_", help: "Edits toward human V-family and pairing classifier targets. Returns one endpoint per parent, which can be unchanged when the targets already hold." },
+  { name: "p-AbNatiV2", prefix: "pabnativ2_", help: "Optimizes paired nativeness with structural accessibility and pairing-loss constraints. Independent optimizer starts may converge to the same endpoint." },
+  { name: "HuDiff", prefix: "hudiff_ab_", help: "Samples paired framework designs around protected CDRs. Invalid or duplicate designs reduce the unique yield. HuDiff has no native evaluation score; candidates are evaluated by the other scorers." },
 ] as const
 
 export const settingLabels: Record<keyof HumanizationSettings, string> = {
@@ -142,5 +142,22 @@ export const settingLabels: Record<keyof HumanizationSettings, string> = {
 
 export const settingHelp: Partial<Record<keyof HumanizationSettings, string>> = {
   sapiens_iterations: "The paired sequences after every iteration are included as candidates, then deduplicated and evaluated with the other models’ outputs.",
+  sapiens_numbering_scheme: "Controls residue labels during Sapiens generation. Changing the result viewer’s display scheme does not change these settings.",
+  sapiens_cdr_definition: "Controls which regions Sapiens treats as CDRs; it is independent of its numbering scheme.",
+  sapiens_mutate_cdrs: "CDR changes can alter binding determinants. Model scores do not validate preserved binding or reduced immunogenicity.",
+  humatch_vh_target_family: "Auto chooses a human heavy-chain V-family separately for each parent. A family classifier target is distinct from an individual germline gene match.",
+  humatch_vl_target_family: "Auto chooses a human light-chain V-family separately for each parent.",
+  humatch_germline_likeness_target: "Target for an observed-residue frequency score, not sequence identity or experimental confidence.",
+  humatch_vh_classifier_target: "Target classifier support for the chosen heavy-chain family. Raising it does not request additional candidates.",
+  humatch_vl_classifier_target: "Target classifier support for the chosen light-chain family. Raising it does not request additional candidates.",
+  humatch_pair_classifier_target: "Target model support for the pair, not an experimental probability of successful pairing.",
+  humatch_max_edits: "Limits the editing process for the single endpoint. More allowed edits do not request more endpoints.",
+  humatch_fixed_vh_positions: "Protected positions use IMGT, regardless of the result viewer’s display scheme.",
+  humatch_fixed_vl_positions: "Protected positions use IMGT, regardless of the result viewer’s display scheme.",
+  pabnativ2_fixed_vh_positions: "Protected positions use AHo, regardless of the result viewer’s display scheme.",
+  pabnativ2_fixed_vl_positions: "Protected positions use AHo, regardless of the result viewer’s display scheme.",
+  pabnativ2_max_relative_pairing_score_decrease: "Constrains generation; it does not change the panel-ranking pairing guardrail.",
+  pabnativ2_seed: "Controls p-AbNatiV2 optimizer roots and HuDiff sampling. Reproducible seeds do not guarantee distinct candidate sequences.",
   pabnativ2_num_seeds: "One independent optimization run per derived seed and parent. More attempts increase compute and may return identical sequences, which are deduplicated.",
+  hudiff_ab_candidate_count: "A total sampling-attempt budget per parent, not a guaranteed number of distinct valid designs. More attempts can increase generation and evaluation cost.",
 }

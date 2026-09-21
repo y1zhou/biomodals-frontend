@@ -278,9 +278,12 @@ function HumanizationSubmissionForm({ sourceJob }: { sourceJob: string }) {
           </Card>
           <details className="rounded-xl border p-5">
             <summary className="cursor-pointer font-medium">Advanced settings</summary>
-            <p className="mt-3 text-sm text-muted-foreground">One scientific configuration applies to every pair in the batch.</p>
+            <div className="mt-3 max-w-4xl space-y-3 leading-7 text-muted-foreground">
+              <p>Four methods generate candidates independently. Exact VH–VL duplicates are merged with the parent, then every candidate is cross-evaluated by the available scorers. Methods need not contribute equal numbers of designs.</p>
+              <p>One scientific configuration applies to every pair. More p-AbNatiV2 or HuDiff attempts increase sampling opportunities and cost; Sapiens iterations explore successive refinements.</p>
+            </div>
             {defaults && settingsReady ? settingGroups.map((group) => <fieldset className="mt-6 border-t pt-4" key={group.prefix}>
-              <legend className="font-medium">{group.name}</legend><p className="mb-3 text-sm text-muted-foreground">{group.help}</p>
+              <legend className="text-lg font-semibold">{group.name}</legend><p className="mb-4 max-w-4xl leading-7 text-muted-foreground">{group.help}</p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {settingNames.filter((field) => group.prefix ? field.startsWith(group.prefix) && !generalSettingSources[field] : generalSettingSources[field] === field).map((field) => {
                   const schema = settingMetadata(options.data, field)
