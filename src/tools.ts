@@ -61,6 +61,8 @@ export const humanizationPaths = {
 const gromacsOverviewPath = toolOverviewPath(gromacsTool)
 
 export const gromacsPaths = {
+  continuationRoute: `${gromacsOverviewPath}/jobs/:jobId/continue`,
+  continuation: (jobId: string) => `${gromacsOverviewPath}/jobs/${encodeURIComponent(jobId)}/continue`,
   overview: gromacsOverviewPath,
   submission: `${gromacsOverviewPath}/new`,
   jobRoute: `${gromacsOverviewPath}/jobs/:jobId`,

@@ -25,6 +25,7 @@ import {
 
 const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
+const GromacsContinuationPage = lazy(() => import("@/pages/GromacsContinuationPage"))
 const AlphaFold3OverviewPage = lazy(() => import("@/pages/AlphaFold3OverviewPage"))
 const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3SubmissionPage"))
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
@@ -185,6 +186,9 @@ export default function App() {
       if (path.startsWith(`${overview}/jobs/`) && !path.slice(`${overview}/jobs/`.length).includes("/")) {
         titles[path] = `Job details · ${tool.name}`
       }
+      if (tool.slug === "gromacs" && /^\/tools\/gromacs\/jobs\/[^/]+\/continue$/.test(path)) {
+        titles[path] = "Extend simulation · GROMACS"
+      }
     }
     document.title = `${titles[path] ?? "Page not found"} | BioModals`
   }, [pathname])
@@ -202,6 +206,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
+            <Route element={<GromacsContinuationPage />} path={gromacsPaths.continuationRoute} />
             <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
             <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
             <Route element={<JobDetailPage tool="humanization" />} path={humanizationPaths.jobRoute} />

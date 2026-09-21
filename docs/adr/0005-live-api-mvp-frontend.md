@@ -192,7 +192,8 @@ compact summary sits beside the form on wider screens. It contains:
 - One native `.pdb` file input.
 - An optional display name, prefilled from the filename without its `.pdb`
   suffix and still editable or clearable.
-- An integer simulation time from `1` to `200` nanoseconds, defaulting to `5`.
+- An integer simulation time from `1` to `250` nanoseconds, defaulting to `5`.
+  The upper bound increased from 200 with the GROMACS continuation feature.
 - A PDBFixer option, disabled by default.
 - A CPU-only option, disabled by default and placed under Advanced.
 

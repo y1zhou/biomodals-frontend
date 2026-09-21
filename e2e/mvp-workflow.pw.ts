@@ -766,6 +766,45 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   await expect(page.getByText("Browser Admin Renamed", { exact: true })).toBeVisible()
   await page.keyboard.press("Escape")
 
+  // Continue the same real offline Job, then chain and branch independently.
+  const sourceResponse = await context.request.get(`/api/v1/jobs/${completedJobId}`)
+  const originalSource = await sourceResponse.json()
+  const beforeContinuations = (await browserStats()).submit_calls
+  async function continueProduction(source: string, additional: number, name: string) {
+    await page.goto(`/tools/gromacs/jobs/${source}`)
+    await page.getByRole("link", { name: "Extend simulation", exact: true }).click()
+    await page.getByLabel("Additional production time (ns)", { exact: true }).fill(String(additional))
+    await page.getByLabel("Job name (optional)", { exact: true }).fill(name)
+    await page.getByRole("button", { name: "Submit continuation", exact: true }).click()
+    await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
+    return page.url().split("/").at(-1)!
+  }
+  async function completed(id: string) {
+    await expect.poll(async () => {
+      const response = await context.request.get(`/api/v1/jobs/${id}`)
+      return (await response.json()).state
+    }, { timeout: 15_000, intervals: [500] }).toBe("succeeded")
+  }
+  const firstContinuation = await continueProduction(completedJobId, 250, "Browser continuation")
+  await completed(firstContinuation)
+  await page.getByRole("button", { name: "Refresh", exact: true }).click()
+  const continuationStages = page.getByRole("table", { name: "Execution stages" })
+  await expect(continuationStages.getByRole("row")).toHaveCount(5)
+  await expect(continuationStages).not.toContainText("Analyze NVT")
+  await expect(continuationStages).not.toContainText("Analyze NPT")
+  await expect(page.getByRole("img", { name: "RMSD production trajectory plot", exact: true })).toBeVisible()
+  await page.getByRole("link", { name: "Extend simulation", exact: true }).click()
+  await expect(page.getByText("255 ns", { exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: "View its parent job" })).toHaveAttribute("href", `/tools/gromacs/jobs/${completedJobId}`)
+  const chained = await continueProduction(firstContinuation, 1, "Browser chained continuation")
+  const sibling = await continueProduction(completedJobId, 1, "Browser sibling continuation")
+  await Promise.all([completed(chained), completed(sibling)])
+  const chainedInfo = await context.request.get(`/api/v1/gromacs/jobs/${chained}/continuation`)
+  expect(await chainedInfo.json()).toMatchObject({ simulation_time_ns: 256, parent_job_id: firstContinuation, eligible: true })
+  const unchangedSource = await context.request.get(`/api/v1/jobs/${completedJobId}`)
+  expect(await unchangedSource.json()).toEqual(originalSource)
+  await expect.poll(async () => (await browserStats()).submit_calls - beforeContinuations).toBe(3)
+
   await page.goto("/jobs")
   await expect(page.getByText("Browser success workflow", { exact: true })).toBeVisible()
   await context.clearCookies()

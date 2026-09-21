@@ -319,7 +319,7 @@ export default function GromacsSubmissionPage() {
                     disabled={isSubmissionPending}
                     id="simulation-time"
                     inputMode="numeric"
-                    max={200}
+                    max={250}
                     min={1}
                     onChange={(event) => {
                       if (Number(event.target.value) !== Number(simulationTime)) resetIntent()
@@ -336,7 +336,7 @@ export default function GromacsSubmissionPage() {
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground" id="simulation-time-help">
-                      Enter a whole number from 1 to 200. Default: 5 ns.
+                      Enter a whole number from 1 to 250. Default: 5 ns.
                     </p>
                   )}
                 </div>
