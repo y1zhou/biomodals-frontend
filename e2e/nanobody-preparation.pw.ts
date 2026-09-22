@@ -8,6 +8,7 @@ const options = { max_parents: 100, max_input_length: 512, max_csv_bytes: 104857
 } } }
 type Parent = { id: string; vhh: string }
 const preview = (parents: Parent[]) => ({ preparation_version: options.preparation_version, rows: parents.map(({ id, vhh }, row_index) => ({ row_index, id, vh: vhh })), errors: [], preparation_digest: "a".repeat(64) })
+const job = { job_id: "99999999-1111-4111-8111-111111111111", display_name: "Nanobody humanization", tool: "nanobody_humanization", state: "cancelled", created_at: "2026-09-22T00:00:00Z", updated_at: "2026-09-22T00:01:00Z", stages: [], warnings: [], can_view_logs: false, can_retry_result_preparation: false }
 
 async function mockApi(page: Page, overrides = {}) {
   const requests: string[] = []
@@ -18,6 +19,7 @@ async function mockApi(page: Page, overrides = {}) {
     const url = new URL(request.url())
     requests.push(`${request.method()} ${url.pathname}`)
     if (url.pathname.endsWith("/auth/me") || url.pathname.endsWith("/auth/login")) return route.fulfill({ json: principal })
+    if (url.pathname === `/api/v1/jobs/${job.job_id}`) return route.fulfill({ json: job })
     if (url.pathname.endsWith("/nanobody-humanization/options")) return route.fulfill({ json: { ...options, ...overrides } })
     if (url.pathname.endsWith("/nanobody-humanization/prepare")) {
       preparations.push(request.postDataJSON().parents)
@@ -37,7 +39,7 @@ async function add(page: Page, sequence = "a c\nd") {
 test("manual and CSV inputs share an editable preview without scientific submission", async ({ page }) => {
   const api = await mockApi(page)
   await page.goto("/tools/nanobody-humanization/new")
-  await expect(page).toHaveTitle("Prepare nanobody humanization | BioModals")
+  await expect(page).toHaveTitle("New job · Nanobody humanization | BioModals")
   await add(page)
   await page.getByLabel("CSV file", { exact: true }).setInputFiles({ name: "parents.csv", mimeType: "text/csv", buffer: Buffer.from("id,vhh\nimported, ef g\n") })
   await expect(page.getByText("Current batch · 2 parents", { exact: true })).toBeVisible()
@@ -60,13 +62,88 @@ test("manual and CSV inputs share an editable preview without scientific submiss
   await expect(page.getByRole("status")).toContainText("Batch prepared")
   expect(api.requests.filter((request) => request.startsWith("POST "))).toEqual(["POST /api/v1/nanobody-humanization/prepare"])
   const leave = page.waitForEvent("dialog")
-  const clicking = page.getByRole("link", { name: "All tools", exact: true }).click()
+  const clicking = page.getByRole("link", { name: "Nanobody overview", exact: true }).click()
   await (await leave).dismiss()
   await clicking
   await expect(page).toHaveURL(/\/nanobody-humanization\/new$/)
   page.once("dialog", (dialog) => dialog.accept())
   await page.reload()
   await expect(page.getByText("No sequences added yet.", { exact: true })).toBeVisible()
+})
+
+test("uncertain submission checks the exact request and key; edits create a new intent", async ({ page }) => {
+  const api = await mockApi(page)
+  const submissions: { body: unknown; key: string }[] = []
+  await page.route("**/nanobody-humanization/jobs", async (route) => {
+    const request = route.request()
+    expect(request.headers()["x-csrf-token"]).toBe("local-csrf")
+    submissions.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] })
+    if (submissions.length < 3) return route.abort("failed")
+    return route.fulfill({ status: 202, json: job })
+  })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await expect(page.getByRole("status")).toContainText("Batch prepared")
+  expect(submissions).toHaveLength(0)
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await page.getByRole("button", { name: "Check submission", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Check submission", exact: true })).toBeEnabled()
+  expect(submissions).toHaveLength(2)
+  expect(submissions[1]).toEqual(submissions[0])
+  expect(submissions[0].body).toEqual({ display_name: "Nanobody humanization", parents: [{ id: "nb_001", vhh: "ACD" }], settings: defaults, preparation_digest: "a".repeat(64) })
+  expect(submissions[0].key).toMatch(/^[0-9a-f-]{36}$/)
+  await page.getByLabel("Job name", { exact: true }).fill("  New   intent  ")
+  await expect(page.getByRole("alert")).toContainText("earlier submission was not confirmed")
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/nanobody-humanization/jobs/${job.job_id}$`))
+  expect(submissions).toHaveLength(3)
+  expect(submissions[2].key).not.toBe(submissions[0].key)
+  expect(submissions[2].body).toMatchObject({ display_name: "New intent" })
+  expect(api.preparations).toHaveLength(1)
+  await expect(page.getByRole("link", { name: "Rerun with same inputs", exact: true })).toHaveAttribute("href", `/tools/nanobody-humanization/new?source_job=${job.job_id}`)
+})
+
+test("a changed digest requires review again and semantic row errors remain editable", async ({ page }) => {
+  const api = await mockApi(page)
+  let submits = 0
+  await page.route("**/nanobody-humanization/jobs", (route) => {
+    submits++
+    return submits === 1 ? route.fulfill({ status: 409, json: { code: "preparation_changed", detail: "Preparation changed" } }) : route.fulfill({ status: 422, json: { errors: [{ row_index: 0, field: "id", code: "id_invalid", message: "Correct this ID before submitting" }] } })
+  })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Prepare and review the batch again")
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
+  expect(api.preparations).toHaveLength(1)
+  expect(submits).toBe(1)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page.getByRole("group", { name: "Parent 1", exact: true })).toContainText("Correct this ID before submitting")
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
+  await page.getByRole("group", { name: "Parent 1", exact: true }).getByLabel("ID", { exact: true }).fill("corrected")
+  await expect(page.getByText("Prepare the batch to review this sequence.", { exact: true })).toBeVisible()
+  expect(submits).toBe(2)
+})
+
+test("rerun copies originals and saved settings but requires new preparation", async ({ page }) => {
+  const api = await mockApi(page)
+  await page.route(`**/nanobody-humanization/jobs/${job.job_id}/inputs`, (route) => route.fulfill({ json: { display_name: "Previous name", parents: [{ id: "original", vhh: "ACDE" }], settings: { ...defaults, root_seed: 42, hudiff_nb_candidate_count: 3 }, prepared_parents: [{ row_index: 0, id: "original", vh: "QVQLACDE" }], preparation_version: "old-policy" } }))
+  await page.goto(`/tools/nanobody-humanization/jobs/${job.job_id}`)
+  await page.getByRole("link", { name: "Rerun with same inputs", exact: true }).click()
+  await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("Previous name")
+  await expect(page.getByRole("group", { name: "Parent 1", exact: true }).getByLabel("Original VH · normalized", { exact: true })).toHaveValue("ACDE")
+  await expect(page.getByText("Prepare the batch to review this sequence.", { exact: true })).toBeVisible()
+  await page.getByText("Advanced settings", { exact: true }).click()
+  await expect(page.getByLabel("Root seed", { exact: true })).toHaveValue("42")
+  await expect(page.getByLabel("Sampling attempts per parent", { exact: true })).toHaveValue("3")
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
+  expect(api.requests.filter((request) => request.startsWith("POST "))).toEqual([])
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeEnabled()
+  expect(api.preparations).toEqual([[{ id: "original", vhh: "ACDE" }]])
 })
 
 test("invalid rows retain valid previews and corrections require fresh preparation", async ({ page }) => {

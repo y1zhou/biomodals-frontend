@@ -17,7 +17,8 @@ export function ChainSelectionCell({ chain, selection, onChange, onInspect }: {
   </div>
 }
 
-export function ChainSelectionPanel({ selection, maxEntries, onClear, onAnalyze, busy, error }: {
+export function ChainSelectionPanel({ selection, maxEntries, onClear, onAnalyze, busy, error, singleDomain = false }: {
+  singleDomain?: boolean
   selection: readonly SelectedChain[]
   maxEntries?: number
   onClear: (parentId?: string) => void
@@ -30,16 +31,16 @@ export function ChainSelectionPanel({ selection, maxEntries, onClear, onAnalyze,
   const tooMany = maxEntries !== undefined && total > maxEntries
   return <section aria-label="Selected antibody chains" className="space-y-3 rounded-lg border bg-muted/20 p-4">
     <h3 className="text-lg font-semibold">Analyze selected sequences</h3>
-    <p className="leading-7 text-muted-foreground">Select VH and VL independently. Each parent’s selected heavy and light chains form all combinations; a selection with only one role stays single-chain. Selection survives pages and filters.</p>
-    <p aria-live="polite"><strong>{counts.pairs} pairs</strong> and <strong>{counts.singles} single chains</strong>{maxEntries !== undefined ? ` · ${total}/${maxEntries} entries` : ""}</p>
+    <p className="leading-7 text-muted-foreground">{singleDomain ? "Select individual VH sequences for standalone analysis. Exact duplicates within a parent share selection; different parents remain separate. Selection survives pages and filters." : "Select VH and VL independently. Each parent’s selected heavy and light chains form all combinations; a selection with only one role stays single-chain. Selection survives pages and filters."}</p>
+    <p aria-live="polite">{singleDomain ? null : <><strong>{counts.pairs} pairs</strong> and </>}<strong>{counts.singles} single chains</strong>{maxEntries !== undefined ? ` · ${total}/${maxEntries} entries` : ""}</p>
     {selection.length ? <ul className="space-y-2">
       {selectedParents(selection).map((parent) => <li className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" key={parent.parentId}>
         <span className="break-all font-medium">{parent.parentId}</span>
-        <span>{parent.vh.length} VH · {parent.vl.length} VL → {parent.pairs} pairs, {parent.singles} single chains</span>
+        <span>{singleDomain ? `${parent.vh.length} VH sequences` : `${parent.vh.length} VH · ${parent.vl.length} VL → ${parent.pairs} pairs, ${parent.singles} single chains`}</span>
         <button aria-label={`Clear selections for ${parent.parentId}`} className="cursor-pointer underline underline-offset-4" onClick={() => onClear(parent.parentId)} type="button">Clear</button>
       </li>)}
     </ul> : null}
-    <p className="text-sm leading-7 text-muted-foreground">New combinations have no inherited model scores or ranks. Recombination does not establish pairing compatibility. Analysis stays in memory and creates no Job.</p>
+    <p className="text-sm leading-7 text-muted-foreground">{singleDomain ? "Only sequences and origin details transfer; model scores, ranks and parental comparisons stay on this result page." : "New combinations have no inherited model scores or ranks. Recombination does not establish pairing compatibility."} Analysis stays in memory and creates no Job.</p>
     {tooMany ? <p className="text-destructive" role="alert">This selection exceeds {maxEntries} entries. Remove chains before analyzing.</p> : null}
     {error ? <p className="text-destructive" role="alert">{error}</p> : null}
     <div className="flex flex-wrap gap-3">

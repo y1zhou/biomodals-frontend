@@ -41,7 +41,7 @@ import {
   type JobTableSort,
 } from "@/jobs"
 import { cn } from "@/lib/utils"
-import { availableTools, jobTools, toolJobPath, toolName } from "@/tools"
+import { availableTools, jobTools, toolJobPath, toolKey, toolName } from "@/tools"
 
 function JobRow({
   job: initialJob,
@@ -68,7 +68,7 @@ function JobRow({
   })
   useExpireSession(jobQuery.error)
   const job = latestJob(initialJob, jobQuery.data)
-  const tool = availableTools.find((candidate) => candidate.slug === job.tool)
+  const tool = availableTools.find((candidate) => toolKey(candidate) === job.tool)
   const path = toolJobPath(job.tool, job.job_id)
 
   useEffect(() => {
@@ -117,7 +117,7 @@ function JobRow({
 
 const toolFilterOptions = [
   { label: "All tools", value: "" },
-  ...jobTools.map((tool) => ({ label: tool.name, value: tool.slug })),
+  ...jobTools.map((tool) => ({ label: tool.name, value: toolKey(tool) })),
 ]
 
 const statusFilterOptions = [
@@ -200,7 +200,7 @@ export default function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, normalized, sort } = jobTableViewFromSearchParams(
     searchParams,
-    jobTools.map((tool) => tool.slug)
+    jobTools.map(toolKey)
   )
   const jobsQuery = useQuery({
     queryKey: jobListKey,

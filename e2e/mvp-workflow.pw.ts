@@ -61,7 +61,7 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
     origin,
   })
   await expect.poll(async () => (await browserStats()).password_link).not.toBe("")
-  await expect.poll(async () => (await browserStats()).preflight_versions.slice(0, 3)).toEqual([7, 1, 1])
+  await expect.poll(async () => (await browserStats()).preflight_versions.slice(0, 4)).toEqual([7, 1, 1, 1])
   const baseline = await browserStats()
   const setup = baseline.password_link
 

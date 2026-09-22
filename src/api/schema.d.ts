@@ -757,6 +757,74 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/nanobody-humanization/jobs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Submit */
+        readonly post: operations["submit_api_v1_nanobody_humanization_jobs_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/jobs/{job_id}/inputs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Inputs */
+        readonly get: operations["inputs_api_v1_nanobody_humanization_jobs__job_id__inputs_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/jobs/{job_id}/selection": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Selection */
+        readonly get: operations["selection_api_v1_nanobody_humanization_jobs__job_id__selection_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/jobs/{job_id}/selection.csv": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Selection Download */
+        readonly get: operations["selection_download_api_v1_nanobody_humanization_jobs__job_id__selection_csv_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/nanobody-humanization/options": {
         readonly parameters: {
             readonly query?: never;
@@ -1936,6 +2004,14 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * NanobodyInputErrors
+         * @description Submission validation keeps the same zero-based row errors as preparation.
+         */
+        readonly NanobodyInputErrors: {
+            /** Errors */
+            readonly errors: readonly components["schemas"]["PreparationIssue"][];
+        };
+        /**
          * NanobodyOptions
          * @description Authoritative website bounds and the complete flat native controls.
          */
@@ -1989,6 +2065,43 @@ export interface components {
             readonly parents: readonly components["schemas"]["VHInput"][];
         };
         /**
+         * NanobodySelectionPage
+         * @description A bounded page; visibility defaults and score ranges cover the whole result.
+         */
+        readonly NanobodySelectionPage: {
+            /** Columns */
+            readonly columns: readonly components["schemas"]["SelectionColumn"][];
+            /** Default Hidden Columns */
+            readonly default_hidden_columns: readonly string[];
+            /**
+             * Germlines
+             * @description Page-only VH germline evidence keyed by candidate_id; missing when annotation failed.
+             */
+            readonly germlines?: {
+                readonly [key: string]: components["schemas"]["GermlinePresentation"];
+            };
+            /** Limit */
+            readonly limit: number;
+            /**
+             * Nativeness Ranges
+             * @description Finite full-result VH2/VHH2 min/max before filtering and paging; zero/zero when unavailable. Visualization only; preserve raw scores and share each original score range with its delta.
+             */
+            readonly nativeness_ranges: {
+                readonly [key: string]: components["schemas"]["NativenessRange"];
+            };
+            /** Offset */
+            readonly offset: number;
+            /** Parent Ids */
+            readonly parent_ids: readonly string[];
+            readonly reference?: components["schemas"]["ReferenceInfo"] | null;
+            /** Rows */
+            readonly rows: readonly {
+                readonly [key: string]: string | number | boolean | null;
+            }[];
+            /** Total Rows */
+            readonly total_rows: number;
+        };
+        /**
          * NanobodySettings
          * @description Explicit native AbNatiV CLI defaults and fixed-batch HuDiff sampling.
          */
@@ -2018,6 +2131,22 @@ export interface components {
              * @default 0
              */
             readonly root_seed: number;
+        };
+        /**
+         * NanobodySubmission
+         * @description Original inputs plus the exact reviewed preparation, never trusted outputs.
+         */
+        readonly NanobodySubmission: {
+            /**
+             * Display Name
+             * @default Nanobody humanization
+             */
+            readonly display_name: string;
+            /** Parents */
+            readonly parents: readonly components["schemas"]["VHInput"][];
+            /** Preparation Digest */
+            readonly preparation_digest: string;
+            readonly settings?: components["schemas"]["NanobodySettings"];
         };
         /**
          * NativenessRange
@@ -2257,6 +2386,21 @@ export interface components {
              * @enum {string}
              */
             readonly resolution: "resume" | "requeue" | "cancel";
+        };
+        /**
+         * RetainedNanobodyInputs
+         * @description Original editable inputs and the saved baseline for candidate comparison.
+         */
+        readonly RetainedNanobodyInputs: {
+            /** Display Name */
+            readonly display_name: string;
+            /** Parents */
+            readonly parents: readonly components["schemas"]["VHInput"][];
+            /** Preparation Version */
+            readonly preparation_version: string;
+            /** Prepared Parents */
+            readonly prepared_parents: readonly components["schemas"]["PreparedVHPreview"][];
+            readonly settings: components["schemas"]["NanobodySettings"];
         };
         /**
          * SelectionColumn
@@ -5921,6 +6065,246 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly submit_api_v1_nanobody_humanization_jobs_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["NanobodySubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodyInputErrors"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly inputs_api_v1_nanobody_humanization_jobs__job_id__inputs_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["RetainedNanobodyInputs"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly selection_api_v1_nanobody_humanization_jobs__job_id__selection_get: {
+        readonly parameters: {
+            readonly query?: {
+                readonly descending?: boolean;
+                readonly limit?: number;
+                readonly offset?: number;
+                readonly parent_id?: string | null;
+                readonly sort_by?: string | null;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodySelectionPage"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly selection_download_api_v1_nanobody_humanization_jobs__job_id__selection_csv_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "text/csv": string;
                 };
             };
             /** @description Request Entity Too Large */

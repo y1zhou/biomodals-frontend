@@ -1,11 +1,11 @@
 import { Popover } from "@base-ui/react/popover"
 import { Menu } from "@base-ui/react/menu"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query"
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Copy, ListFilter } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 
-import { antibodyAnalysisOptions, apiErrorCode, humanizationInputs, humanizationSelection } from "@/api/client"
+import { antibodyAnalysisOptions, apiErrorCode, humanizationInputs, humanizationSelection, nanobodyInputs, nanobodySelection, nanobodySelectionCsvUrl, prepareJobDownload } from "@/api/client"
 import { ANALYSIS_VERSION } from "@/antibody-analysis"
 import { selectedEntries, selectChain, type SelectedChain } from "@/antibody-selection"
 import { useAntibodyTransfer } from "@/antibody-transfer"
@@ -20,6 +20,7 @@ import AntibodyReferenceFaq from "@/components/AntibodyReferenceFaq"
 import AntibodySequenceDialog from "@/components/AntibodySequenceDialog"
 import { ChainSelectionCell, ChainSelectionPanel } from "@/components/HumanizationChainSelection"
 import { antibodyAnalysisPath } from "@/tools"
+import NanobodyScoreGuide from "@/components/NanobodyScoreGuide"
 
 function ExpandableCell({ value }: { value: string }) {
   const [copyStatus, setCopyStatus] = useState("")
@@ -48,7 +49,7 @@ function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: n
   const delta = name.endsWith("_delta")
   const score = /_(probability|score|likeness|nativeness)$/.test(name)
   if (!score && !delta) return <span title={String(value)} className={name === "cdr_mutations" && value !== 0 ? "rounded bg-red-100 px-1 font-medium tabular-nums text-red-800" : "tabular-nums"}>{formatCandidateNumber(value)}</span>
-  const nativeness = /^pabnativ2_.*_nativeness(?:_delta)?$/.test(name)
+  const nativeness = /_nativeness(?:_delta)?$/.test(name)
   function scaled(column: string, raw: number) {
     if (!nativeness) return Math.abs(raw) <= 1 ? raw : undefined
     const range = ranges?.[column.replace(/_delta$/, "")]
@@ -68,7 +69,8 @@ function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: n
   </span>
 }
 
-export default function HumanizationResults({ jobId }: { jobId: string }) {
+export default function HumanizationResults({ jobId, nanobody = false }: { jobId: string; nanobody?: boolean }) {
+  const tool = nanobody ? "nanobody-humanization" : "humanization"
   const user = useCurrentUser()
   const principal = authenticatedPrincipal(user.data)
   const navigate = useNavigate()
@@ -78,20 +80,27 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
   const [inspected, setInspected] = useState<{ sequence: string; label: string; parentId: string; role: "vh" | "vl" } | null>(null)
   const analysisOptions = useQuery({ queryKey: ["antibody-analysis-options"], queryFn: ({ signal }) => antibodyAnalysisOptions(signal), enabled: !!authenticatedPrincipal(user.data), staleTime: Infinity, retry: false })
   const inputs = useQuery({
-    queryKey: ["humanization", "parent-inputs", principal?.user_id, jobId],
-    queryFn: ({ signal }) => humanizationInputs(jobId, signal),
+    queryKey: [tool, "parent-inputs", principal?.user_id, jobId],
+    queryFn: async ({ signal }): Promise<Record<string, Partial<Record<"vh" | "vl", string>>>> => {
+      if (nanobody) {
+        const input = await nanobodyInputs(jobId, signal)
+        return Object.fromEntries(input.prepared_parents.flatMap((parent) => parent.vh ? [[parent.id, { vh: parent.vh }]] : []))
+      }
+      const input = await humanizationInputs(jobId, signal)
+      return Object.fromEntries(input.pairs.map(({ id, vh, vl }) => [id, { vh, vl }]))
+    },
     enabled: !!principal && !!inspected && analysisOptions.data?.analysis_version === ANALYSIS_VERSION,
     staleTime: Infinity, gcTime: 0, retry: false,
     refetchOnWindowFocus: false, refetchOnReconnect: false,
   })
-  const parentalSequence = inspected ? inputs.data?.pairs.find((pair) => pair.id === inspected.parentId)?.[inspected.role] : undefined
+  const parentalSequence = inspected ? inputs.data?.[inspected.parentId]?.[inspected.role] : undefined
   useExpireSession(inputs.error)
   const [parentFilterOpen, setParentFilterOpen] = useState(false)
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({})
   const [view, setView] = useState<SelectionQuery>({ offset: 0, limit: 50, parentId: "", sortBy: "", descending: false })
   const query = useQuery({
-    queryKey: ["humanization", "selection", jobId, view],
-    queryFn: ({ signal }) => humanizationSelection(jobId, view, signal),
+    queryKey: [tool, "selection", jobId, view],
+    queryFn: async ({ signal }) => nanobody ? nanobodySelection(jobId, view, signal) : humanizationSelection(jobId, view, signal),
     enabled: Boolean(authenticatedPrincipal(user.data)),
     retry: (count, error) => apiErrorCode(error) !== "result_not_cached" && shouldRetryJobQuery(count, error),
     staleTime: Infinity,
@@ -100,6 +109,16 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
   })
   useExpireSession(query.error ?? analysisOptions.error)
   const data = query.data
+  function germlines(candidateId: string, role: "vh" | "vl") {
+    const evidence = data?.germlines?.[candidateId]
+    return evidence && ("assignment" in evidence ? evidence : evidence[role])
+  }
+  const csv = useMutation({ mutationFn: () => prepareJobDownload(jobId), retry: false, onSuccess() {
+    const link = document.createElement("a")
+    link.href = nanobodySelectionCsvUrl(jobId); link.download = ""; link.hidden = true
+    document.body.append(link); link.click(); link.remove()
+  } })
+  useExpireSession(csv.error)
   const loadingPage = query.isPending || query.isPlaceholderData
   function columnVisible(name: string) {
     return columnVisibility[name] ?? !(["is_parent", "cdr_preservation"].includes(name) || name.endsWith("_delta") || /^humatch_.*_family$/.test(name) || data?.default_hidden_columns?.includes(name))
@@ -117,16 +136,16 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
     if (!analysisOptions.data) return
     try {
       const entries = selectedEntries(selection, analysisOptions.data.max_entries_per_group)
-      setTransfer({ sourceJobId: jobId, entries })
+      setTransfer({ sourceJobId: jobId, entries, singleDomain: nanobody })
       navigate(antibodyAnalysisPath)
     } catch (error) { setSelectionError(error instanceof Error ? error.message : "The selection could not be analyzed.") }
   }
 
   return <Card className="mt-6 min-w-0">
     <CardHeader>
-      <CardTitle>Humanization candidates</CardTitle>
-      <p className="text-sm leading-7 text-muted-foreground">Compare candidates with their unchanged parents, shown as gray rows.</p>
-      <section aria-labelledby="candidate-scores-heading" className="mt-3 w-full space-y-3">
+      <CardTitle>{nanobody ? "Nanobody humanization candidates" : "Humanization candidates"}</CardTitle>
+      <p className="text-sm leading-7 text-muted-foreground">{nanobody ? "Compare candidates with their frozen prepared parents, shown as gray rows. Trimming and terminal completion are preparation, not generator mutations. Inspection uses the saved prepared baseline." : "Compare candidates with their unchanged parents, shown as gray rows."}</p>
+      {nanobody ? <NanobodyScoreGuide /> : <section aria-labelledby="candidate-scores-heading" className="mt-3 w-full space-y-3">
           <h3 className="text-lg font-semibold" id="candidate-scores-heading">Understand the ranking and scores</h3>
           <details className="text-sm leading-7 text-muted-foreground">
             <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Understand the ranking</summary>
@@ -189,17 +208,18 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
               <p>Deltas subtract the same parent’s score from the candidate’s score. Positive means a higher model score; it is not a percentage improvement or measured experimental benefit.</p>
             </div>
           </details>
-      </section>
+      </section>}
       <section aria-labelledby="candidate-controls-heading" className="mt-3 space-y-2 border-t pt-4">
         <h3 className="text-lg font-semibold" id="candidate-controls-heading">Explore the table</h3>
-        {columns.some((column) => candidateColumnLabel(column.name) === "vh_pI") ? <p className="text-sm leading-7 text-muted-foreground">VH and VL pI describe each supplied chain. VH+VL pI uses the heavy sequence followed directly by the light sequence, without a linker; it is not an average or a whole-antibody estimate.</p> : null}
+        {columns.some((column) => candidateColumnLabel(column.name) === "vh_pI") ? <p className="text-sm leading-7 text-muted-foreground">{nanobody ? "VH pI describes the supplied candidate sequence, not a germline or whole-antibody estimate." : "VH and VL pI describe each supplied chain. VH+VL pI uses the heavy sequence followed directly by the light sequence, without a linker; it is not an average or a whole-antibody estimate."}</p> : null}
         <p className="text-sm leading-7 text-muted-foreground">Numbers use up to 3 decimal places. Nonzero magnitudes below 0.001 or at least 1,000,000 use scientific notation. Hover over a number to see its full value.</p>
         <p className="text-sm leading-7 text-muted-foreground">Click a column header to sort; click again to reverse. Sorting uses full precision, with missing values last and ties resolved by parent and candidate IDs. Use the parent filter icon and Columns menu to narrow the view. The full selection.csv is in the result archive.</p>
       </section>
     </CardHeader>
     <CardContent className="min-w-0 space-y-4">
       {data?.reference ? <AntibodyReferenceFaq reference={data.reference} /> : null}
-      <ChainSelectionPanel selection={selection} maxEntries={analysisOptions.data?.max_entries_per_group} onClear={(parentId) => { setSelection((current) => parentId ? current.filter((chain) => chain.parentId !== parentId) : []); setSelectionError(null) }} onAnalyze={analyzeSelection} busy={!authenticatedPrincipal(user.data)} error={selectionError ?? (analysisOptions.error ? "Analysis limits could not be loaded. Reload them to analyze selected chains." : null)} />
+      <ChainSelectionPanel singleDomain={nanobody} selection={selection} maxEntries={analysisOptions.data?.max_entries_per_group} onClear={(parentId) => { setSelection((current) => parentId ? current.filter((chain) => chain.parentId !== parentId) : []); setSelectionError(null) }} onAnalyze={analyzeSelection} busy={!authenticatedPrincipal(user.data)} error={selectionError ?? (analysisOptions.error ? "Analysis limits could not be loaded. Reload them to analyze selected chains." : null)} />
+      {nanobody ? <div><Button variant="outline" disabled={csv.isPending || !principal} onClick={() => csv.mutate()}>{csv.isPending ? "Preparing CSV…" : "Download selection.csv"}</Button>{csv.error ? <p role="alert" className="mt-2 text-destructive">CSV download could not be prepared. {csv.error.message}</p> : null}</div> : null}
       {analysisOptions.error ? <Button variant="outline" onClick={() => void analysisOptions.refetch()}>Reload analysis limits</Button> : null}
       <div className="flex flex-wrap items-end gap-3">
         <Menu.Root modal={false}>
@@ -231,7 +251,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
       {data ? <>
         <div aria-label="Candidate table; scroll horizontally for all columns" className="max-w-full overflow-x-auto rounded-lg border focus-visible:ring-2 focus-visible:ring-ring" tabIndex={0}>
           <table aria-busy={loadingPage} className="w-full text-left text-sm">
-            <caption className="sr-only">Humanization selection.csv, page {Math.floor(data.offset / data.limit) + 1}</caption>
+            <caption className="sr-only">{nanobody ? "Nanobody" : "Humanization"} selection.csv, page {Math.floor(data.offset / data.limit) + 1}</caption>
             <thead className="border-b bg-muted/40"><tr>{visibleColumns.map((column) => <th aria-sort={view.sortBy === column.name ? view.descending ? "descending" : "ascending" : "none"} className="whitespace-nowrap px-3 py-2" key={column.name} scope="col">
               <button disabled={loadingPage} className="inline-flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-wait" onClick={() => sort(column.name)} type="button">{candidateColumnLabel(column.name)}{view.sortBy === column.name ? view.descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted-foreground" />}</button>
               {column.name === "parent_id" ? <Popover.Root open={parentFilterOpen} onOpenChange={setParentFilterOpen}>
@@ -251,7 +271,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
             {/* Keep the previous page geometry during requests without exposing stale rows. */}
             <tbody aria-hidden={loadingPage || undefined} className={loadingPage ? "invisible divide-y" : "divide-y"}>{data.rows.map((row, index) => <tr className={row.is_parent === true ? "bg-muted/60" : undefined} key={`${row.parent_id}:${row.candidate_id}:${data.offset + index}`}>
               {visibleColumns.map((column) => <td className="max-w-sm px-3 py-3 align-top" key={column.name}>
-                {(column.name === "vh" || column.name === "vl") && typeof row[column.name] === "string" && typeof row.parent_id === "string" && typeof row.candidate_id === "string" ? <ChainSelectionCell chain={{ parentId: row.parent_id, role: column.name, sequence: String(row[column.name]), candidateIds: [row.candidate_id] }} selection={selection} onChange={(chain, selected) => { setSelection((current) => selectChain(current, chain, selected)); setSelectionError(null) }} onInspect={(sequence, label) => setInspected({ sequence, label, parentId: String(row.parent_id), role: column.name === "vh" ? "vh" : "vl" })} /> : /^(vh|vl)_[vj]_gene$/.test(column.name) && data.germlines?.[String(row.candidate_id)] ? <AntibodyGeneCell germlines={data.germlines[String(row.candidate_id)][column.name.startsWith("vh") ? "vh" : "vl"]} segment={column.name.includes("_v_") ? "v" : "j"} /> : row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
+                {(column.name === "vh" || !nanobody && column.name === "vl") && typeof row[column.name] === "string" && typeof row.parent_id === "string" && typeof row.candidate_id === "string" ? <ChainSelectionCell chain={{ parentId: row.parent_id, role: column.name === "vh" ? "vh" : "vl", sequence: String(row[column.name]), candidateIds: [row.candidate_id] }} selection={selection} onChange={(chain, selected) => { setSelection((current) => selectChain(current, chain, selected)); setSelectionError(null) }} onInspect={(sequence, label) => setInspected({ sequence, label, parentId: String(row.parent_id), role: column.name === "vh" ? "vh" : "vl" })} /> : /^(vh|vl)_[vj]_gene$/.test(column.name) && germlines(String(row.candidate_id), column.name.startsWith("vh") ? "vh" : "vl") ? <AntibodyGeneCell germlines={germlines(String(row.candidate_id), column.name.startsWith("vh") ? "vh" : "vl")!} segment={column.name.includes("_v_") ? "v" : "j"} /> : row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
               </td>)}
             </tr>)}</tbody>
           </table>
@@ -275,7 +295,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
           </div>
         </div>
       </> : null}
-      {inspected ? <AntibodySequenceDialog key={`${inspected.parentId}:${inspected.role}:${inspected.sequence}`} sequence={inspected.sequence} label={inspected.label} parentalSequence={parentalSequence} parentLoading={inputs.isPending} parentUnavailable={!inputs.isPending && !parentalSequence} onClose={() => setInspected(null)} /> : null}
+      {inspected ? <AntibodySequenceDialog key={`${inspected.parentId}:${inspected.role}:${inspected.sequence}`} sequence={inspected.sequence} label={inspected.label} parentalSequence={parentalSequence} parentSource={nanobody ? "prepared" : "original"} parentLoading={inputs.isPending} parentUnavailable={!inputs.isPending && !parentalSequence} onClose={() => setInspected(null)} /> : null}
     </CardContent>
   </Card>
 }

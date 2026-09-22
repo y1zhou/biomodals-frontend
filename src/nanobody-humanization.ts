@@ -7,6 +7,9 @@ export type NanobodySettings = components["schemas"]["NanobodySettings"]
 export type NanobodyParent = components["schemas"]["VHInput"]
 export type NanobodyPreparation = components["schemas"]["NanobodyPreparation"]
 export type NanobodyPreparationRequest = components["schemas"]["NanobodyPreparationRequest"]
+export type NanobodySubmission = components["schemas"]["NanobodySubmission"]
+export type NanobodyInputs = components["schemas"]["RetainedNanobodyInputs"]
+export type NanobodySelection = components["schemas"]["NanobodySelectionPage"]
 
 export function parseNanobodyCsv(content: string): NanobodyParent[] {
   return parseCsv(content, ["id", "vhh"]).map(([id, vhh]) => ({ id, vhh: normalizeSequence(vhh) }))

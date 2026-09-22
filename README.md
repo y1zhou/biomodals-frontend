@@ -228,18 +228,33 @@ owns scientific semantics and API behavior. Rollout requires the matching API,
 frontend assets and updated humanization workflow deployment/pin for new pI/gene
 publications; historical results are not backfilled.
 
-The nanobody preparation milestone is available at
-`/tools/nanobody-humanization/new`, outside the Tool Catalog until scientific
-submission is integrated. It uses the authenticated options and preparation
-routes only. Manual ID/VH input and `id,vhh` CSV imports append to one editable,
-memory-only batch; service options supply the batch, construct and file limits.
-Preparation shows originals beside prepared parental sequences, retaining valid
-previews when other rows need correction. Input edits invalidate the entire
-reviewed preview and abort pending preparation; settings edits do not change
-the prepared sequence. No scientific Job is created by this milestone.
+Nanobody humanization is a separate Tool at `/tools/nanobody-humanization`.
+Manual ID/VH input and `id,vhh` CSV imports append to one editable, memory-only
+batch; service options supply the batch, construct and file limits. Preparation
+shows originals beside prepared parental sequences, retaining valid previews
+when other rows need correction. Input edits invalidate the entire reviewed
+preview and abort pending preparation; settings edits do not change the prepared
+sequence. Only explicit Submit starts a scientific Job. Check submission reuses
+the exact original request and idempotency key after an uncertain response.
+A changed preparation digest requires fresh preparation and review. Rerun with
+same inputs loads editable originals and settings, then requires preparation;
+it never submits automatically.
+
+Nanobody Results use bounded server-side sorting, filtering and paging, native
+CSV and archive downloads, and the shared Job lifecycle and recovery actions.
+The single VH table uses VH2/VHH2 scores and the saved prepared parent as its
+comparison baseline, including in sequence inspection. It never re-imputes
+historical inputs. Selected VH sequences survive table navigation and transfer
+to local analysis as standalone FASTA entries, without inherited ranks or
+parent comparisons; the analysis limit blocks oversized transfers without
+truncation. Missing scores remain visible as missing, and nativeness bars are
+scaled within the Job while displayed numbers retain their raw units.
 The [nanobody specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/nanobody-humanization.md)
-owns the preparation, protection and model policies. Submission and result
-integration await their exact service contracts.
+owns preparation, protection, ranking and model policies. Rollout requires the
+matching API/frontend and a deployed, pinned nanobody workflow before restarting
+the API, whose startup checks cover every registered Tool. Offline verification
+uses native local preparation/annotation and deterministic fake remote science;
+it does not verify generator GPU inference or image installation.
 
 Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
 and `humatch_vl_best_family_probability` as a fifth Pareto objective to

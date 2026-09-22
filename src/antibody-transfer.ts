@@ -4,6 +4,7 @@ import type { SelectedEntry } from "@/antibody-selection"
 export interface AntibodyTransfer {
   sourceJobId: string
   entries: readonly SelectedEntry[]
+  singleDomain?: boolean
 }
 
 export const AntibodyTransferContext = createContext<{

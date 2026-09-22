@@ -90,7 +90,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
   </div>
 }
 
-export default function AntibodySequenceDialog({ sequence, label, parentalSequence, parentLoading = false, parentUnavailable = false, onClose }: { sequence: string; label: string; parentalSequence?: string; parentLoading?: boolean; parentUnavailable?: boolean; onClose: () => void }) {
+export default function AntibodySequenceDialog({ sequence, label, parentalSequence, parentSource = "original", parentLoading = false, parentUnavailable = false, onClose }: { sequence: string; label: string; parentalSequence?: string; parentSource?: "original" | "prepared"; parentLoading?: boolean; parentUnavailable?: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const principal = authenticatedPrincipal(useCurrentUser().data)
@@ -133,6 +133,6 @@ export default function AntibodySequenceDialog({ sequence, label, parentalSequen
       {copyStatus && copyStatus !== "Copied" ? <p role="alert" className="text-sm text-destructive">{copyStatus}</p> : null}
     </div>
     {parentUnavailable ? <p role="status" className="mb-4 rounded-lg bg-muted p-3 text-sm leading-6">Parental comparison is unavailable because the retained parent sequence could not be loaded. Numbering, germline details and full-sequence copy remain available.</p> : null}
-    {options.data && !compatible ? <p role="alert">Sequence details require an updated API (analysis version {ANALYSIS_VERSION}). You can still copy the full sequence.</p> : options.error ? <div role="alert"><p>Sequence options could not be loaded. {options.error.message}</p><Button variant="outline" onClick={() => void options.refetch()}>Try again</Button></div> : options.isPending || parentLoading || query.isFetching ? <p role="status" className="flex gap-2 py-8"><LoaderCircle aria-hidden="true" className="animate-spin" />{parentLoading ? "Loading the original parent sequence…" : "Numbering this sequence…"}</p> : query.error ? <div role="alert"><p>Sequence details could not be loaded. {query.error.message}</p><Button className="mt-3" disabled={!principal || !compatible} variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : query.data ? <NumberedSequence key={scheme} data={query.data} /> : null}
+    {options.data && !compatible ? <p role="alert">Sequence details require an updated API (analysis version {ANALYSIS_VERSION}). You can still copy the full sequence.</p> : options.error ? <div role="alert"><p>Sequence options could not be loaded. {options.error.message}</p><Button variant="outline" onClick={() => void options.refetch()}>Try again</Button></div> : options.isPending || parentLoading || query.isFetching ? <p role="status" className="flex gap-2 py-8"><LoaderCircle aria-hidden="true" className="animate-spin" />{parentLoading ? `Loading the ${parentSource} parent sequence…` : "Numbering this sequence…"}</p> : query.error ? <div role="alert"><p>Sequence details could not be loaded. {query.error.message}</p><Button className="mt-3" disabled={!principal || !compatible} variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : query.data ? <NumberedSequence key={scheme} data={query.data} /> : null}
   </dialog>
 }

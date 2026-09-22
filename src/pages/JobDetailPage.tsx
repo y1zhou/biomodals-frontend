@@ -61,6 +61,8 @@ import {
   humanizationPaths,
   alphafold3Paths,
   gromacsPaths,
+  nanobodyPaths,
+  toolKey,
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
@@ -83,7 +85,7 @@ function RelativeTimestamp({ value }: { value: number }) {
 }
 
 function JobUnavailable({ tool }: { tool: string }) {
-  const selected = availableTools.find((candidate) => candidate.slug === tool)
+  const selected = availableTools.find((candidate) => toolKey(candidate) === tool)
   return (
     <main className="mx-auto max-w-xl px-6 py-24 text-center">
       <XCircle aria-hidden="true" className="mx-auto size-9 text-muted-foreground" />
@@ -221,7 +223,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
 
   const job = jobQuery.data
   if (job.tool !== expectedTool) return <JobUnavailable tool={expectedTool} />
-  const tool = availableTools.find((candidate) => candidate.slug === job.tool)
+  const tool = availableTools.find((candidate) => toolKey(candidate) === job.tool)
   const presentation = jobPresentation[job.state]
   const canCancel = job.state === "queued" || job.state === "running"
   const canDownload = job.state === "succeeded" || job.state === "partial"
@@ -394,7 +396,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                 {canStartAgain && job.tool === "alphafold3" ? <Link className={buttonVariants({ variant: "outline" })} to={alphafold3Paths.rerun(job.job_id)}>
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}
-                {canStartAgain && job.tool !== "humanization" && job.tool !== "alphafold3" ? (
+                {job.tool === "nanobody_humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={nanobodyPaths.rerun(job.job_id)}><RotateCcw aria-hidden="true" />Rerun with same inputs</Link> : null}
+                {canStartAgain && job.tool !== "humanization" && job.tool !== "alphafold3" && job.tool !== "nanobody_humanization" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job
@@ -423,6 +426,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
 
           {job.tool === "alphafold3" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading prediction viewer…</p>}><AlphaFold3Results jobId={job.job_id} key={job.job_id} /></Suspense> : null}
           {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
+          {job.tool === "nanobody_humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} nanobody /></Suspense> : null}
           {job.tool === "gromacs" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading trajectory overview…</p>}><GromacsResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
