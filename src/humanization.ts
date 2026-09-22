@@ -22,6 +22,20 @@ export function settingMetadata(options: HumanizationOptions | undefined, name: 
 
 export interface SelectionQuery { offset: number; limit: number; parentId: string; sortBy: string; descending: boolean }
 
+export const candidateColumnLabel = (name: string) => name.replace(/_pi$/, "_pI")
+
+// Historical CSVs keep their original names/order; only the webpage changes.
+export function candidateColumns(columns: HumanizationSelection["columns"]) {
+  const displayed = [...columns]
+  const vh = displayed.findIndex(({ name }) => name === "vh")
+  const vl = displayed.findIndex(({ name }) => name === "vl")
+  if (vh !== -1 && vl !== -1) {
+    const [light] = displayed.splice(vl, 1)
+    displayed.splice(displayed.findIndex(({ name }) => name === "vh") + 1, 0, light)
+  }
+  return displayed
+}
+
 export function formatCandidateNumber(value: number) {
   const magnitude = Math.abs(value)
   if (magnitude !== 0 && (magnitude < 0.001 || magnitude >= 1_000_000)) return value.toExponential(3)

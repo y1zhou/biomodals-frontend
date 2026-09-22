@@ -142,12 +142,15 @@ sorting, and the archive retain full precision. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser.
 
-New humanization publications put `vh_pi`, `vl_pi`, `vh_vl_pi`, `vh_v_gene`,
-`vh_j_gene`, `vl_v_gene` and `vl_j_gene` immediately after `vh` in the native
-CSV and table. The three pIs describe the supplied candidate chains and their
-literal VH+VL concatenation without a linker; they are not germline pIs.
+New schema-6 humanization publications put `vh` and `vl` together, followed by
+`vh_pI`, `vl_pI`, `vh_vl_pI`, `vh_v_gene`, `vh_j_gene`, `vl_v_gene` and
+`vl_j_gene` in the native CSV and table. The three pIs describe the supplied
+candidate chains and their literal VH+VL concatenation without a linker;
+they are not germline pIs.
 Gene details include page-bounded species, allele ties and therapeutic
-reference frequencies. Historical tables keep their original columns.
+reference frequencies. Historical webpages also display adjacent chains and
+`_pI` labels, while sorting uses their original raw keys. Historical CSVs and
+archives stay unchanged; missing pI/gene columns are not backfilled.
 Clicking a sequence opens a numbered dialog with
 IMGT, Kabat, Chothia, Martin or AHo conventions, CDR backgrounds and potential
 liability motifs. Copy sequence includes the full input; clicking outside or
@@ -184,7 +187,7 @@ the results heading receives focus and scrolls into view, respecting reduced
 motion. Sorting, paging and sequence inspection do not repeat this navigation;
 request errors remain at the form.
 
-Analysis version 4 reports pI, molecular weight and mean residue hydrophobicity
+Analysis version 5 reports pI, molecular weight and mean residue hydrophobicity
 on Biopython's **BlackMould** scale (the API key remains `gravy`). Extinction
 metrics are no longer included. Metrics and liability checks use the full
 supplied sequence, including tags and tails; numbering and germline assignment
@@ -199,9 +202,14 @@ sequences, including locally unaligned ends, joined without D or a linker.
 The first native hit for each segment supplies both this estimate and the
 dialog's local alignment; all tied assignments remain in gene details. Local
 analysis tables display two decimals while sorting and CSV retain full
-precision. The dialog presents one native Germline–Diffs–Input grid, with
-Input in bold and combined V/J reference identities. Humanization adds
-Diffs–Parental rows below Input. The API supplies the common axis and original
+precision. Standalone inspection presents one native Germline–Diffs–Input grid,
+with Input in bold and combined V/J reference identities. Humanization shows
+Germline (humanized), bold Humanized, Parental and Germline (parental), with
+both sequences' independently assigned V/J species and genes above. Three
+unlabeled, accessibly described difference strips compare Humanized to its
+germline, Humanized to Parental, and Parental to its own germline. If parental
+numbering fails, the original sequence comparison remains usable and its
+germline is marked unavailable. The API supplies the common axis and original
 input indices; independent reference-only gaps stay separate. Unmatched
 germline junctions and uncovered ends have blank diffs without asserting a
 match or deletion. The full supplied sequence, including tails, appears once,
@@ -209,7 +217,7 @@ with CDR/liability overlays and numbering or tail identity on hover/focus.
 Alignment reference names and total tied-record counts disclose the displayed
 representative; no browser alignment or germline reconstruction is performed.
 
-The updated interface requires analysis API version 4 before requesting
+The updated interface requires analysis API version 5 before requesting
 metrics or sequence annotations, avoiding mislabeled older-scale results.
 
 Analysis drafts, results and chain handoff exist only in memory. They survive

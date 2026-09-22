@@ -48,8 +48,8 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   expect(result.total_rows).toBe(300)
   expect(result.columns.length).toBeGreaterThan(20)
   const columnNames = result.columns.map((column: { name: string }) => column.name)
-  const piAndGenes = ["vh_pi", "vl_pi", "vh_vl_pi", "vh_v_gene", "vh_j_gene", "vl_v_gene", "vl_j_gene"]
-  expect(columnNames.slice(columnNames.indexOf("vh") + 1, columnNames.indexOf("vh") + 8)).toEqual(piAndGenes)
+  const piAndGenes = ["vh_pI", "vl_pI", "vh_vl_pI", "vh_v_gene", "vh_j_gene", "vl_v_gene", "vl_j_gene"]
+  expect(columnNames.slice(columnNames.indexOf("vh"), columnNames.indexOf("vh") + 9)).toEqual(["vh", "vl", ...piAndGenes])
   for (const name of piAndGenes.slice(0, 3)) expect(result.rows[0][name]).toEqual(expect.any(Number))
   expect(Object.keys(result.germlines)).toHaveLength(50)
   expect(result.reference.status).toBe("available")
@@ -81,7 +81,7 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   const beforeAnalysis = JSON.parse(await readFile(path.join(root, "stats.json"), "utf8")).submit_calls
   const table = page.getByRole("table", { name: "Humanization selection.csv, page 1", exact: true })
   const visibleNames = await table.locator("thead th > button").allTextContents()
-  expect(visibleNames.slice(visibleNames.indexOf("vh") + 1, visibleNames.indexOf("vh") + 8)).toEqual(piAndGenes)
+  expect(visibleNames.slice(visibleNames.indexOf("vh"), visibleNames.indexOf("vh") + 9)).toEqual(["vh", "vl", ...piAndGenes])
   const parentDetail = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence"))
   await table.getByRole("button", { name: /^Inspect VH from/ }).nth(1).click()
   const detailResponse = await parentDetail
@@ -89,9 +89,18 @@ test("humanization uses the real offline API for 100 pairs, bounded Results, and
   const detail = await detailResponse.json()
   const dialog = page.getByRole("dialog")
   const alignmentRows = dialog.getByRole("region", { name: "Sequence alignment", exact: true }).locator("tbody tr")
-  await expect(alignmentRows.locator("th")).toHaveText(["Germline", "Diffs", "Input", "Diffs", "Parental"])
-  expect((await alignmentRows.nth(3).locator("td").allTextContents()).join("")).toBe(detail.alignment.parental_diffs)
-  expect((await alignmentRows.nth(4).locator("td").allTextContents()).join("")).toBe(detail.alignment.parental)
+  async function checkAlignment(body: typeof detail) {
+    await expect(alignmentRows.locator("th")).toHaveText(["Germline (humanized)", "Humanized relative to its germline", "Humanized", "Humanized relative to parental", "Parental", "Parental relative to its germline", "Germline (parental)"])
+    for (const [index, name] of ["germline", "germline_diffs", "input", "parental_diffs", "parental", "parental_germline_diffs", "parental_germline"].entries()) expect((await alignmentRows.nth(index).locator("td").allTextContents()).join("")).toBe(body.alignment[name])
+    expect(body.parental_germlines).toHaveLength(2)
+    for (const reference of body.parental_germlines) for (const name of reference.reference_names) await expect(dialog.getByText(name, { exact: false }).first()).toBeVisible()
+  }
+  await checkAlignment(detail)
+  for (const scheme of ["kabat", "chothia", "martin", "aho"]) {
+    const changed = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence"))
+    await dialog.getByLabel("Numbering scheme").selectOption(scheme)
+    await checkAlignment(await (await changed).json())
+  }
   await dialog.getByRole("button", { name: "Close sequence details" }).click()
   await table.getByRole("checkbox", { name: /^Select VH from/ }).first().check()
   await table.getByRole("checkbox", { name: /^Select VL from/ }).first().check()

@@ -1137,7 +1137,7 @@ export interface components {
         readonly AnalysisOptions: {
             /**
              * Analysis Version
-             * @default 4
+             * @default 5
              */
             readonly analysis_version: string;
             /**
@@ -2173,7 +2173,8 @@ export interface components {
          * @description Native comparisons projected onto one full-input display axis.
          *
          *     Spaces mean unavailable reference coverage, not a match or deletion.
-         *     Both difference rows describe Input relative to their reference. Independent
+         *     Differences describe Input relative to its germline or parent, and Parent
+         *     relative to its own germline. Independent
          *     reference-only columns are separate: no germline/parent homology is inferred.
          */
         readonly SequenceAlignment: {
@@ -2189,6 +2190,10 @@ export interface components {
             readonly parental: string | null;
             /** Parental Diffs */
             readonly parental_diffs: string | null;
+            /** Parental Germline */
+            readonly parental_germline: string | null;
+            /** Parental Germline Diffs */
+            readonly parental_germline_diffs: string | null;
         };
         /**
          * SequenceDetail
@@ -2213,6 +2218,10 @@ export interface components {
             readonly germlines: readonly components["schemas"]["GermlineReference"][];
             /** Liabilities */
             readonly liabilities: readonly components["schemas"]["Liability"][];
+            /** Parental Germline Error */
+            readonly parental_germline_error: string | null;
+            /** Parental Germlines */
+            readonly parental_germlines: readonly components["schemas"]["GermlineReference"][];
             /** Residues */
             readonly residues: readonly components["schemas"]["NumberedResidue"][];
             /**

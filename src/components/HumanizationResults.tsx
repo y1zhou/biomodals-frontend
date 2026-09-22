@@ -12,7 +12,7 @@ import { useAntibodyTransfer } from "@/antibody-transfer"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatCandidateNumber, type HumanizationSelection, type SelectionQuery } from "@/humanization"
+import { candidateColumnLabel, candidateColumns, formatCandidateNumber, type HumanizationSelection, type SelectionQuery } from "@/humanization"
 import { shouldRetryJobQuery } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
 import AntibodyGeneCell from "@/components/AntibodyGeneCell"
@@ -104,7 +104,8 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
   function columnVisible(name: string) {
     return columnVisibility[name] ?? !(["is_parent", "cdr_preservation"].includes(name) || name.endsWith("_delta") || /^humatch_.*_family$/.test(name) || data?.default_hidden_columns?.includes(name))
   }
-  const visibleColumns = data?.columns.filter((column) => columnVisible(column.name)) ?? []
+  const columns = candidateColumns(data?.columns ?? [])
+  const visibleColumns = columns.filter((column) => columnVisible(column.name))
   const pageCount = Math.max(1, Math.ceil((data?.total_rows ?? 0) / view.limit))
   const currentPage = Math.floor((data?.offset ?? 0) / view.limit) + 1
   function sort(column: string) {
@@ -191,7 +192,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
       </section>
       <section aria-labelledby="candidate-controls-heading" className="mt-3 space-y-2 border-t pt-4">
         <h3 className="text-lg font-semibold" id="candidate-controls-heading">Explore the table</h3>
-        {data?.columns.some((column) => column.name === "vh_pi") ? <p className="text-sm leading-7 text-muted-foreground">VH and VL pI describe each supplied chain. VH+VL pI uses the heavy sequence followed directly by the light sequence, without a linker; it is not an average or a whole-antibody estimate.</p> : null}
+        {columns.some((column) => candidateColumnLabel(column.name) === "vh_pI") ? <p className="text-sm leading-7 text-muted-foreground">VH and VL pI describe each supplied chain. VH+VL pI uses the heavy sequence followed directly by the light sequence, without a linker; it is not an average or a whole-antibody estimate.</p> : null}
         <p className="text-sm leading-7 text-muted-foreground">Numbers use up to 3 decimal places. Nonzero magnitudes below 0.001 or at least 1,000,000 use scientific notation. Hover over a number to see its full value.</p>
         <p className="text-sm leading-7 text-muted-foreground">Click a column header to sort; click again to reverse. Sorting uses full precision, with missing values last and ties resolved by parent and candidate IDs. Use the parent filter icon and Columns menu to narrow the view. The full selection.csv is in the result archive.</p>
       </section>
@@ -210,9 +211,9 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
               <Menu.Popup className="max-h-[min(24rem,var(--available-height))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
                 <Menu.Item className="cursor-pointer rounded px-3 py-2 font-medium outline-none data-highlighted:bg-accent" closeOnClick={false} onClick={() => setColumnVisibility(Object.fromEntries(data?.columns.map(({ name }) => [name, true]) ?? []))}>Show all columns</Menu.Item>
                 <Menu.Separator className="my-1 border-t" />
-                {data?.columns.map((column) => <Menu.CheckboxItem checked={columnVisible(column.name)} className="flex cursor-pointer items-start gap-2 rounded px-3 py-2 text-sm outline-none data-highlighted:bg-accent" closeOnClick={false} key={column.name} onCheckedChange={(checked) => setColumnVisibility((current) => ({ ...current, [column.name]: checked }))}>
+                {columns.map((column) => <Menu.CheckboxItem checked={columnVisible(column.name)} className="flex cursor-pointer items-start gap-2 rounded px-3 py-2 text-sm outline-none data-highlighted:bg-accent" closeOnClick={false} key={column.name} onCheckedChange={(checked) => setColumnVisibility((current) => ({ ...current, [column.name]: checked }))}>
                   <span className="mt-1 size-4 shrink-0"><Menu.CheckboxItemIndicator><Check aria-hidden="true" className="size-4" /></Menu.CheckboxItemIndicator></span>
-                  <span className="break-all">{column.name}</span>
+                  <span className="break-all">{candidateColumnLabel(column.name)}</span>
                 </Menu.CheckboxItem>)}
               </Menu.Popup>
             </Menu.Positioner>
@@ -220,7 +221,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
         </Menu.Root>
       </div>
       <div aria-live="polite" className="min-h-12 text-sm text-muted-foreground" role="status">
-        <p className="truncate" title={view.sortBy || undefined}>{loadingPage ? "Loading candidate page…" : view.sortBy ? `Sorted by ${view.sortBy} (${view.descending ? "descending" : "ascending"}).` : "Original workflow order."}</p>
+        <p className="truncate" title={candidateColumnLabel(view.sortBy) || undefined}>{loadingPage ? "Loading candidate page…" : view.sortBy ? `Sorted by ${candidateColumnLabel(view.sortBy)} (${view.descending ? "descending" : "ascending"}).` : "Original workflow order."}</p>
         {view.sortBy && !loadingPage ? <button className="cursor-pointer text-foreground underline underline-offset-4" onClick={() => setView({ ...view, offset: 0, sortBy: "", descending: false })} type="button">Restore default order</button> : null}
       </div>
       {query.error ? <div role="alert" className="text-sm text-destructive">
@@ -232,7 +233,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
           <table aria-busy={loadingPage} className="w-full text-left text-sm">
             <caption className="sr-only">Humanization selection.csv, page {Math.floor(data.offset / data.limit) + 1}</caption>
             <thead className="border-b bg-muted/40"><tr>{visibleColumns.map((column) => <th aria-sort={view.sortBy === column.name ? view.descending ? "descending" : "ascending" : "none"} className="whitespace-nowrap px-3 py-2" key={column.name} scope="col">
-              <button disabled={loadingPage} className="inline-flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-wait" onClick={() => sort(column.name)} type="button">{column.name}{view.sortBy === column.name ? view.descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted-foreground" />}</button>
+              <button disabled={loadingPage} className="inline-flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-wait" onClick={() => sort(column.name)} type="button">{candidateColumnLabel(column.name)}{view.sortBy === column.name ? view.descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted-foreground" />}</button>
               {column.name === "parent_id" ? <Popover.Root open={parentFilterOpen} onOpenChange={setParentFilterOpen}>
                 <Popover.Trigger aria-label={view.parentId ? `Filter by parent (active: ${view.parentId})` : "Filter by parent"} className={`ml-1 inline-flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent ${view.parentId ? "bg-primary/10 text-primary" : "text-muted-foreground"}`} disabled={loadingPage}>
                   <ListFilter aria-hidden="true" className="size-4" />

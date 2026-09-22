@@ -11,10 +11,31 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
   { code: "evaluate", label: "Evaluate and rank candidates", outcome: "partial", started_at: "2026-09-07T00:00:45Z", ended_at: "2026-09-07T00:01:00Z" },
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "sapiens_vh_mean_probability"].map((name) => ({ name, type: ["quality_tier", "panel_order", "sapiens_vh_mean_probability"].includes(name) ? "number" : "string" }))
-const analysisOptions = { max_groups: 2, max_entries_per_group: 1000, max_chain_length: 512, max_request_bytes: 4194304, schemes: ["imgt", "kabat", "chothia", "martin", "aho"], default_scheme: "imgt", analysis_version: "4", arpeggia_version: "0.10.1" }
+const analysisOptions = { max_groups: 2, max_entries_per_group: 1000, max_chain_length: 512, max_request_bytes: 4194304, schemes: ["imgt", "kabat", "chothia", "martin", "aho"], default_scheme: "imgt", analysis_version: "5", arpeggia_version: "0.10.1" }
 const emptyAnalysis = { groups: [{ id: "Group 1", entries: [], issues: [] }], reference: { status: "unavailable", source_url: "https://example.test/reference.csv", detail: "Offline reference unavailable" } }
 
-for (const version of ["1", "2", "3"]) test(`analysis version ${version} requires an API update before displaying current metrics`, async ({ page }) => {
+for (const suffix of ["pi", "pI"]) test(`candidate headers keep chains adjacent and preserve ${suffix} sorting keys`, async ({ page }) => {
+  await mockApi(page)
+  const names = suffix === "pi" ? ["vh", "vh_pi", "vl_pi", "vh_vl_pi", "vh_v_gene", "vl"] : ["vh", "vl", "vh_pI", "vl_pI", "vh_vl_pI", "vh_v_gene"]
+  await page.route("**/selection?*", (route) => route.fulfill({ json: {
+    columns: names.map((name) => ({ name, type: name.endsWith(suffix) ? "number" : "string" })),
+    rows: [{ vh: "ACDE", vl: "EFGH", [`vh_${suffix}`]: 6.78912 }], total_rows: 1, offset: 0, limit: 50, parent_ids: [], default_hidden_columns: [], nativeness_ranges: {}, germlines: null, reference: null,
+  } }))
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  const table = page.getByRole("table", { name: "Humanization selection.csv, page 1", exact: true })
+  await expect(table.locator("thead th > button")).toHaveText(["vh", "vl", "vh_pI", "vl_pI", "vh_vl_pI", "vh_v_gene"])
+  const sorted = page.waitForResponse((response) => new URL(response.url()).searchParams.get("sort_by") === `vh_${suffix}`)
+  await table.getByRole("button", { name: "vh_pI", exact: true }).click()
+  await sorted
+  await expect(page.getByText("Sorted by vh_pI (ascending).", { exact: true })).toBeVisible()
+  await expect(table.getByTitle("6.78912", { exact: true })).toHaveText("6.789")
+  await page.getByRole("button", { name: "Columns", exact: true }).click()
+  await page.getByRole("menuitemcheckbox", { name: "vh_pI", exact: true }).click()
+  await page.keyboard.press("Escape")
+  await expect(table.locator("thead th > button")).toHaveText(["vh", "vl", "vl_pI", "vh_vl_pI", "vh_v_gene"])
+})
+
+for (const version of ["1", "2", "3", "4"]) test(`analysis version ${version} requires an API update before displaying current metrics`, async ({ page }) => {
   const api = await mockApi(page)
   await page.route("**/antibody-sequence-analysis/options", (route) => route.fulfill({ json: { ...analysisOptions, analysis_version: version } }))
   await page.goto("/tools/antibody-sequence-analysis")
@@ -27,21 +48,24 @@ for (const version of ["1", "2", "3"]) test(`analysis version ${version} require
   expect(api.requests.some((request) => /POST .*antibody-sequence-analysis\/(sequence|analyze)/.test(request))).toBe(false)
 })
 
-test("common native alignment preserves full input, separate gaps and both difference rows", async ({ page }) => {
+test("common native alignment preserves full input, separate gaps and three difference strips", async ({ page }) => {
   await mockApi(page)
   const sequence = "ACDEFGHIKLMNPQRSTVWY"
-  const inputIndices = [0, 1, 2, null, 3, 4, null, ...Array.from({ length: sequence.length - 5 }, (_, i) => i + 5)]
+  const inputIndices = [0, 1, 2, null, 3, 4, null, null, ...Array.from({ length: sequence.length - 5 }, (_, i) => i + 5)]
   const aligned = {
     input_indices: inputIndices,
-    input: inputIndices.map((index) => index === null ? "-" : sequence[index]).join(""),
+    input: inputIndices.map((index, column) => index === null ? column === 7 ? " " : "-" : sequence[index]).join(""),
     germline: inputIndices.map((index, column) => index === null ? column === 3 ? "K" : " " : index < 2 || index >= 18 ? " " : index === 4 || index === 11 || index === 12 ? "-" : sequence[index]).join(""),
     germline_diffs: inputIndices.map((index, column) => column === 3 ? "-" : index === 4 ? "+" : " ").join(""),
-    parental: inputIndices.map((index, column) => index === null ? column === 6 ? "R" : " " : index === 10 ? "V" : sequence[index]).join(""),
+    parental: inputIndices.map((index, column) => index === null ? column === 6 ? "R" : column === 7 ? "-" : " " : index === 10 ? "V" : sequence[index]).join(""),
     parental_diffs: inputIndices.map((index, column) => column === 6 ? "-" : index === 10 ? "x" : " ").join(""),
+    parental_germline: inputIndices.map((index, column) => index === null ? column === 7 ? "W" : " " : index === 2 ? "A" : sequence[index]).join(""),
+    parental_germline_diffs: inputIndices.map((index, column) => column === 7 ? "-" : index === 2 ? "x" : " ").join(""),
   }
+  let parentalNumberingFailed = false
   await page.route("**/antibody-sequence-analysis/sequence", (route) => {
     const input = route.request().postDataJSON()
-    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: "H", domain_span: [2, 18], residues: Array.from({ length: 16 }, (_, index) => ({ input_index: index + 2, label: String(index + 102), region: index >= 8 && index < 11 ? "CDR1" : "FR1" })), liabilities: [{ kind: "methionine", start: 10, end: 11 }], diagnostics: [], error: null, germlines: [{ segment: "v", reference_ids: ["test-reference"], reference_names: ["Homo sapiens IGHV1*01"], tied_reference_count: 3 }, { segment: "j", reference_ids: ["j-reference"], reference_names: ["Homo sapiens IGHJ1*01"], tied_reference_count: 1 }], alignment: aligned } })
+    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: "H", domain_span: [2, 18], residues: Array.from({ length: 16 }, (_, index) => ({ input_index: index + 2, label: String(index + 102), region: index >= 8 && index < 11 ? "CDR1" : "FR1" })), liabilities: [{ kind: "methionine", start: 10, end: 11 }], diagnostics: [], error: null, germlines: [{ segment: "v", reference_ids: ["test-reference"], reference_names: ["Homo sapiens IGHV1*01"], tied_reference_count: 3 }, { segment: "j", reference_ids: ["j-reference"], reference_names: ["Homo sapiens IGHJ1*01"], tied_reference_count: 1 }], parental_germlines: parentalNumberingFailed ? [] : [{ segment: "v", reference_ids: ["parent-v"], reference_names: ["Mus musculus IGHV2*01"], tied_reference_count: 1 }, { segment: "j", reference_ids: ["parent-j"], reference_names: ["Mus musculus IGHJ2*01"], tied_reference_count: 1 }], parental_germline_error: parentalNumberingFailed ? "The parental domain could not be numbered." : null, alignment: parentalNumberingFailed ? { ...aligned, parental_germline: null, parental_germline_diffs: null } : aligned } })
   })
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
   await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
@@ -49,11 +73,17 @@ test("common native alignment preserves full input, separate gaps and both diffe
   const alignment = dialog.getByRole("region", { name: "Sequence alignment", exact: true })
   await expect(alignment).toContainText("Representative of 3 tied reference records")
   await expect(alignment).toContainText("Homo sapiens IGHJ1*01")
+  await expect(alignment).toContainText("Humanized V/J:")
+  await expect(alignment).toContainText("Parental V/J:")
+  await expect(alignment).toContainText("Mus musculus IGHV2*01")
+  await expect(alignment).toContainText("Mus musculus IGHJ2*01")
   const rows = alignment.locator("tbody tr")
-  await expect(rows.locator("th")).toHaveText(["Germline", "Diffs", "Input", "Diffs", "Parental"])
-  for (const [index, value] of [aligned.germline, aligned.germline_diffs, aligned.input, aligned.parental_diffs, aligned.parental].entries()) expect((await rows.nth(index).locator("td").allTextContents()).join("")).toBe(value)
+  await expect(rows.locator("th")).toHaveText(["Germline (humanized)", "Humanized relative to its germline", "Humanized", "Humanized relative to parental", "Parental", "Parental relative to its germline", "Germline (parental)"])
+  for (const index of [1, 3, 5]) await expect(rows.nth(index).locator("th > span")).toHaveClass("sr-only")
+  for (const [index, value] of [aligned.germline, aligned.germline_diffs, aligned.input, aligned.parental_diffs, aligned.parental, aligned.parental_germline_diffs, aligned.parental_germline].entries()) expect((await rows.nth(index).locator("td").allTextContents()).join("")).toBe(value)
   await expect(rows.nth(2)).toHaveClass(/font-bold/)
   await expect(alignment.getByTitle("Input gap", { exact: true })).toHaveCount(2)
+  await expect(alignment.getByTitle("No input residue", { exact: true })).toHaveText(" ")
   const residues = alignment.locator('span[tabindex="0"]')
   await expect(residues).toHaveCount(sequence.length)
   const methionine = residues.nth(10)
@@ -65,6 +95,12 @@ test("common native alignment preserves full input, separate gaps and both diffe
   await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Unnumbered prefix")
   await residues.last().focus()
   await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Unnumbered suffix")
+  parentalNumberingFailed = true
+  await dialog.getByLabel("Numbering scheme").selectOption("kabat")
+  await expect(dialog.getByRole("status").filter({ hasText: "Parental germline" })).toContainText("The sequence comparison remains available")
+  await expect(rows).toHaveCount(6)
+  expect((await rows.nth(4).locator("td").allTextContents()).join("")).toBe(aligned.parental)
+  await expect(rows.nth(5)).toContainText("Not available")
 })
 
 test("parent lookup is lazy, role-matched and reused across candidates of different parents", async ({ page }) => {
@@ -83,7 +119,7 @@ test("parent lookup is lazy, role-matched and reused across candidates of differ
   await page.route("**/antibody-sequence-analysis/sequence", (route) => {
     const input = route.request().postDataJSON()
     details.push(input)
-    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germlines: [], alignment: null, liabilities: [], diagnostics: [], error: null } })
+    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germlines: [], parental_germlines: [], parental_germline_error: null, alignment: null, liabilities: [], diagnostics: [], error: null } })
   })
   await page.goto(`/tools/humanization/jobs/${job.job_id}`)
   await expect(page.getByRole("button", { name: /^Inspect VH from/ }).first()).toBeVisible()
@@ -140,7 +176,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
     if (url.pathname.endsWith("/antibody-sequence-analysis/options")) return respond(analysisOptions)
     if (url.pathname.endsWith("/antibody-sequence-analysis/sequence")) {
       const input = request.postDataJSON()
-      return respond({ ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germlines: [], alignment: null, liabilities: [], diagnostics: [], error: "No antibody domain in this short fixture sequence." })
+      return respond({ ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germlines: [], parental_germlines: [], parental_germline_error: null, alignment: null, liabilities: [], diagnostics: [], error: "No antibody domain in this short fixture sequence." })
     }
     if (url.pathname.endsWith(`/humanization/jobs/${job.job_id}/inputs`)) return respond({ display_name: job.display_name, pairs: [{ id: "ab_001", vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG" }], settings: options.defaults })
     if (url.pathname.endsWith("/humanization/options")) return respond({ ...options, max_pairs: maxPairs, defaults: legacyOptions ? Object.fromEntries(Object.entries(options.defaults).filter(([name]) => name !== "pabnativ2_num_seeds")) : options.defaults })
