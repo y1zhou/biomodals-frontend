@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test"
-import { analysisCsv, analysisIssues, analysisValues, compareAnalysisValues, type AnalysisEntry } from "../src/antibody-analysis"
+import { analysisColumns, analysisCsv, analysisFasta, analysisIssues, analysisValues, compareAnalysisValues, germlineAlignmentColumns, type AnalysisEntry } from "../src/antibody-analysis"
 
 const unassigned: AnalysisEntry = {
   id: 'unnumbered,"chain"', unassigned: {
-    sequence: "ACDE", metrics: { pi: 5.123456789, molecular_weight_kda: 0.456789, gravy: -0.775, extinction_reduced: 0, extinction_oxidized: 125 },
+    sequence: "ACDE", metrics: { pi: 5.123456789, molecular_weight_kda: 0.456789, gravy: 0.34175 }, germline_pi: null,
     germlines: { assignment: { chain_type: null, v_gene: null, j_gene: null, v: [], j: [], diagnostics: [], error: "Numbering failed" }, v_usage: [], j_usage: [] },
   }, issues: [],
 }
@@ -24,10 +24,52 @@ test("CSV preserves full precision, sequences, errors and escaped IDs", () => {
   expect(csv).toContain('"ACDE"')
   expect(csv).toContain('"Unassigned chain: Numbering failed"')
   expect(csv).not.toContain("quality_tier")
+  expect(csv).toContain('"0.34175"')
+  expect(analysisColumns.find((column) => column.name === "vh_gravy")?.label).toBe("VH GRAVY (BlackMould)")
+})
+
+test("selected FASTA keeps original order and intact pairs or standalone sequences", () => {
+  const chain = unassigned.unassigned!
+  const group = { id: "Group 1", entries: [
+    { id: "pair", vh: chain, vl: { ...chain, sequence: "GGG" } },
+    { id: "heavy", vh: chain },
+    { id: "light", vl: { ...chain, sequence: "DDD" } },
+    { ...unassigned, id: "unassigned" },
+    { id: "invalid", issues: [{ code: "invalid_sequence", detail: "Invalid amino acid" }] },
+  ] }
+  expect(analysisFasta(group, new Set([3, 4, 2, 0]))).toBe(">pair\nACDE:GGG\n>light\nDDD\n>unassigned\nACDE")
+  expect(analysisFasta(group, new Set([1]))).toBe(">heavy\nACDE")
+  expect(analysisFasta(group, new Set())).toBe("")
 })
 
 test("numeric ordering retains sub-display precision and nulls last in both directions", () => {
   const values = [null, 7.004, 7.001, 7.003]
   expect([...values].sort((a, b) => compareAnalysisValues(a, b, false))).toEqual([7.001, 7.003, 7.004, null])
   expect([...values].sort((a, b) => compareAnalysisValues(a, b, true))).toEqual([7.004, 7.003, 7.001, null])
+})
+
+test("germline pI columns preserve raw values for sorting and CSV", () => {
+  const entry = { id: "pair", vh: { ...unassigned.unassigned!, germline_pi: 7.123456789 }, vl: { ...unassigned.unassigned!, germline_pi: 5.987654321 } }
+  const values = analysisValues(entry)
+  expect(values.vh_germline_pi).toBe(7.123456789)
+  expect(values.vl_germline_pi).toBe(5.987654321)
+  const afterJ = analysisColumns.findIndex((column) => column.name === "vl_j_gene") + 1
+  expect(analysisColumns.slice(afterJ, afterJ + 2)).toEqual([
+    { name: "vh_germline_pi", label: "VH germline pI", decimals: 2 },
+    { name: "vl_germline_pi", label: "VL germline pI", decimals: 2 },
+  ])
+  const csv = analysisCsv({ id: "Group 1", entries: [entry] })
+  expect(csv).toContain('"vh_germline_pi","vl_germline_pi"')
+  expect(csv).toContain('"7.123456789","5.987654321"')
+  const sorted = [null, values.vh_germline_pi, 7.123456788].sort((a, b) => compareAnalysisValues(a, b, false))
+  expect(sorted).toEqual([7.123456788, 7.123456789, null])
+})
+
+test("native alignment gaps retain operations and full-input/reference offsets", () => {
+  const columns = germlineAlignmentColumns({ segment: "v", reference_ids: ["ref"], reference_names: ["Example reference"], tied_reference_count: 1, reference_start: 20, query_input_start: 10, aligned_reference: "AC-DIEW", aligned_query: "A-CDLEM", operations: " -+ : x" })
+  expect(columns.map((column) => column.inputIndex)).toEqual([10, null, 11, 12, 13, 14, 15])
+  expect(columns.map((column) => column.referenceIndex)).toEqual([20, 21, null, 22, 23, 24, 25])
+  expect(columns.map((column) => column.operation).join("")).toBe(" -+ : x")
+  expect(columns.map((column) => column.query).join("")).toBe("A-CDLEM")
+  expect(columns.map((column) => column.reference).join("")).toBe("AC-DIEW")
 })

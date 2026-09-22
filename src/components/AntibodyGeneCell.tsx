@@ -11,10 +11,8 @@ export default function AntibodyGeneCell({ germlines, segment }: { germlines: Ge
       {label ?? "—"}
     </Popover.Trigger>
     <Popover.Portal><Popover.Positioner sideOffset={6} className="z-50" align="start">
-      <Popover.Popup className="max-h-96 w-96 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-4 text-sm leading-6 text-popover-foreground shadow-lg">
-        <Popover.Title className="font-semibold">{segment.toUpperCase()} germline matches</Popover.Title>
-        <Popover.Description className="mt-1 text-muted-foreground">All tied matched reference species and genes. Frequencies refer to the therapeutic reference snapshot.</Popover.Description>
-        <ul className="mt-3 space-y-3">{genes.map((gene) => {
+      <Popover.Popup aria-label={`${segment.toUpperCase()} gene details`} className="max-h-96 w-96 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-4 text-sm leading-6 text-popover-foreground shadow-lg">
+        <ul className="space-y-3">{genes.map((gene) => {
           const usage = germlines[`${segment}_usage`].find((item) => item.species === gene.species && item.gene === gene.gene)
           const alleles = [...new Set(evidence.filter((hit) => hit.species === gene.species && hit.gene === gene.gene).map((hit) => hit.allele))]
           return <li key={`${gene.species}:${gene.gene}`}>

@@ -1137,7 +1137,7 @@ export interface components {
         readonly AnalysisOptions: {
             /**
              * Analysis Version
-             * @default 1
+             * @default 3
              */
             readonly analysis_version: string;
             /**
@@ -1205,6 +1205,8 @@ export interface components {
          * @description Untrimmed sequence and independent chain-level scientific results.
          */
         readonly AnalyzedChain: {
+            /** Germline Pi */
+            readonly germline_pi: number | null;
             readonly germlines: components["schemas"]["GermlinePresentation"];
             readonly metrics: components["schemas"]["ProteinMetrics"];
             /** Sequence */
@@ -1341,6 +1343,36 @@ export interface components {
             readonly gene: string;
             /** Species */
             readonly species: string;
+        };
+        /**
+         * GermlineAlignment
+         * @description Native local alignment for one display-representative V/J sequence.
+         *
+         *     Starts are zero-based ungapped coordinates; query_input_start already
+         *     includes the local alignment offset within the full supplied input.
+         */
+        readonly GermlineAlignment: {
+            /** Aligned Query */
+            readonly aligned_query: string;
+            /** Aligned Reference */
+            readonly aligned_reference: string;
+            /** Operations */
+            readonly operations: string;
+            /** Query Input Start */
+            readonly query_input_start: number;
+            /** Reference Ids */
+            readonly reference_ids: readonly string[];
+            /** Reference Names */
+            readonly reference_names: readonly string[];
+            /** Reference Start */
+            readonly reference_start: number;
+            /**
+             * Segment
+             * @enum {string}
+             */
+            readonly segment: "v" | "j";
+            /** Tied Reference Count */
+            readonly tied_reference_count: number;
         };
         /**
          * GermlineAssignment
@@ -2043,13 +2075,9 @@ export interface components {
         };
         /**
          * ProteinMetrics
-         * @description Full supplied-chain metrics; extinction is molar at 280 nm.
+         * @description Full supplied-chain metrics, with Black–Mould mean hydrophobicity.
          */
         readonly ProteinMetrics: {
-            /** Extinction Oxidized */
-            readonly extinction_oxidized: number;
-            /** Extinction Reduced */
-            readonly extinction_reduced: number;
             /** Gravy */
             readonly gravy: number;
             /** Molecular Weight Kda */
@@ -2171,6 +2199,8 @@ export interface components {
             ] | null;
             /** Error */
             readonly error: string | null;
+            /** Germline Alignments */
+            readonly germline_alignments: readonly components["schemas"]["GermlineAlignment"][];
             /** Liabilities */
             readonly liabilities: readonly components["schemas"]["Liability"][];
             /** Residues */

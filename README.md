@@ -146,7 +146,9 @@ New humanization publications add four germline gene columns with page-bounded
 species, allele ties and therapeutic reference frequencies. Historical tables
 keep their original columns. Clicking a sequence opens a numbered dialog with
 IMGT, Kabat, Chothia, Martin or AHo conventions, CDR backgrounds and potential
-liability motifs. These display choices do not alter workflow mutation scores.
+liability motifs. Copy sequence includes the full input; clicking outside or
+pressing Escape dismisses the dialog. These display choices do not alter
+workflow mutation scores.
 Independent VH/VL selections survive pages and filters. **Analyze selected
 sequences** forms combinations within each parent; a parent with one selected
 role contributes standalone chains. The entry limit is checked before expansion,
@@ -159,8 +161,45 @@ per request. Analysis creates no Job or Modal work. Invalid entries stay visible
 alongside usable results; failed numbering leaves computable metrics labeled as
 unassigned rather than assuming a heavy chain. Tables share column visibility,
 sort independently at full precision, and page locally in groups of 50. Each
-group has a full-precision CSV download. A shared FAQ records the therapeutic
+group has a full-precision CSV download and **Download selected pairs** for
+FASTA export. Row selections survive sorting and paging independently per
+group, then reset when new analysis results arrive. Selected FASTA follows the
+original input order, using `VH:VL` for pairs and the supplied sequence for
+standalone chains. Entries without a usable sequence remain visible but cannot
+be selected for export.
+
+**Load example sequences** replaces only Group 1 with the supplied pembrolizumab
+and OKT3 pairs plus standalone Ozoralizumab. It preserves Group 2 and waits for
+**Analyze sequences**. Sequences are kept exactly as supplied; OKT3's light-chain
+partial-domain diagnostic remains visible. Editing the input cancels any pending
+automatic analysis of transferred chains. After an explicit analysis succeeds,
+the results heading receives focus and scrolls into view, respecting reduced
+motion. Sorting, paging and sequence inspection do not repeat this navigation;
+request errors remain at the form.
+
+Analysis version 3 reports pI, molecular weight and mean residue hydrophobicity
+on Biopython's **BlackMould** scale (the API key remains `gravy`). Extinction
+metrics are no longer included. Metrics and liability checks use the full
+supplied sequence, including tags and tails; numbering and germline assignment
+describe the detected variable domain. Odd cysteine counting includes every
+supplied residue, but annotated IMGT 23/104 conserved cysteines are not marked.
+No conserved positions are guessed when numbering fails. N-terminal glutamine
+and hydrophobic-patch liability flags are omitted. Issues are input/annotation
+diagnostics, not quality scores. A shared FAQ records the therapeutic
 snapshot and its counting policy; unavailable frequencies remain missing.
+VH/VL germline pI uses each chain's full representative V and J reference
+sequences, including locally unaligned ends, joined without D or a linker.
+The first native hit for each segment supplies both this estimate and the
+dialog's local alignment; all tied assignments remain in gene details. Tables
+display two decimals while sorting and CSV retain full precision. Native V/J
+Reference–Operations–Input blocks preserve gaps, blank exact-match operations
+and full-input coordinates, with CDR/liability overlays on query residues.
+The complete numbered input, junction and unnumbered tails remain visible.
+Alignment reference names and total tied-record counts disclose the displayed
+representative; no browser alignment or germline reconstruction is performed.
+
+The updated interface requires analysis API version 3 before requesting
+metrics or sequence annotations, avoiding mislabeled older-scale results.
 
 Analysis drafts, results and chain handoff exist only in memory. They survive
 mounted same-user reauthentication, but leaving or reloading loses them. Inputs

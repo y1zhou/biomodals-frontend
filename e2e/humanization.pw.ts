@@ -11,8 +11,47 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
   { code: "evaluate", label: "Evaluate and rank candidates", outcome: "partial", started_at: "2026-09-07T00:00:45Z", ended_at: "2026-09-07T00:01:00Z" },
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "sapiens_vh_mean_probability"].map((name) => ({ name, type: ["quality_tier", "panel_order", "sapiens_vh_mean_probability"].includes(name) ? "number" : "string" }))
-const analysisOptions = { max_groups: 2, max_entries_per_group: 1000, max_chain_length: 512, max_request_bytes: 4194304, schemes: ["imgt", "kabat", "chothia", "martin", "aho"], default_scheme: "imgt", analysis_version: "1", arpeggia_version: "0.10.1" }
+const analysisOptions = { max_groups: 2, max_entries_per_group: 1000, max_chain_length: 512, max_request_bytes: 4194304, schemes: ["imgt", "kabat", "chothia", "martin", "aho"], default_scheme: "imgt", analysis_version: "3", arpeggia_version: "0.10.1" }
 const emptyAnalysis = { groups: [{ id: "Group 1", entries: [], issues: [] }], reference: { status: "unavailable", source_url: "https://example.test/reference.csv", detail: "Offline reference unavailable" } }
+
+for (const version of ["1", "2"]) test(`analysis version ${version} requires an API update before displaying current metrics`, async ({ page }) => {
+  const api = await mockApi(page)
+  await page.route("**/antibody-sequence-analysis/options", (route) => route.fulfill({ json: { ...analysisOptions, analysis_version: version } }))
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">test\nACDE")
+  await expect(page.getByRole("button", { name: "Analyze sequences", exact: true })).toBeDisabled()
+  await expect(page.getByRole("alert")).toContainText("updated API")
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("updated API")
+  expect(api.requests.some((request) => /POST .*antibody-sequence-analysis\/(sequence|analyze)/.test(request))).toBe(false)
+})
+
+test("gapped native alignments keep full-input offsets and blank operations", async ({ page }) => {
+  await mockApi(page)
+  await page.route("**/antibody-sequence-analysis/sequence", (route) => {
+    const input = route.request().postDataJSON()
+    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: "H", domain_span: [2, 18], residues: Array.from({ length: 16 }, (_, index) => ({ input_index: index + 2, label: String(index + 102), region: index >= 8 && index < 11 ? "CDR1" : "FR1" })), liabilities: [{ kind: "methionine", start: 10, end: 11 }], diagnostics: [], error: null, germline_alignments: [{ segment: "v", reference_ids: ["test-reference"], reference_names: ["Homo sapiens IGHV1*01"], tied_reference_count: 3, reference_start: 5, query_input_start: 9, aligned_reference: "LAM-PE", aligned_query: "L-MNPQ", operations: " - + :" }] } })
+  })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  const dialog = page.getByRole("dialog")
+  const alignment = dialog.getByRole("region", { name: "V germline alignment", exact: true })
+  await expect(alignment).toContainText("Representative of 3 tied reference records")
+  expect(await alignment.locator("tbody tr").nth(1).locator("td").allTextContents()).toEqual([" ", "-", " ", "+", " ", ":"])
+  await expect(alignment.getByTitle("Reference residue 6", { exact: true })).toHaveText("L")
+  await expect(alignment.getByTitle("Reference gap", { exact: true })).toHaveText("-")
+  await expect(alignment.getByTitle("Input gap", { exact: true })).toHaveText("-")
+  const residues = alignment.locator('span[tabindex="0"]')
+  await expect(residues).toHaveCount(5)
+  const methionine = residues.nth(1)
+  await expect(methionine).toHaveAttribute("aria-label", /M, input residue 11, position 110, CDR1; Methionine oxidation motif/)
+  await expect(methionine).toHaveClass(/border-rose-500/)
+  await methionine.focus()
+  await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Input residue 11: M")
+  await expect(dialog.getByRole("heading", { name: "Unnumbered prefix", exact: true })).toBeVisible()
+  await expect(dialog.getByRole("heading", { name: "Unnumbered suffix", exact: true })).toBeVisible()
+})
 
 async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0, legacyOptions = false } = {}) {
   const submissions: { body: unknown; key: string | undefined }[] = []
@@ -31,7 +70,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
     if (url.pathname.endsWith("/antibody-sequence-analysis/options")) return respond(analysisOptions)
     if (url.pathname.endsWith("/antibody-sequence-analysis/sequence")) {
       const input = request.postDataJSON()
-      return respond({ ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], liabilities: [], diagnostics: [], error: "No antibody domain in this short fixture sequence." })
+      return respond({ ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germline_alignments: [], liabilities: [], diagnostics: [], error: "No antibody domain in this short fixture sequence." })
     }
     if (url.pathname.endsWith("/humanization/options")) return respond({ ...options, max_pairs: maxPairs, defaults: legacyOptions ? Object.fromEntries(Object.entries(options.defaults).filter(([name]) => name !== "pabnativ2_num_seeds")) : options.defaults })
     if (url.pathname.endsWith("/humanization/jobs") && request.method() === "POST") {
@@ -356,6 +395,62 @@ test("chain selections survive pages and filters and transfer only within-parent
   await page.reload()
   await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue("")
   expect(analyzed).toHaveLength(1)
+})
+
+test("editing a pending handoff suppresses automatic analysis", async ({ page }) => {
+  await mockApi(page)
+  const analyzed: { groups: { id: string; fasta: string }[] }[] = []
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyzed.push(route.request().postDataJSON()); return route.fulfill({ json: emptyAnalysis }) })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("checkbox", { name: "Select VH from candidate-0 (parent ab_001)", exact: true }).check()
+  // Edit as soon as the transferred form mounts, before its deferred analysis.
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const examples = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === "Load example sequences")
+      if (!examples) return
+      observer.disconnect()
+      examples.click()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
+  await page.getByRole("button", { name: "Analyze selected sequences", exact: true }).click()
+  const input = page.getByLabel("Group 1 FASTA", { exact: true })
+  await expect(input).toHaveValue(/^>pembrolizumab\n/)
+  await page.evaluate(() => new Promise((resolve) => window.setTimeout(resolve, 0)))
+  expect(analyzed).toHaveLength(0)
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toHaveCount(0)
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeFocused()
+  expect(analyzed).toEqual([{ groups: [{ id: "Group 1", fasta: await input.inputValue() }] }])
+})
+
+test("analysis input and API errors stay at the form without revealing results", async ({ page }) => {
+  await mockApi(page)
+  await page.addInitScript(() => {
+    const scroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (options) {
+      if (this.textContent === "Sequence properties and germline matches") document.body.dataset.resultsScrolled = "true"
+      scroll.call(this, options)
+    }
+  })
+  await page.route("**/antibody-sequence-analysis/options", (route) => route.fulfill({ json: { ...analysisOptions, max_request_bytes: 100 } }))
+  let analyses = 0
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyses++; return route.fulfill({ status: 503, json: { detail: "Analysis temporarily unavailable" } }) })
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByRole("button", { name: "Load example sequences", exact: true }).click()
+  const analyze = page.getByRole("button", { name: "Analyze sequences", exact: true })
+  await analyze.click()
+  await expect(page.getByRole("alert")).toContainText("Reduce the FASTA input")
+  expect(analyses).toBe(0)
+  await expect(analyze).toBeFocused()
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">short\nACDE")
+  await expect(page.getByRole("alert")).toHaveCount(0)
+  await analyze.click()
+  await expect(page.getByRole("alert")).toContainText("Analysis temporarily unavailable")
+  await expect(page.getByRole("alert")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toHaveCount(0)
+  expect(await page.evaluate(() => document.body.dataset.resultsScrolled)).toBeUndefined()
+  expect(analyses).toBe(1)
 })
 
 for (const differentUser of [false, true]) test(`analysis draft ${differentUser ? "clears for another user" : "survives same-user reauthentication"}`, async ({ page }) => {
