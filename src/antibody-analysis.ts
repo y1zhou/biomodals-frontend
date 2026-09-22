@@ -1,6 +1,6 @@
 import type { components } from "@/api/schema"
 
-export const ANALYSIS_VERSION = "3"
+export const ANALYSIS_VERSION = "4"
 
 export const exampleAntibodyFasta = `>pembrolizumab
 QVQLVQSGVEVKKPGASVKVSCKASGYTFTNYYMYWVRQAPGQGLEWMGGINPSNGGTNFNEKFKNRVTLTTDSSTTTAYMELKSLQFDDTAVYYCARRDYRFDMGFDYWGQGTTVTVSS:EIVLTQSPATLSLSPGERATLSCRASKGVSTSGYSYLHWYQQKPGQAPRLLIYLASYLESGVPARFSGSGSGTDFTLTISSLEPEDFAVYYCQHSRDLPLTFGGGTKVEIK
@@ -17,7 +17,6 @@ export type AnalysisGroup = components["schemas"]["AnalysisGroup"]
 export type SequenceDetail = components["schemas"]["SequenceDetail"]
 export type SequenceRequest = components["schemas"]["SequenceRequest"]
 export type GermlinePresentation = components["schemas"]["GermlinePresentation"]
-export type GermlineAlignment = components["schemas"]["GermlineAlignment"]
 export type ReferenceInfo = components["schemas"]["ReferenceInfo"]
 
 export const analysisColumns = [
@@ -89,17 +88,4 @@ export function analysisFasta(group: AnalysisGroup, selected: ReadonlySet<number
     const sequence = analysisSequence(entry)
     return selected.has(index) && sequence ? [`>${entry.id}\n${sequence}`] : []
   }).join("\n")
-}
-
-// Map native alignment columns to original coordinates without realigning.
-export function germlineAlignmentColumns(alignment: GermlineAlignment) {
-  let inputIndex = alignment.query_input_start
-  let referenceIndex = alignment.reference_start
-  return Array.from(alignment.aligned_query, (query, index) => ({
-    query,
-    reference: alignment.aligned_reference[index],
-    operation: alignment.operations[index],
-    inputIndex: query === "-" ? null : inputIndex++,
-    referenceIndex: alignment.aligned_reference[index] === "-" ? null : referenceIndex++,
-  }))
 }

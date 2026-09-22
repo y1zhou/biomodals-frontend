@@ -186,13 +186,13 @@ test("sequence dialog uses native positions for five schemes, tails and liabilit
   expect(sequenceCalls).toEqual([])
   await page.getByRole("button", { name: "VH", exact: true }).click()
   const dialog = page.getByRole("dialog", { name: "tagged · VH", exact: true })
-  await expect(dialog.getByRole("heading", { name: "Unnumbered prefix" })).toBeVisible()
-  await expect(dialog.getByRole("heading", { name: "Unnumbered suffix" })).toBeVisible()
+  await expect(dialog.locator('span[tabindex="0"][aria-label*="unnumbered prefix"]').first()).toBeVisible()
+  await expect(dialog.locator('span[tabindex="0"][aria-label*="unnumbered suffix"]').last()).toBeAttached()
   await expect(dialog.getByText("CDR1", { exact: true })).toBeVisible()
   await dialog.getByRole("button", { name: "Copy sequence", exact: true }).click()
   await expect(dialog.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(`GG${vh}HHHHHH`)
-  const methionine = dialog.locator('span[tabindex="0"]').filter({ has: page.locator("span", { hasText: /^M$/ }) }).first()
+  const methionine = dialog.locator('span[tabindex="0"][aria-label^="M,"]').first()
   await methionine.focus()
   await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Methionine")
   for (const scheme of ["kabat", "chothia", "martin", "aho"]) {
@@ -203,32 +203,33 @@ test("sequence dialog uses native positions for five schemes, tails and liabilit
     await expect(dialog.getByRole("heading", { name: /^Numbered domain/ })).toBeVisible()
     const first = data.residues[0]
     await expect(dialog.locator(`span[tabindex="0"][aria-label*="input residue ${first.input_index + 1}, position ${first.label},"]`).first()).toBeVisible()
-    expect(data.germline_alignments.map((alignment: { segment: string }) => alignment.segment)).toEqual(["v", "j"])
-    for (const alignment of data.germline_alignments) {
-      const block = dialog.getByRole("region", { name: `${alignment.segment.toUpperCase()} germline alignment`, exact: true })
-      const rows = block.locator("tbody tr")
-      expect((await rows.nth(0).locator("td").allTextContents()).join("")).toBe(alignment.aligned_reference)
-      expect((await rows.nth(1).locator("td").allTextContents()).join("")).toBe(alignment.operations)
-      expect((await rows.nth(2).locator("td").allTextContents()).join("")).toBe(alignment.aligned_query)
-      await block.locator('span[tabindex="0"]').first().focus()
-      // Let native scrolling and pointer boundary events finish before
-      // asserting keyboard details, with the pointer left inside the dialog.
+    expect(data.germlines.map((reference: { segment: string }) => reference.segment)).toEqual(["v", "j"])
+    const block = dialog.getByRole("region", { name: "Sequence alignment", exact: true })
+    const rows = block.locator("tbody tr")
+    await expect(rows).toHaveCount(3)
+    expect((await rows.nth(0).locator("td").allTextContents()).join("")).toBe(data.alignment.germline)
+    expect((await rows.nth(1).locator("td").allTextContents()).join("")).toBe(data.alignment.germline_diffs)
+    expect((await rows.nth(2).locator("td").allTextContents()).join("")).toBe(data.alignment.input)
+    const inputResidues = block.locator('span[tabindex="0"]')
+    await expect(inputResidues).toHaveCount(data.sequence.length)
+    await inputResidues.first().focus()
+    // Let native scrolling and pointer boundary events finish before
+    // asserting keyboard details, with the pointer left inside the dialog.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    const status = dialog.getByRole("status").filter({ hasText: "Input residue" })
+    await expect(inputResidues.first()).toBeFocused()
+    await expect(status).toContainText(`Input residue 1: ${data.sequence[0]}`)
+    if (scheme === "kabat") {
+      await page.mouse.wheel(0, -5000)
+      await expect.poll(() => dialog.evaluate((node) => node.scrollTop)).toBe(0)
+      await page.keyboard.press("Tab")
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-      const status = dialog.getByRole("status").filter({ hasText: "Input residue" })
-      await expect(block.locator('span[tabindex="0"]').first()).toBeFocused()
-      await expect(status).toContainText(`Input residue ${alignment.query_input_start + 1}: ${data.sequence[alignment.query_input_start]}`)
-      if (scheme === "kabat" && alignment.segment === "v") {
-        await page.mouse.wheel(0, -5000)
-        await expect.poll(() => dialog.evaluate((node) => node.scrollTop)).toBe(0)
-        await page.keyboard.press("Tab")
-        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-        await expect(block.locator('span[tabindex="0"]').nth(1)).toBeFocused()
-        await expect(status).toContainText(`Input residue ${alignment.query_input_start + 2}: ${data.sequence[alignment.query_input_start + 1]}`)
-        await block.locator('span[tabindex="0"]').nth(2).hover()
-        await expect(status).toContainText(`Input residue ${alignment.query_input_start + 3}: ${data.sequence[alignment.query_input_start + 2]}`)
-      }
-      await expect(block.getByText(alignment.reference_names.join("; "), { exact: true })).toBeVisible()
+      await expect(inputResidues.nth(1)).toBeFocused()
+      await expect(status).toContainText(`Input residue 2: ${data.sequence[1]}`)
+      await inputResidues.nth(2).hover()
+      await expect(status).toContainText(`Input residue 3: ${data.sequence[2]}`)
     }
+    for (const reference of data.germlines) await expect(block).toContainText(reference.reference_names.join("; "))
   }
   expect(sequenceCalls).toEqual(["imgt", "kabat", "chothia", "martin", "aho"])
   await page.evaluate(async () => {

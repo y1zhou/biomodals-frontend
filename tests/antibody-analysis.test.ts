@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { analysisColumns, analysisCsv, analysisFasta, analysisIssues, analysisValues, compareAnalysisValues, germlineAlignmentColumns, type AnalysisEntry } from "../src/antibody-analysis"
+import { analysisColumns, analysisCsv, analysisFasta, analysisIssues, analysisValues, compareAnalysisValues, type AnalysisEntry } from "../src/antibody-analysis"
 
 const unassigned: AnalysisEntry = {
   id: 'unnumbered,"chain"', unassigned: {
@@ -63,13 +63,4 @@ test("germline pI columns preserve raw values for sorting and CSV", () => {
   expect(csv).toContain('"7.123456789","5.987654321"')
   const sorted = [null, values.vh_germline_pi, 7.123456788].sort((a, b) => compareAnalysisValues(a, b, false))
   expect(sorted).toEqual([7.123456788, 7.123456789, null])
-})
-
-test("native alignment gaps retain operations and full-input/reference offsets", () => {
-  const columns = germlineAlignmentColumns({ segment: "v", reference_ids: ["ref"], reference_names: ["Example reference"], tied_reference_count: 1, reference_start: 20, query_input_start: 10, aligned_reference: "AC-DIEW", aligned_query: "A-CDLEM", operations: " -+ : x" })
-  expect(columns.map((column) => column.inputIndex)).toEqual([10, null, 11, 12, 13, 14, 15])
-  expect(columns.map((column) => column.referenceIndex)).toEqual([20, 21, null, 22, 23, 24, 25])
-  expect(columns.map((column) => column.operation).join("")).toBe(" -+ : x")
-  expect(columns.map((column) => column.query).join("")).toBe("A-CDLEM")
-  expect(columns.map((column) => column.reference).join("")).toBe("AC-DIEW")
 })

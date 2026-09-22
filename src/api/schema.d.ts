@@ -1137,7 +1137,7 @@ export interface components {
         readonly AnalysisOptions: {
             /**
              * Analysis Version
-             * @default 3
+             * @default 4
              */
             readonly analysis_version: string;
             /**
@@ -1345,36 +1345,6 @@ export interface components {
             readonly species: string;
         };
         /**
-         * GermlineAlignment
-         * @description Native local alignment for one display-representative V/J sequence.
-         *
-         *     Starts are zero-based ungapped coordinates; query_input_start already
-         *     includes the local alignment offset within the full supplied input.
-         */
-        readonly GermlineAlignment: {
-            /** Aligned Query */
-            readonly aligned_query: string;
-            /** Aligned Reference */
-            readonly aligned_reference: string;
-            /** Operations */
-            readonly operations: string;
-            /** Query Input Start */
-            readonly query_input_start: number;
-            /** Reference Ids */
-            readonly reference_ids: readonly string[];
-            /** Reference Names */
-            readonly reference_names: readonly string[];
-            /** Reference Start */
-            readonly reference_start: number;
-            /**
-             * Segment
-             * @enum {string}
-             */
-            readonly segment: "v" | "j";
-            /** Tied Reference Count */
-            readonly tied_reference_count: number;
-        };
-        /**
          * GermlineAssignment
          * @description All best V/J reference ties, never an arbitrary representative.
          */
@@ -1439,6 +1409,23 @@ export interface components {
             readonly j_usage: readonly components["schemas"]["GeneUsage"][];
             /** V Usage */
             readonly v_usage: readonly components["schemas"]["GeneUsage"][];
+        };
+        /**
+         * GermlineReference
+         * @description Identity of one native display-representative V/J sequence.
+         */
+        readonly GermlineReference: {
+            /** Reference Ids */
+            readonly reference_ids: readonly string[];
+            /** Reference Names */
+            readonly reference_names: readonly string[];
+            /**
+             * Segment
+             * @enum {string}
+             */
+            readonly segment: "v" | "j";
+            /** Tied Reference Count */
+            readonly tied_reference_count: number;
         };
         /**
          * GromacsContinuationInfo
@@ -2182,10 +2169,33 @@ export interface components {
             readonly total_rows: number;
         };
         /**
+         * SequenceAlignment
+         * @description Native comparisons projected onto one full-input display axis.
+         *
+         *     Spaces mean unavailable reference coverage, not a match or deletion.
+         *     Both difference rows describe Input relative to their reference. Independent
+         *     reference-only columns are separate: no germline/parent homology is inferred.
+         */
+        readonly SequenceAlignment: {
+            /** Germline */
+            readonly germline: string;
+            /** Germline Diffs */
+            readonly germline_diffs: string;
+            /** Input */
+            readonly input: string;
+            /** Input Indices */
+            readonly input_indices: readonly (number | null)[];
+            /** Parental */
+            readonly parental: string | null;
+            /** Parental Diffs */
+            readonly parental_diffs: string | null;
+        };
+        /**
          * SequenceDetail
          * @description Lazy numbering/CDR and liability overlays on the untrimmed sequence.
          */
         readonly SequenceDetail: {
+            readonly alignment: components["schemas"]["SequenceAlignment"] | null;
             /** Cdr Definition */
             readonly cdr_definition: string;
             /** Chain Type */
@@ -2199,8 +2209,8 @@ export interface components {
             ] | null;
             /** Error */
             readonly error: string | null;
-            /** Germline Alignments */
-            readonly germline_alignments: readonly components["schemas"]["GermlineAlignment"][];
+            /** Germlines */
+            readonly germlines: readonly components["schemas"]["GermlineReference"][];
             /** Liabilities */
             readonly liabilities: readonly components["schemas"]["Liability"][];
             /** Residues */
@@ -2218,6 +2228,8 @@ export interface components {
          * @description Number only the single chain currently opened in a sequence dialog.
          */
         readonly SequenceRequest: {
+            /** Parental Sequence */
+            readonly parental_sequence?: string | null;
             /**
              * Scheme
              * @default imgt

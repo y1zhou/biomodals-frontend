@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Check, Copy, LoaderCircle, X } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
 import { antibodyAnalysisOptions, antibodySequenceDetail } from "@/api/client"
-import { ANALYSIS_VERSION, germlineAlignmentColumns, type SequenceDetail, type SequenceRequest } from "@/antibody-analysis"
+import { ANALYSIS_VERSION, type SequenceDetail, type SequenceRequest } from "@/antibody-analysis"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import { Button } from "@/components/ui/button"
 import { copyText } from "@/lib/clipboard"
@@ -21,12 +21,14 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
   const positions = new Map(data.residues.map((residue) => [residue.input_index, residue]))
   const selected = hover === null ? null : positions.get(hover)
   const liabilities = hover === null ? [] : data.liabilities.filter((item) => item.start <= hover && hover < item.end)
+  const span = data.domain_span
+  const unnumbered = (index: number) => span ? index < span[0] ? "Unnumbered prefix" : index >= span[1] ? "Unnumbered suffix" : "Unnumbered" : "Unnumbered"
   function annotation(index: number) {
     const position = positions.get(index)
     const matches = data.liabilities.filter((item) => item.start <= index && index < item.end)
     return {
       label: position?.label,
-      description: `${data.sequence[index]}, input residue ${index + 1}${position ? `, position ${position.label}, ${position.region}` : ", unnumbered"}${matches.length ? `; ${matches.map((item) => liabilityLabels[item.kind] ?? item.kind).join("; ")}` : ""}`,
+      description: `${data.sequence[index]}, input residue ${index + 1}${position ? `, position ${position.label}, ${position.region}` : `, ${unnumbered(index).toLowerCase()}`}${matches.length ? `; ${matches.map((item) => liabilityLabels[item.kind] ?? item.kind).join("; ")}` : ""}`,
       colors: `${regionColors[position?.region.toUpperCase() ?? ""] ?? "bg-muted/40"} ${matches.length ? "border-b-2 border-rose-500" : "border-b-2 border-transparent"}`,
     }
   }
@@ -38,41 +40,38 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
       </span>
     })}</div>
   }
-  const span = data.domain_span
   const tail = (start: number, end: number) => Array.from({ length: end - start }, (_, i) => ({ input_index: start + i }))
+  const alignment = data.alignment
   return <div className="space-y-5">
     <p className="text-sm leading-6 text-muted-foreground">Potential liabilities are checked across the full supplied sequence, including unnumbered tails. Odd cysteine count uses the full sequence, but conserved cysteines at IMGT 23 and 104 are not marked. Underlines flag potential motifs, not measured experimental risk.</p>
     <div role="status" className="min-h-14 rounded-lg bg-muted/40 px-3 py-2 text-sm leading-6">
-      {hover === null ? "Hover or focus a residue to inspect its original position and potential liabilities." : <><strong>Input residue {hover + 1}: {data.sequence[hover]}</strong>{selected ? ` · ${selected.region} · ${schemeLabels[data.scheme]} ${selected.label}` : " · Unnumbered"}<br />{liabilities.length ? liabilities.map((item) => liabilityLabels[item.kind] ?? item.kind).join("; ") : "No annotated liability motif at this position."}</>}
+      {hover === null ? "Hover or focus a residue to inspect its original position and potential liabilities." : <><strong>Input residue {hover + 1}: {data.sequence[hover]}</strong>{selected ? ` · ${selected.region} · ${schemeLabels[data.scheme]} ${selected.label}` : ` · ${unnumbered(hover)}`}<br />{liabilities.length ? liabilities.map((item) => liabilityLabels[item.kind] ?? item.kind).join("; ") : "No annotated liability motif at this position."}</>}
     </div>
-    {span ? <>
+    {alignment ? <section aria-label="Sequence alignment" className="space-y-3">
+      <h3 className="font-medium">Numbered domain · {data.chain_type ?? "unassigned"}</h3>
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">{data.germlines.map((reference) => <p key={reference.segment} title={`Reference IDs: ${reference.reference_ids.join(", ")}`}><strong className="font-medium text-foreground">{reference.segment.toUpperCase()}: </strong>{reference.reference_names.join("; ")}{reference.tied_reference_count > 1 ? <> · Representative of {reference.tied_reference_count} tied reference records.</> : null}</p>)}</div>
+      <div className="overflow-x-auto rounded-lg border p-3" tabIndex={0} aria-label="Sequence alignment; scroll for more residues">
+        <table className="w-max border-collapse font-mono text-sm leading-7">
+          <caption className="sr-only">Native germline and input alignment{alignment.parental !== null ? " with parental comparison" : ""}</caption>
+          <tbody>
+            <tr><th scope="row" className="pr-3 text-left font-normal">Germline</th>{Array.from(alignment.germline, (residue, index) => <td key={index} className="min-w-[1.5ch] whitespace-pre text-center">{residue}</td>)}</tr>
+            <tr><th scope="row" className="pr-3 text-left font-normal">Diffs</th>{Array.from(alignment.germline_diffs, (operation, index) => <td key={index} className="whitespace-pre text-center">{operation}</td>)}</tr>
+            <tr className="font-bold"><th scope="row" className="pr-3 text-left">Input</th>{alignment.input_indices.map((inputIndex, column) => {
+              if (inputIndex === null) return <td key={column} className="text-center" title="Input gap">{alignment.input[column]}</td>
+              const info = annotation(inputIndex)
+              return <td key={column} className="text-center"><span tabIndex={0} title={info.description} aria-label={info.description} onFocus={() => setHover(inputIndex)} onPointerMove={() => setHover(inputIndex)} className={`inline-block w-full rounded outline-offset-2 ${info.colors}`}>{alignment.input[column]}</span></td>
+            })}</tr>
+            {alignment.parental !== null ? <>
+              <tr><th scope="row" className="pr-3 text-left font-normal">Diffs</th>{Array.from(alignment.parental_diffs ?? "", (operation, index) => <td key={index} className="whitespace-pre text-center">{operation}</td>)}</tr>
+              <tr><th scope="row" className="pr-3 text-left font-normal">Parental</th>{Array.from(alignment.parental, (residue, index) => <td key={index} className="whitespace-pre text-center">{residue}</td>)}</tr>
+            </> : null}
+          </tbody>
+        </table>
+      </div>
+      <details className="text-sm leading-6 text-muted-foreground"><summary className="cursor-pointer">Read sequence alignments</summary><p className="mt-2">Each Diffs row describes Input relative to the reference next to it: + = insertion; - = deletion; : = positive-BLOSUM62 substitution; x = other mismatch. Blank differences at aligned residues mean exact matches. Unmatched germline junctions and uncovered ends have blank differences without asserting a match or deletion. Reference-only gaps are kept separate; the grid does not align germline against parent. Hover or focus Input to identify numbered positions and unnumbered tails.</p></details>
+    </section> : span ? <>
       {span[0] > 0 ? <section><h3 className="mb-2 font-medium">Unnumbered prefix</h3>{residues(tail(0, span[0]))}</section> : null}
       <section className="space-y-4"><h3 className="font-medium">Numbered domain · {data.chain_type ?? "unassigned"}</h3>{residues(data.residues)}
-        {data.germline_alignments.map((alignment) => {
-          const columns = germlineAlignmentColumns(alignment)
-          const title = `${alignment.segment.toUpperCase()} germline alignment`
-          return <section key={alignment.segment} aria-label={title} className="space-y-2 rounded-lg border p-3">
-            <h4 className="font-medium">{title}</h4>
-            <p className="break-words text-sm text-muted-foreground" title={`Reference IDs: ${alignment.reference_ids.join(", ")}`}>{alignment.reference_names.join("; ")}</p>
-            {alignment.tied_reference_count > 1 ? <p className="text-sm text-muted-foreground">Representative of {alignment.tied_reference_count} tied reference records.</p> : null}
-            <div className="overflow-x-auto pb-1" tabIndex={0} aria-label={`${title}; scroll for more residues`}>
-              <table className="w-max border-collapse font-mono text-sm leading-7">
-                <caption className="sr-only">{title}: native local reference, operations and input</caption>
-                <tbody>
-                  <tr><th scope="row" className="pr-3 text-left font-normal">Reference</th>{columns.map((column, index) => <td key={index} className="min-w-[1.5ch] whitespace-pre text-center" title={column.referenceIndex === null ? "Reference gap" : `Reference residue ${column.referenceIndex + 1}`}>{column.reference}</td>)}</tr>
-                  <tr><th scope="row" className="pr-3 text-left font-normal">Operations</th>{columns.map((column, index) => <td key={index} className="whitespace-pre text-center">{column.operation}</td>)}</tr>
-                  <tr><th scope="row" className="pr-3 text-left font-normal">Input</th>{columns.map((column, index) => {
-                    const inputIndex = column.inputIndex
-                    if (inputIndex === null) return <td key={index} className="text-center" title="Input gap">{column.query}</td>
-                    const info = annotation(inputIndex)
-                    return <td key={index} className="text-center"><span tabIndex={0} title={info.description} aria-label={info.description} onFocus={() => setHover(inputIndex)} onPointerMove={() => setHover(inputIndex)} className={`inline-block w-full rounded outline-offset-2 ${info.colors}`}>{column.query}</span></td>
-                  })}</tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-        })}
-        {data.germline_alignments.length ? <details className="text-sm leading-6 text-muted-foreground"><summary className="cursor-pointer">Read germline alignments</summary><p className="mt-2">These native local V/J matches omit unaligned ends and junctions; the full numbered input remains above. Operations: blank = exact match; + = insertion; - = deletion; : = positive-BLOSUM62 substitution; x = other mismatch. Gaps do not receive input residue numbers.</p></details> : null}
       </section>
       {span[1] < data.sequence.length ? <section><h3 className="mb-2 font-medium">Unnumbered suffix</h3>{residues(tail(span[1], data.sequence.length))}</section> : null}
     </> : <section><h3 className="mb-2 font-medium">Unnumbered input</h3>{residues(tail(0, data.sequence.length))}</section>}
@@ -81,7 +80,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
   </div>
 }
 
-export default function AntibodySequenceDialog({ sequence, label, onClose }: { sequence: string; label: string; onClose: () => void }) {
+export default function AntibodySequenceDialog({ sequence, label, parentalSequence, parentLoading = false, parentUnavailable = false, onClose }: { sequence: string; label: string; parentalSequence?: string; parentLoading?: boolean; parentUnavailable?: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const principal = authenticatedPrincipal(useCurrentUser().data)
@@ -101,9 +100,9 @@ export default function AntibodySequenceDialog({ sequence, label, onClose }: { s
   const options = useQuery({ queryKey: ["antibody-analysis-options"], queryFn: ({ signal }) => antibodyAnalysisOptions(signal), enabled: !!principal, staleTime: Infinity, retry: false })
   const compatible = options.data?.analysis_version === ANALYSIS_VERSION
   const query = useQuery({
-    queryKey: ["antibody-sequence", principal?.user_id, sequence, scheme],
-    queryFn: ({ signal }) => antibodySequenceDetail({ sequence, scheme }, signal),
-    enabled: !!principal && compatible, retry: false, gcTime: 0, staleTime: Infinity,
+    queryKey: ["antibody-sequence", principal?.user_id, sequence, scheme, parentalSequence],
+    queryFn: ({ signal }) => antibodySequenceDetail({ sequence, scheme, parental_sequence: parentalSequence }, signal),
+    enabled: !!principal && compatible && !parentLoading, retry: false, gcTime: 0, staleTime: Infinity,
     refetchOnWindowFocus: false, refetchOnReconnect: false,
   })
   useExpireSession(options.error ?? query.error)
@@ -123,6 +122,7 @@ export default function AntibodySequenceDialog({ sequence, label, onClose }: { s
       <div className="flex flex-wrap gap-2 text-sm">{Object.entries(regionColors).map(([label, color]) => <span className={`rounded px-2 py-1 ${color}`} key={label}>{label}</span>)}<span className="border-b-2 border-rose-500 px-2 py-1">Potential liability motif</span></div>
       {copyStatus && copyStatus !== "Copied" ? <p role="alert" className="text-sm text-destructive">{copyStatus}</p> : null}
     </div>
-    {options.data && !compatible ? <p role="alert">Sequence details require an updated API (analysis version {ANALYSIS_VERSION}). You can still copy the full sequence.</p> : options.error ? <div role="alert"><p>Sequence options could not be loaded. {options.error.message}</p><Button variant="outline" onClick={() => void options.refetch()}>Try again</Button></div> : options.isPending || query.isFetching ? <p role="status" className="flex gap-2 py-8"><LoaderCircle aria-hidden="true" className="animate-spin" />Numbering this sequence…</p> : query.error ? <div role="alert"><p>Sequence details could not be loaded. {query.error.message}</p><Button className="mt-3" disabled={!principal || !compatible} variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : query.data ? <NumberedSequence key={scheme} data={query.data} /> : null}
+    {parentUnavailable ? <p role="status" className="mb-4 rounded-lg bg-muted p-3 text-sm leading-6">Parental comparison is unavailable because the retained parent sequence could not be loaded. Numbering, germline details and full-sequence copy remain available.</p> : null}
+    {options.data && !compatible ? <p role="alert">Sequence details require an updated API (analysis version {ANALYSIS_VERSION}). You can still copy the full sequence.</p> : options.error ? <div role="alert"><p>Sequence options could not be loaded. {options.error.message}</p><Button variant="outline" onClick={() => void options.refetch()}>Try again</Button></div> : options.isPending || parentLoading || query.isFetching ? <p role="status" className="flex gap-2 py-8"><LoaderCircle aria-hidden="true" className="animate-spin" />{parentLoading ? "Loading the original parent sequence…" : "Numbering this sequence…"}</p> : query.error ? <div role="alert"><p>Sequence details could not be loaded. {query.error.message}</p><Button className="mt-3" disabled={!principal || !compatible} variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : query.data ? <NumberedSequence key={scheme} data={query.data} /> : null}
   </dialog>
 }

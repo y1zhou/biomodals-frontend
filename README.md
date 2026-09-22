@@ -142,13 +142,20 @@ sorting, and the archive retain full precision. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser.
 
-New humanization publications add four germline gene columns with page-bounded
-species, allele ties and therapeutic reference frequencies. Historical tables
-keep their original columns. Clicking a sequence opens a numbered dialog with
+New humanization publications put `vh_pi`, `vl_pi`, `vh_vl_pi`, `vh_v_gene`,
+`vh_j_gene`, `vl_v_gene` and `vl_j_gene` immediately after `vh` in the native
+CSV and table. The three pIs describe the supplied candidate chains and their
+literal VH+VL concatenation without a linker; they are not germline pIs.
+Gene details include page-bounded species, allele ties and therapeutic
+reference frequencies. Historical tables keep their original columns.
+Clicking a sequence opens a numbered dialog with
 IMGT, Kabat, Chothia, Martin or AHo conventions, CDR backgrounds and potential
 liability motifs. Copy sequence includes the full input; clicking outside or
 pressing Escape dismisses the dialog. These display choices do not alter
-workflow mutation scores.
+workflow mutation scores. Humanization inspection lazily reads retained inputs
+once per mounted Job view, matching the exact parent ID and chain role. Its
+parental comparison is computed by the analysis API; missing retained input
+leaves ordinary numbering, germline details and full-sequence copy available.
 Independent VH/VL selections survive pages and filters. **Analyze selected
 sequences** forms combinations within each parent; a parent with one selected
 role contributes standalone chains. The entry limit is checked before expansion,
@@ -177,7 +184,7 @@ the results heading receives focus and scrolls into view, respecting reduced
 motion. Sorting, paging and sequence inspection do not repeat this navigation;
 request errors remain at the form.
 
-Analysis version 3 reports pI, molecular weight and mean residue hydrophobicity
+Analysis version 4 reports pI, molecular weight and mean residue hydrophobicity
 on Biopython's **BlackMould** scale (the API key remains `gravy`). Extinction
 metrics are no longer included. Metrics and liability checks use the full
 supplied sequence, including tags and tails; numbering and germline assignment
@@ -190,15 +197,19 @@ snapshot and its counting policy; unavailable frequencies remain missing.
 VH/VL germline pI uses each chain's full representative V and J reference
 sequences, including locally unaligned ends, joined without D or a linker.
 The first native hit for each segment supplies both this estimate and the
-dialog's local alignment; all tied assignments remain in gene details. Tables
-display two decimals while sorting and CSV retain full precision. Native V/J
-Reference–Operations–Input blocks preserve gaps, blank exact-match operations
-and full-input coordinates, with CDR/liability overlays on query residues.
-The complete numbered input, junction and unnumbered tails remain visible.
+dialog's local alignment; all tied assignments remain in gene details. Local
+analysis tables display two decimals while sorting and CSV retain full
+precision. The dialog presents one native Germline–Diffs–Input grid, with
+Input in bold and combined V/J reference identities. Humanization adds
+Diffs–Parental rows below Input. The API supplies the common axis and original
+input indices; independent reference-only gaps stay separate. Unmatched
+germline junctions and uncovered ends have blank diffs without asserting a
+match or deletion. The full supplied sequence, including tails, appears once,
+with CDR/liability overlays and numbering or tail identity on hover/focus.
 Alignment reference names and total tied-record counts disclose the displayed
 representative; no browser alignment or germline reconstruction is performed.
 
-The updated interface requires analysis API version 3 before requesting
+The updated interface requires analysis API version 4 before requesting
 metrics or sequence annotations, avoiding mislabeled older-scale results.
 
 Analysis drafts, results and chain handoff exist only in memory. They survive
@@ -206,7 +217,7 @@ mounted same-user reauthentication, but leaving or reloading loses them. Inputs
 never travel in URLs, browser history or persistent browser storage. The
 [accepted sequence-analysis specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/antibody-sequence-analysis.md)
 owns scientific semantics and API behavior. Rollout requires the matching API,
-frontend assets and updated humanization workflow deployment/pin for new gene
+frontend assets and updated humanization workflow deployment/pin for new pI/gene
 publications; historical results are not backfilled.
 
 Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
