@@ -1,4 +1,5 @@
 import type { components } from "@/api/schema"
+import { parseCsv } from "@/lib/csv"
 
 export type HumanizationPair = components["schemas"]["PairInput"]
 export type HumanizationSettings = components["schemas"]["HumanizationSettings"]
@@ -7,8 +8,8 @@ export type HumanizationSubmission = components["schemas"]["HumanizationSubmissi
 export type HumanizationInputError = components["schemas"]["InputIssue"]
 export type HumanizationSelection = components["schemas"]["SelectionPage"]
 
-export function settingMetadata(options: HumanizationOptions | undefined, name: string) {
-  const properties = options?.settings_schema.properties
+export function settingMetadata(options: { readonly settings_schema?: Record<string, unknown> } | undefined, name: string) {
+  const properties = options?.settings_schema?.properties
   const value = properties && typeof properties === "object" && name in properties
     ? (properties as Record<string, unknown>)[name] : null
   const schema = value && typeof value === "object" ? value as Record<string, unknown> : {}
@@ -79,46 +80,8 @@ export function pairErrors(pairs: readonly HumanizationPair[], limits?: Pick<Hum
   })
 }
 
-// Strict CSV framing, separate from editable row validation. Never partially
-// append an import: malformed quotes/columns throw before any pairs are returned.
 export function parsePairCsv(content: string): HumanizationPair[] {
-  const text = content.replace(/^\uFEFF/, "")
-  const rows: string[][] = []
-  let row: string[] = []
-  let value = ""
-  let quoted = false
-  let closed = false
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
-    if (quoted) {
-      if (char === '"') {
-        if (text[i + 1] === '"') { value += '"'; i++ }
-        else { quoted = false; closed = true }
-      } else value += char
-    } else if (char === '"') {
-      if (value || closed) throw new Error("Malformed CSV quotation. The batch was not changed.")
-      quoted = true
-    } else if (char === "," || char === "\n" || char === "\r") {
-      row.push(value); value = ""; closed = false
-      if (char !== ",") {
-        rows.push(row); row = []
-        if (char === "\r" && text[i + 1] === "\n") i++
-      }
-    } else {
-      if (closed) throw new Error("Unexpected text after a quoted CSV field. The batch was not changed.")
-      value += char
-    }
-  }
-  if (quoted) throw new Error("Unclosed CSV quotation. The batch was not changed.")
-  if (value || closed || row.length) rows.push([...row, value])
-  if (rows[0]?.join(",") !== "id,vh,vl" || rows[0]?.length !== 3) {
-    throw new Error("CSV must start with exactly id,vh,vl. The batch was not changed.")
-  }
-  if (rows.length < 2) throw new Error("CSV has no pairs. The batch was not changed.")
-  return rows.slice(1).map((fields, index) => {
-    if (fields.length !== 3) throw new Error(`CSV row ${index + 2} must have three fields. The batch was not changed.`)
-    return { id: fields[0], vh: normalizeSequence(fields[1]), vl: normalizeSequence(fields[2]) }
-  })
+  return parseCsv(content, ["id", "vh", "vl"]).map(([id, vh, vl]) => ({ id, vh: normalizeSequence(vh), vl: normalizeSequence(vl) }))
 }
 
 export const generalSettingSources: Partial<Record<keyof HumanizationSettings, keyof HumanizationSettings>> = {

@@ -1,6 +1,19 @@
 import type { components } from "@/api/schema"
 import type { HumanizationOptions, HumanizationSubmission, HumanizationSelection, SelectionQuery } from "@/humanization"
 import type { AnalysisOptions, AnalysisRequest, AnalysisResponse, SequenceDetail, SequenceRequest } from "@/antibody-analysis"
+import type { NanobodyOptions, NanobodyPreparation, NanobodyPreparationRequest } from "@/nanobody-humanization"
+
+export function nanobodyOptions(signal?: AbortSignal) {
+  return requestJson<NanobodyOptions>("/api/v1/nanobody-humanization/options", { signal, cache: "no-store" })
+}
+
+export function prepareNanobodies(input: NanobodyPreparationRequest, signal?: AbortSignal) {
+  return requestJson<NanobodyPreparation>("/api/v1/nanobody-humanization/prepare", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
 
 export function antibodyAnalysisOptions(signal?: AbortSignal) {
   return requestJson<AnalysisOptions>("/api/v1/antibody-sequence-analysis/options", { signal, cache: "no-store" })

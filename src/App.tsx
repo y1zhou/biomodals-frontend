@@ -20,6 +20,7 @@ import {
   filterToolCatalog,
   gromacsPaths,
   humanizationPaths,
+  nanobodyPaths,
   toolCatalog,
   toolOverviewPath,
 } from "@/tools"
@@ -32,6 +33,7 @@ const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3Submission
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
 const HumanizationOverviewPage = lazy(() => import("@/pages/HumanizationOverviewPage"))
 const HumanizationSubmissionPage = lazy(() => import("@/pages/HumanizationSubmissionPage"))
+const NanobodySubmissionPage = lazy(() => import("@/pages/NanobodySubmissionPage"))
 const AntibodyAnalysisPage = lazy(() => import("@/pages/AntibodyAnalysisPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
@@ -179,6 +181,7 @@ export default function App() {
       "/admin/users": "Manage users",
       "/admin/modal": "Runtime settings",
       "/admin/storage": "Result storage",
+      [nanobodyPaths.submission]: "Prepare nanobody humanization",
     }
     for (const tool of toolCatalog) {
       if (tool.status !== "available") continue
@@ -212,6 +215,7 @@ export default function App() {
             <Route element={<GromacsContinuationPage />} path={gromacsPaths.continuationRoute} />
             <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
             <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
+            <Route element={<NanobodySubmissionPage />} path={nanobodyPaths.submission} />
             <Route element={<JobDetailPage tool="humanization" />} path={humanizationPaths.jobRoute} />
             <Route
               element={<JobDetailPage tool="gromacs" />}

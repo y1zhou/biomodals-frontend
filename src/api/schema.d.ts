@@ -757,6 +757,40 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/nanobody-humanization/options": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Options */
+        readonly get: operations["options_api_v1_nanobody_humanization_options_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/prepare": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Prepare */
+        readonly post: operations["prepare_api_v1_nanobody_humanization_prepare_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/ready": {
         readonly parameters: {
             readonly query?: never;
@@ -1902,6 +1936,90 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * NanobodyOptions
+         * @description Authoritative website bounds and the complete flat native controls.
+         */
+        readonly NanobodyOptions: {
+            readonly defaults?: components["schemas"]["NanobodySettings"];
+            /**
+             * Max Csv Bytes
+             * @default 10485760
+             */
+            readonly max_csv_bytes: number;
+            /**
+             * Max Input Length
+             * @default 512
+             */
+            readonly max_input_length: number;
+            /** Max Parents */
+            readonly max_parents: number;
+            /**
+             * Preparation Version
+             * @default 1|arpeggia=0.10.1|IMGT-202636-7+llama-supplement
+             */
+            readonly preparation_version: string;
+            /** Settings Schema */
+            readonly settings_schema?: {
+                readonly [key: string]: unknown;
+            };
+        };
+        /**
+         * NanobodyPreparation
+         * @description All row outcomes, with a submission digest only for a valid whole batch.
+         */
+        readonly NanobodyPreparation: {
+            /** Errors */
+            readonly errors: readonly components["schemas"]["PreparationIssue"][];
+            /** Preparation Digest */
+            readonly preparation_digest: string | null;
+            /**
+             * Preparation Version
+             * @default 1|arpeggia=0.10.1|IMGT-202636-7+llama-supplement
+             */
+            readonly preparation_version: string;
+            /** Rows */
+            readonly rows: readonly components["schemas"]["PreparedVHPreview"][];
+        };
+        /**
+         * NanobodyPreparationRequest
+         * @description Editable constructs, not yet eligible scientific parents.
+         */
+        readonly NanobodyPreparationRequest: {
+            /** Parents */
+            readonly parents: readonly components["schemas"]["VHInput"][];
+        };
+        /**
+         * NanobodySettings
+         * @description Explicit native AbNatiV CLI defaults and fixed-batch HuDiff sampling.
+         */
+        readonly NanobodySettings: {
+            /**
+             * Abnativ2 Max Relative Vhh Score Decrease
+             * @default 0.05
+             */
+            readonly abnativ2_max_relative_vhh_score_decrease: number;
+            /**
+             * Abnativ2 Rasa Threshold
+             * @default 0.15
+             */
+            readonly abnativ2_rasa_threshold: number;
+            /**
+             * Abnativ2 Residue Score Threshold
+             * @default 0.98
+             */
+            readonly abnativ2_residue_score_threshold: number;
+            /**
+             * Hudiff Nb Candidate Count
+             * @default 10
+             */
+            readonly hudiff_nb_candidate_count: number;
+            /**
+             * Root Seed
+             * @default 0
+             */
+            readonly root_seed: number;
+        };
+        /**
          * NativenessRange
          * @description Full-result finite bounds for one original nativeness score.
          */
@@ -2042,6 +2160,32 @@ export interface components {
             readonly token_chain_ids: readonly string[];
             /** Token Res Ids */
             readonly token_res_ids: readonly number[];
+        };
+        /**
+         * PreparationIssue
+         * @description Safe row/field explanation, without echoing private sequence content.
+         */
+        readonly PreparationIssue: {
+            /** Code */
+            readonly code: string;
+            /** Field */
+            readonly field: string;
+            /** Message */
+            readonly message: string;
+            /** Row Index */
+            readonly row_index: number;
+        };
+        /**
+         * PreparedVHPreview
+         * @description Display only the prepared baseline; native imputation evidence stays saved.
+         */
+        readonly PreparedVHPreview: {
+            /** Id */
+            readonly id: string;
+            /** Row Index */
+            readonly row_index: number;
+            /** Vh */
+            readonly vh: string | null;
         };
         /**
          * PrincipalView
@@ -2405,6 +2549,16 @@ export interface components {
              * Format: uuid
              */
             readonly validation_id: string;
+        };
+        /**
+         * VHInput
+         * @description An editable original construct; scientific errors remain row-addressable.
+         */
+        readonly VHInput: {
+            /** Id */
+            readonly id: string;
+            /** Vhh */
+            readonly vhh: string;
         };
     };
     responses: never;
@@ -5767,6 +5921,112 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly options_api_v1_nanobody_humanization_options_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodyOptions"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly prepare_api_v1_nanobody_humanization_prepare_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["NanobodyPreparationRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodyPreparation"];
                 };
             };
             /** @description Request Entity Too Large */

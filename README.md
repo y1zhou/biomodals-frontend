@@ -228,6 +228,19 @@ owns scientific semantics and API behavior. Rollout requires the matching API,
 frontend assets and updated humanization workflow deployment/pin for new pI/gene
 publications; historical results are not backfilled.
 
+The nanobody preparation milestone is available at
+`/tools/nanobody-humanization/new`, outside the Tool Catalog until scientific
+submission is integrated. It uses the authenticated options and preparation
+routes only. Manual ID/VH input and `id,vhh` CSV imports append to one editable,
+memory-only batch; service options supply the batch, construct and file limits.
+Preparation shows originals beside prepared parental sequences, retaining valid
+previews when other rows need correction. Input edits invalidate the entire
+reviewed preview and abort pending preparation; settings edits do not change
+the prepared sequence. No scientific Job is created by this milestone.
+The [nanobody specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/nanobody-humanization.md)
+owns the preparation, protection and model policies. Submission and result
+integration await their exact service contracts.
+
 Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
 and `humatch_vl_best_family_probability` as a fifth Pareto objective to
 maximize. The backend derives this mean during ranking; no extra model call,

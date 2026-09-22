@@ -64,6 +64,8 @@ export const antibodyAnalysisTool = {
 } satisfies AvailableTool
 export const antibodyAnalysisPath = toolOverviewPath(antibodyAnalysisTool)
 
+export const nanobodyPaths = { submission: "/tools/nanobody-humanization/new" }
+
 const humanizationOverviewPath = toolOverviewPath(humanizationTool)
 export const humanizationPaths = {
   rerun: (jobId: string) => `/tools/humanization/new?source_job=${encodeURIComponent(jobId)}`,
