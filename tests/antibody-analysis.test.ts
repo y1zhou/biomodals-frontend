@@ -42,6 +42,28 @@ test("selected FASTA keeps original order and intact pairs or standalone sequenc
   expect(analysisFasta(group, new Set())).toBe("")
 })
 
+test("presentation CSV quotes spreadsheet-sensitive text without changing source IDs or FASTA", () => {
+  for (const id of ['=HYPERLINK("https://example.test","label")', "+1", "-1", "@SUM(A1)", "  =1", "\t+1", "\r\n-1", "\u0000\u001b@SUM(A1)", "\u0085=1", "\ufeff\u00a0=1"]) {
+    const entry = { ...unassigned, id }
+    const group = { id: "Group 1", entries: [entry] }
+    const csv = analysisCsv(group)
+    expect(csv.slice(csv.indexOf("\r\n") + 2)).toStartWith(`"'${id.replaceAll('"', '""')}",`)
+    expect(analysisValues(entry).id).toBe(id)
+    expect(analysisFasta(group, new Set([0]))).toBe(`>${id}\nACDE`)
+  }
+  const issue = { code: "annotation_failed", detail: "\t=1+1" }
+  expect(analysisCsv({ id: "Group 1", entries: [{ id: "normal", issues: [issue] }] })).toContain('"\'\t=1+1"')
+})
+
+test("presentation CSV preserves numeric negatives, missing fields and ordinary text", () => {
+  const entry = { ...unassigned, id: "  ordinary-text + suffix", unassigned: { ...unassigned.unassigned!, metrics: { ...unassigned.unassigned!.metrics, gravy: -0.123456789 } } }
+  const row = analysisCsv({ id: "Group 1", entries: [entry] }).split("\r\n")[1].split(",")
+  expect(row[0]).toBe('"  ordinary-text + suffix"')
+  expect(row[analysisColumns.findIndex((column) => column.name === "vh_pi")]).toBe('""')
+  expect(row[analysisColumns.findIndex((column) => column.name === "unassigned_gravy")]).toBe('"-0.123456789"')
+  expect(row[analysisColumns.findIndex((column) => column.name === "unassigned_pi")]).toBe('"5.123456789"')
+})
+
 test("numeric ordering retains sub-display precision and nulls last in both directions", () => {
   const values = [null, 7.004, 7.001, 7.003]
   expect([...values].sort((a, b) => compareAnalysisValues(a, b, false))).toEqual([7.001, 7.003, 7.004, null])

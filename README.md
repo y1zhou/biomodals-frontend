@@ -202,8 +202,12 @@ sequences, including locally unaligned ends, joined without D or a linker.
 The first native hit for each segment supplies both this estimate and the
 dialog's local alignment; all tied assignments remain in gene details. Local
 analysis tables display two decimals while sorting and CSV retain full
-precision. Standalone inspection presents native Germline and bold Input rows,
-separated by a compact, unlabeled difference strip, with combined V/J reference
+precision. Presentation CSV downloads prefix an apostrophe to text starting
+with `=`, `+`, `-` or `@`, including after whitespace/control characters, before
+CSV quote escaping. Numeric values, internal IDs, FASTA and canonical
+humanization CSVs remain unchanged. Standalone inspection presents native
+Germline and bold Input rows, separated by a compact, unlabeled difference
+strip, with combined V/J reference
 identities. Humanization shows
 Germline (humanized), bold Humanized, Parental and Germline (parental), with
 both sequences' independently assigned V/J species and genes above. Three

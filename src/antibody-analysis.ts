@@ -71,7 +71,10 @@ export function compareAnalysisValues(a: string | number | null, b: string | num
 
 export function analysisCsv(group: AnalysisGroup) {
   const columns = [...analysisColumns.map((column) => column.name), "vh_sequence", "vl_sequence", "unassigned_sequence"]
-  const field = (value: string | number | null) => `"${String(value ?? "").replaceAll('"', '""')}"`
+  const field = (value: string | number | null) => {
+    const text = typeof value === "string" && /^[\s\p{Cc}]*[=+@-]/u.test(value) ? `'${value}` : String(value ?? "")
+    return `"${text.replaceAll('"', '""')}"`
+  }
   return [columns.map(field).join(","), ...group.entries.map((entry) => {
     const values = analysisValues(entry)
     return columns.map((name) => field(values[name] ?? null)).join(",")
