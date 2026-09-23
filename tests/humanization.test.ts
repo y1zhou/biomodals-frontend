@@ -1,7 +1,22 @@
 import { afterEach, describe, expect, test } from "bun:test"
 
 import { ApiError, humanizationInputs, humanizationSelection, submitHumanizationJob } from "../src/api/client"
-import { formatCandidateNumber, nextPairId, normalizeSequence, pairErrors, parsePairCsv } from "../src/humanization"
+import { candidateColumnLabel, candidateColumns, formatCandidateNumber, nextPairId, normalizeSequence, pairErrors, parsePairCsv } from "../src/humanization"
+
+test("candidate columns put chains together without changing historical sort keys", () => {
+  const genes = ["vh_v_gene", "vh_j_gene", "vl_v_gene", "vl_j_gene"]
+  for (const pi of ["pi", "pI"]) {
+    const metrics = [`vh_${pi}`, `vl_${pi}`, `vh_vl_${pi}`, ...genes]
+    const block = pi === "pi" ? ["vh", ...metrics, "vl"] : ["vh", "vl", ...metrics]
+    const names = ["parent_id", ...block, "evaluation_complete"]
+    const original = names.map((name) => ({ name, type: "string" as const }))
+    const displayed = candidateColumns(original)
+    expect(displayed.map(({ name }) => candidateColumnLabel(name))).toEqual(["parent_id", "vh", "vl", "vh_pI", "vl_pI", "vh_vl_pI", ...genes, "evaluation_complete"])
+    expect(displayed[3].name).toBe(`vh_${pi}`)
+    expect(original.map(({ name }) => name)).toEqual(names)
+  }
+  expect(candidateColumns([{ name: "vh", type: "string" }])).toEqual([{ name: "vh", type: "string" }])
+})
 
 test("candidate numbers retain tiny magnitudes and bound displayed precision", () => {
   for (const [value, expected] of [[0, "0"], [2, "2"], [0.123456, "0.123"], [0.001, "0.001"], [0.00012, "1.200e-4"], [-0.000000123456, "-1.235e-7"], [1_000_000, "1.000e+6"], [-123456789, "-1.235e+8"]] as const) {

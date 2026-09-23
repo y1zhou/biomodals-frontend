@@ -1,18 +1,28 @@
 import { Popover } from "@base-ui/react/popover"
 import { Menu } from "@base-ui/react/menu"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query"
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, Columns3, Copy, ListFilter } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router"
 
-import { apiErrorCode, humanizationSelection } from "@/api/client"
+import { antibodyAnalysisOptions, apiErrorCode, humanizationInputs, humanizationSelection, nanobodyInputs, nanobodySelection, nanobodySelectionCsvUrl, prepareJobDownload } from "@/api/client"
+import { ANALYSIS_VERSION } from "@/antibody-analysis"
+import { selectedEntries, selectChain, type SelectedChain } from "@/antibody-selection"
+import { useAntibodyTransfer } from "@/antibody-transfer"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatCandidateNumber, type HumanizationSelection, type SelectionQuery } from "@/humanization"
+import { candidateColumnLabel, candidateColumns, formatCandidateNumber, type HumanizationSelection, type SelectionQuery } from "@/humanization"
 import { shouldRetryJobQuery } from "@/jobs"
 import { copyText } from "@/lib/clipboard"
+import AntibodyGeneCell from "@/components/AntibodyGeneCell"
+import AntibodyReferenceFaq from "@/components/AntibodyReferenceFaq"
+import AntibodySequenceDialog from "@/components/AntibodySequenceDialog"
+import { ChainSelectionCell, ChainSelectionPanel } from "@/components/HumanizationChainSelection"
+import { antibodyAnalysisPath } from "@/tools"
+import NanobodyScoreGuide from "@/components/NanobodyScoreGuide"
 
-function ExpandableCell({ value, sequence = false }: { value: string; sequence?: boolean }) {
+function ExpandableCell({ value }: { value: string }) {
   const [copyStatus, setCopyStatus] = useState("")
   useEffect(() => {
     if (copyStatus !== "Copied") return
@@ -20,10 +30,9 @@ function ExpandableCell({ value, sequence = false }: { value: string; sequence?:
     return () => window.clearTimeout(timer)
   }, [copyStatus])
   return <details className="w-64">
-    <summary className="cursor-pointer truncate font-mono text-xs">{sequence ? `${value.slice(0, 16)}${value.length > 16 ? "…" : ""}` : value}</summary>
+    <summary className="cursor-pointer truncate font-mono text-xs">{value}</summary>
     <p className="mt-2 break-all font-mono text-xs">{value}</p>
-    {sequence ? <p className="mt-1 text-xs text-muted-foreground">{value.length} residues</p> : null}
-    <Button aria-live="polite" disabled={copyStatus === "Copied"} className="mt-2" onClick={() => void copyText(value).then(() => setCopyStatus("Copied"), () => setCopyStatus("Copy failed; select the text to copy it."))} type="button" variant="outline">{copyStatus === "Copied" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />} {copyStatus === "Copied" ? "Copied" : sequence ? "Copy sequence" : "Copy ID"}</Button>
+    <Button aria-live="polite" disabled={copyStatus === "Copied"} className="mt-2" onClick={() => void copyText(value).then(() => setCopyStatus("Copied"), () => setCopyStatus("Copy failed; select the text to copy it."))} type="button" variant="outline">{copyStatus === "Copied" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />} {copyStatus === "Copied" ? "Copied" : "Copy ID"}</Button>
     {copyStatus && copyStatus !== "Copied" ? <p role="alert" className="mt-1 text-sm">{copyStatus}</p> : null}
   </details>
 }
@@ -40,7 +49,7 @@ function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: n
   const delta = name.endsWith("_delta")
   const score = /_(probability|score|likeness|nativeness)$/.test(name)
   if (!score && !delta) return <span title={String(value)} className={name === "cdr_mutations" && value !== 0 ? "rounded bg-red-100 px-1 font-medium tabular-nums text-red-800" : "tabular-nums"}>{formatCandidateNumber(value)}</span>
-  const nativeness = /^pabnativ2_.*_nativeness(?:_delta)?$/.test(name)
+  const nativeness = /_nativeness(?:_delta)?$/.test(name)
   function scaled(column: string, raw: number) {
     if (!nativeness) return Math.abs(raw) <= 1 ? raw : undefined
     const range = ranges?.[column.replace(/_delta$/, "")]
@@ -60,27 +69,62 @@ function ScoreCell({ name, value, deltaValue, ranges }: { name: string; value: n
   </span>
 }
 
-export default function HumanizationResults({ jobId }: { jobId: string }) {
+export default function HumanizationResults({ jobId, nanobody = false }: { jobId: string; nanobody?: boolean }) {
+  const tool = nanobody ? "nanobody-humanization" : "humanization"
   const user = useCurrentUser()
+  const principal = authenticatedPrincipal(user.data)
+  const navigate = useNavigate()
+  const { setTransfer } = useAntibodyTransfer()
+  const [selection, setSelection] = useState<SelectedChain[]>([])
+  const [selectionError, setSelectionError] = useState<string | null>(null)
+  const [inspected, setInspected] = useState<{ sequence: string; label: string; parentId: string; role: "vh" | "vl" } | null>(null)
+  const analysisOptions = useQuery({ queryKey: ["antibody-analysis-options"], queryFn: ({ signal }) => antibodyAnalysisOptions(signal), enabled: !!authenticatedPrincipal(user.data), staleTime: Infinity, retry: false })
+  const inputs = useQuery({
+    queryKey: [tool, "parent-inputs", principal?.user_id, jobId],
+    queryFn: async ({ signal }): Promise<Record<string, Partial<Record<"vh" | "vl", string>>>> => {
+      if (nanobody) {
+        const input = await nanobodyInputs(jobId, signal)
+        return Object.fromEntries(input.prepared_parents.flatMap((parent) => parent.vh ? [[parent.id, { vh: parent.vh }]] : []))
+      }
+      const input = await humanizationInputs(jobId, signal)
+      return Object.fromEntries(input.pairs.map(({ id, vh, vl }) => [id, { vh, vl }]))
+    },
+    enabled: !!principal && !!inspected && analysisOptions.data?.analysis_version === ANALYSIS_VERSION,
+    staleTime: Infinity, gcTime: 0, retry: false,
+    refetchOnWindowFocus: false, refetchOnReconnect: false,
+  })
+  const parentalSequence = inspected ? inputs.data?.[inspected.parentId]?.[inspected.role] : undefined
+  useExpireSession(inputs.error)
   const [parentFilterOpen, setParentFilterOpen] = useState(false)
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({})
   const [view, setView] = useState<SelectionQuery>({ offset: 0, limit: 50, parentId: "", sortBy: "", descending: false })
   const query = useQuery({
-    queryKey: ["humanization", "selection", jobId, view],
-    queryFn: ({ signal }) => humanizationSelection(jobId, view, signal),
+    queryKey: [tool, "selection", jobId, view],
+    queryFn: async ({ signal }) => nanobody ? nanobodySelection(jobId, view, signal) : humanizationSelection(jobId, view, signal),
     enabled: Boolean(authenticatedPrincipal(user.data)),
     retry: (count, error) => apiErrorCode(error) !== "result_not_cached" && shouldRetryJobQuery(count, error),
     staleTime: Infinity,
     gcTime: 0,
     placeholderData: keepPreviousData,
   })
-  useExpireSession(query.error)
+  useExpireSession(query.error ?? analysisOptions.error)
   const data = query.data
+  function germlines(candidateId: string, role: "vh" | "vl") {
+    const evidence = data?.germlines?.[candidateId]
+    return evidence && ("assignment" in evidence ? evidence : evidence[role])
+  }
+  const csv = useMutation({ mutationFn: () => prepareJobDownload(jobId), retry: false, onSuccess() {
+    const link = document.createElement("a")
+    link.href = nanobodySelectionCsvUrl(jobId); link.download = ""; link.hidden = true
+    document.body.append(link); link.click(); link.remove()
+  } })
+  useExpireSession(csv.error)
   const loadingPage = query.isPending || query.isPlaceholderData
   function columnVisible(name: string) {
     return columnVisibility[name] ?? !(["is_parent", "cdr_preservation"].includes(name) || name.endsWith("_delta") || /^humatch_.*_family$/.test(name) || data?.default_hidden_columns?.includes(name))
   }
-  const visibleColumns = data?.columns.filter((column) => columnVisible(column.name)) ?? []
+  const columns = candidateColumns(data?.columns ?? [])
+  const visibleColumns = columns.filter((column) => columnVisible(column.name))
   const pageCount = Math.max(1, Math.ceil((data?.total_rows ?? 0) / view.limit))
   const currentPage = Math.floor((data?.offset ?? 0) / view.limit) + 1
   function sort(column: string) {
@@ -88,11 +132,21 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
   }
   const selectClass = "h-9 max-w-full rounded-lg border border-input bg-background px-2 text-sm"
 
+  function analyzeSelection() {
+    if (!analysisOptions.data) return
+    try {
+      const entries = selectedEntries(selection, analysisOptions.data.max_entries_per_group)
+      setTransfer({ entries, singleDomain: nanobody })
+      navigate(antibodyAnalysisPath)
+    } catch (error) { setSelectionError(error instanceof Error ? error.message : "The selection could not be analyzed.") }
+  }
+
   return <Card className="mt-6 min-w-0">
     <CardHeader>
-      <CardTitle>Humanization candidates</CardTitle>
-      <p className="text-sm leading-7 text-muted-foreground">Compare candidates with their unchanged parents, shown as gray rows.</p>
-      <section aria-labelledby="candidate-scores-heading" className="mt-3 w-full space-y-3">
+      <CardTitle>{nanobody ? "Nanobody humanization candidates" : "Humanization candidates"}</CardTitle>
+      <p className="text-sm leading-7 text-muted-foreground">{nanobody ? "Compare candidates with their frozen prepared parents, shown as gray rows. Trimming and terminal completion are preparation, not generator mutations. Inspection uses the saved prepared baseline." : "Compare candidates with their unchanged parents, shown as gray rows."}</p>
+      {nanobody && data && "nonparent_count" in data && data.nonparent_count === 0 ? <p role="status" className="rounded-lg border bg-muted/40 p-3 leading-7"><strong>No new designs were produced.</strong> The prepared parents remain available as references.</p> : null}
+      {nanobody ? <NanobodyScoreGuide /> : <section aria-labelledby="candidate-scores-heading" className="mt-3 w-full space-y-3">
           <h3 className="text-lg font-semibold" id="candidate-scores-heading">Understand the ranking and scores</h3>
           <details className="text-sm leading-7 text-muted-foreground">
             <summary className="cursor-pointer font-medium text-foreground underline decoration-dotted underline-offset-4">Understand the ranking</summary>
@@ -155,14 +209,19 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
               <p>Deltas subtract the same parent’s score from the candidate’s score. Positive means a higher model score; it is not a percentage improvement or measured experimental benefit.</p>
             </div>
           </details>
-      </section>
+      </section>}
       <section aria-labelledby="candidate-controls-heading" className="mt-3 space-y-2 border-t pt-4">
         <h3 className="text-lg font-semibold" id="candidate-controls-heading">Explore the table</h3>
+        {columns.some((column) => candidateColumnLabel(column.name) === "vh_pI") ? <p className="text-sm leading-7 text-muted-foreground">{nanobody ? "VH pI describes the supplied candidate sequence, not a germline or whole-antibody estimate." : "VH and VL pI describe each supplied chain. VH+VL pI uses the heavy sequence followed directly by the light sequence, without a linker; it is not an average or a whole-antibody estimate."}</p> : null}
         <p className="text-sm leading-7 text-muted-foreground">Numbers use up to 3 decimal places. Nonzero magnitudes below 0.001 or at least 1,000,000 use scientific notation. Hover over a number to see its full value.</p>
         <p className="text-sm leading-7 text-muted-foreground">Click a column header to sort; click again to reverse. Sorting uses full precision, with missing values last and ties resolved by parent and candidate IDs. Use the parent filter icon and Columns menu to narrow the view. The full selection.csv is in the result archive.</p>
       </section>
     </CardHeader>
     <CardContent className="min-w-0 space-y-4">
+      {data?.reference ? <AntibodyReferenceFaq reference={data.reference} /> : null}
+      <ChainSelectionPanel singleDomain={nanobody} selection={selection} maxEntries={analysisOptions.data?.max_entries_per_group} onClear={(parentId) => { setSelection((current) => parentId ? current.filter((chain) => chain.parentId !== parentId) : []); setSelectionError(null) }} onAnalyze={analyzeSelection} busy={!authenticatedPrincipal(user.data)} error={selectionError ?? (analysisOptions.error ? "Analysis limits could not be loaded. Reload them to analyze selected chains." : null)} />
+      {nanobody ? <div><Button variant="outline" disabled={csv.isPending || !principal} onClick={() => csv.mutate()}>{csv.isPending ? "Preparing CSV…" : "Download selection.csv"}</Button>{csv.error ? <p role="alert" className="mt-2 text-destructive">CSV download could not be prepared. {csv.error.message}</p> : null}</div> : null}
+      {analysisOptions.error ? <Button variant="outline" onClick={() => void analysisOptions.refetch()}>Reload analysis limits</Button> : null}
       <div className="flex flex-wrap items-end gap-3">
         <Menu.Root modal={false}>
           <Menu.Trigger aria-label="Columns" className={buttonVariants({ variant: "outline" })} disabled={!data}>
@@ -173,9 +232,9 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
               <Menu.Popup className="max-h-[min(24rem,var(--available-height))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
                 <Menu.Item className="cursor-pointer rounded px-3 py-2 font-medium outline-none data-highlighted:bg-accent" closeOnClick={false} onClick={() => setColumnVisibility(Object.fromEntries(data?.columns.map(({ name }) => [name, true]) ?? []))}>Show all columns</Menu.Item>
                 <Menu.Separator className="my-1 border-t" />
-                {data?.columns.map((column) => <Menu.CheckboxItem checked={columnVisible(column.name)} className="flex cursor-pointer items-start gap-2 rounded px-3 py-2 text-sm outline-none data-highlighted:bg-accent" closeOnClick={false} key={column.name} onCheckedChange={(checked) => setColumnVisibility((current) => ({ ...current, [column.name]: checked }))}>
+                {columns.map((column) => <Menu.CheckboxItem checked={columnVisible(column.name)} className="flex cursor-pointer items-start gap-2 rounded px-3 py-2 text-sm outline-none data-highlighted:bg-accent" closeOnClick={false} key={column.name} onCheckedChange={(checked) => setColumnVisibility((current) => ({ ...current, [column.name]: checked }))}>
                   <span className="mt-1 size-4 shrink-0"><Menu.CheckboxItemIndicator><Check aria-hidden="true" className="size-4" /></Menu.CheckboxItemIndicator></span>
-                  <span className="break-all">{column.name}</span>
+                  <span className="break-all">{candidateColumnLabel(column.name)}</span>
                 </Menu.CheckboxItem>)}
               </Menu.Popup>
             </Menu.Positioner>
@@ -183,7 +242,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
         </Menu.Root>
       </div>
       <div aria-live="polite" className="min-h-12 text-sm text-muted-foreground" role="status">
-        <p className="truncate" title={view.sortBy || undefined}>{loadingPage ? "Loading candidate page…" : view.sortBy ? `Sorted by ${view.sortBy} (${view.descending ? "descending" : "ascending"}).` : "Original workflow order."}</p>
+        <p className="truncate" title={candidateColumnLabel(view.sortBy) || undefined}>{loadingPage ? "Loading candidate page…" : view.sortBy ? `Sorted by ${candidateColumnLabel(view.sortBy)} (${view.descending ? "descending" : "ascending"}).` : "Original workflow order."}</p>
         {view.sortBy && !loadingPage ? <button className="cursor-pointer text-foreground underline underline-offset-4" onClick={() => setView({ ...view, offset: 0, sortBy: "", descending: false })} type="button">Restore default order</button> : null}
       </div>
       {query.error ? <div role="alert" className="text-sm text-destructive">
@@ -193,9 +252,9 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
       {data ? <>
         <div aria-label="Candidate table; scroll horizontally for all columns" className="max-w-full overflow-x-auto rounded-lg border focus-visible:ring-2 focus-visible:ring-ring" tabIndex={0}>
           <table aria-busy={loadingPage} className="w-full text-left text-sm">
-            <caption className="sr-only">Humanization selection.csv, page {Math.floor(data.offset / data.limit) + 1}</caption>
+            <caption className="sr-only">{nanobody ? "Nanobody" : "Humanization"} selection.csv, page {Math.floor(data.offset / data.limit) + 1}</caption>
             <thead className="border-b bg-muted/40"><tr>{visibleColumns.map((column) => <th aria-sort={view.sortBy === column.name ? view.descending ? "descending" : "ascending" : "none"} className="whitespace-nowrap px-3 py-2" key={column.name} scope="col">
-              <button disabled={loadingPage} className="inline-flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-wait" onClick={() => sort(column.name)} type="button">{column.name}{view.sortBy === column.name ? view.descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted-foreground" />}</button>
+              <button disabled={loadingPage} className="inline-flex cursor-pointer items-center gap-2 rounded px-1 py-1 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-wait" onClick={() => sort(column.name)} type="button">{candidateColumnLabel(column.name)}{view.sortBy === column.name ? view.descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" /> : <ArrowUpDown aria-hidden="true" className="size-4 text-muted-foreground" />}</button>
               {column.name === "parent_id" ? <Popover.Root open={parentFilterOpen} onOpenChange={setParentFilterOpen}>
                 <Popover.Trigger aria-label={view.parentId ? `Filter by parent (active: ${view.parentId})` : "Filter by parent"} className={`ml-1 inline-flex size-7 cursor-pointer items-center justify-center rounded hover:bg-accent ${view.parentId ? "bg-primary/10 text-primary" : "text-muted-foreground"}`} disabled={loadingPage}>
                   <ListFilter aria-hidden="true" className="size-4" />
@@ -213,7 +272,7 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
             {/* Keep the previous page geometry during requests without exposing stale rows. */}
             <tbody aria-hidden={loadingPage || undefined} className={loadingPage ? "invisible divide-y" : "divide-y"}>{data.rows.map((row, index) => <tr className={row.is_parent === true ? "bg-muted/60" : undefined} key={`${row.parent_id}:${row.candidate_id}:${data.offset + index}`}>
               {visibleColumns.map((column) => <td className="max-w-sm px-3 py-3 align-top" key={column.name}>
-                {row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : ["vh", "vl"].includes(column.name) && typeof row[column.name] === "string" ? <ExpandableCell sequence value={String(row[column.name])} /> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
+                {(column.name === "vh" || !nanobody && column.name === "vl") && typeof row[column.name] === "string" && typeof row.parent_id === "string" && typeof row.candidate_id === "string" ? <ChainSelectionCell chain={{ parentId: row.parent_id, role: column.name === "vh" ? "vh" : "vl", sequence: String(row[column.name]), candidateIds: [row.candidate_id] }} selection={selection} onChange={(chain, selected) => { setSelection((current) => selectChain(current, chain, selected)); setSelectionError(null) }} onInspect={(sequence, label) => setInspected({ sequence, label, parentId: String(row.parent_id), role: column.name === "vh" ? "vh" : "vl" })} /> : /^(vh|vl)_[vj]_gene$/.test(column.name) && germlines(String(row.candidate_id), column.name.startsWith("vh") ? "vh" : "vl") ? <AntibodyGeneCell germlines={germlines(String(row.candidate_id), column.name.startsWith("vh") ? "vh" : "vl")!} segment={column.name.includes("_v_") ? "v" : "j"} /> : row[column.name] === null || row[column.name] === undefined ? <span aria-label="Not available" className="text-muted-foreground">—</span> : column.name === "candidate_id" ? <ExpandableCell value={String(row[column.name])} /> : typeof row[column.name] === "number" ? <ScoreCell name={column.name} value={Number(row[column.name])} deltaValue={row[`${column.name}_delta`]} ranges={data.nativeness_ranges} /> : <span className={column.type === "number" || column.type === "integer" ? "tabular-nums" : "break-words"}>{String(row[column.name])}</span>}
               </td>)}
             </tr>)}</tbody>
           </table>
@@ -228,15 +287,23 @@ export default function HumanizationResults({ jobId }: { jobId: string }) {
             </label>
             <nav aria-label="Candidate pages" className="flex items-center gap-2">
               <Button aria-label="Previous page" disabled={data.offset === 0 || query.isFetching} onClick={() => setView({ ...view, offset: Math.max(0, view.offset - view.limit) })} size="icon" title="Previous page" type="button" variant="outline"><ChevronLeft aria-hidden="true" /></Button>
-              <label className="flex items-center gap-2 text-sm">Page
+              {pageCount > 100 ? <form aria-label="Jump to candidate page" className="flex items-center gap-2 text-sm" onSubmit={(event) => {
+                event.preventDefault()
+                const page = Number(new FormData(event.currentTarget).get("page"))
+                if (!loadingPage && Number.isInteger(page) && page >= 1 && page <= pageCount) setView({ ...view, offset: (page - 1) * view.limit })
+              }}>
+                <label className="flex items-center gap-2">Page <input aria-label="Page" name="page" type="number" required min={1} max={pageCount} step={1} key={`${currentPage}:${pageCount}`} defaultValue={currentPage} disabled={loadingPage} className={`${selectClass} w-24`} /></label>
+                <span>of {pageCount}</span><Button type="submit" variant="outline" disabled={loadingPage}>Go</Button>
+              </form> : <label className="flex items-center gap-2 text-sm">Page
                 <select aria-label="Page" className={selectClass} disabled={loadingPage || pageCount === 1} onChange={(event) => setView({ ...view, offset: (Number(event.target.value) - 1) * view.limit })} value={currentPage}>{Array.from({ length: pageCount }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select>
                 <span>of {pageCount}</span>
-              </label>
+              </label>}
               <Button aria-label="Next page" disabled={data.offset + data.rows.length >= data.total_rows || query.isFetching} onClick={() => setView({ ...view, offset: view.offset + view.limit })} size="icon" title="Next page" type="button" variant="outline"><ChevronRight aria-hidden="true" /></Button>
             </nav>
           </div>
         </div>
       </> : null}
+      {inspected ? <AntibodySequenceDialog key={`${inspected.parentId}:${inspected.role}:${inspected.sequence}`} sequence={inspected.sequence} label={inspected.label} parentalSequence={parentalSequence} parentSource={nanobody ? "prepared" : "original"} parentLoading={inputs.isPending} parentUnavailable={!inputs.isPending && !parentalSequence} highlightHallmarks={nanobody} onClose={() => setInspected(null)} /> : null}
     </CardContent>
   </Card>
 }

@@ -106,7 +106,8 @@ bun run preview  # preview dist/ locally
 ## Current state
 
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
-prediction`, and `Antibody humanization`. AlphaFold3 accepts a guided protein, DNA, RNA, and
+prediction`, `Antibody humanization`, and `Antibody sequence analysis`.
+AlphaFold3 accepts a guided protein, DNA, RNA, and
 small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating
 a Job.
@@ -140,6 +141,172 @@ nonzero magnitudes below 0.001 or at least 1,000,000. Hover values, server-side
 sorting, and the archive retain full precision. The complete CSV
 is included in the result archive download. The table never fetches the
 whole CSV to sort it in the browser.
+
+New schema-6 humanization publications put `vh` and `vl` together, followed by
+`vh_pI`, `vl_pI`, `vh_vl_pI`, `vh_v_gene`, `vh_j_gene`, `vl_v_gene` and
+`vl_j_gene` in the native CSV and table. The three pIs describe the supplied
+candidate chains and their literal VH+VL concatenation without a linker;
+they are not germline pIs.
+Gene details include page-bounded species, allele ties and therapeutic
+reference frequencies. Historical webpages also display adjacent chains and
+`_pI` labels, while sorting uses their original raw keys. Historical CSVs and
+archives stay unchanged; missing pI/gene columns are not backfilled.
+Clicking a sequence opens a numbered dialog with
+IMGT, Kabat, Chothia, Martin or AHo conventions, CDR backgrounds and potential
+liability motifs. Copy sequence includes the full input; clicking outside or
+pressing Escape dismisses the dialog. These display choices do not alter
+workflow mutation scores. Humanization inspection lazily reads retained inputs
+once per mounted Job view, matching the exact parent ID and chain role. Its
+parental comparison is computed by the analysis API; missing retained input
+leaves ordinary numbering, germline details and full-sequence copy available.
+Independent VH/VL selections survive pages and filters. **Analyze selected
+sequences** forms combinations within each parent; a parent with one selected
+role contributes standalone chains. The entry limit is checked before expansion,
+and no original ranks or paired scores accompany recombined entries.
+
+Antibody sequence analysis accepts one or two independent FASTA groups: paired
+`VH:VL` records, matched `_vh`/`_vl` records, or standalone domains. The service
+advertises limits of 1000 entries per group, 512 residues per chain and 4 MiB
+per request. Analysis creates no Job or Modal work. Invalid entries stay visible
+alongside usable results; failed numbering leaves computable metrics labeled as
+unassigned rather than assuming a heavy chain. Tables share column visibility,
+sort independently at full precision, and page locally in groups of 50. Each
+group has a full-precision CSV download and **Download selected pairs** for
+FASTA export. Row selections survive sorting and paging independently per
+group, then reset when new analysis results arrive. Selected FASTA follows the
+original input order, using `VH:VL` for pairs and the supplied sequence for
+standalone chains. Entries without a usable sequence remain visible but cannot
+be selected for export.
+
+**Load example sequences** replaces only Group 1 with the supplied pembrolizumab
+and OKT3 pairs plus standalone Ozoralizumab. It preserves Group 2 and waits for
+**Analyze sequences**. Sequences are kept exactly as supplied; OKT3's light-chain
+partial-domain diagnostic remains visible. Editing the input cancels any pending
+automatic analysis of transferred chains. After an explicit analysis succeeds,
+the results heading receives focus and scrolls into view, respecting reduced
+motion. Sorting, paging and sequence inspection do not repeat this navigation;
+request errors remain at the form.
+
+Analysis version 5 reports pI, molecular weight and mean residue hydrophobicity
+on Biopython's **BlackMould** scale (the API key remains `gravy`). Extinction
+metrics are no longer included. Metrics and liability checks use the full
+supplied sequence, including tags and tails; numbering and germline assignment
+describe the detected variable domain. Odd cysteine counting includes every
+supplied residue, but annotated IMGT 23/104 conserved cysteines are not marked.
+No conserved positions are guessed when numbering fails. N-terminal glutamine
+and hydrophobic-patch liability flags are omitted. Issues are input/annotation
+diagnostics, not quality scores. A shared FAQ records the therapeutic
+snapshot and its counting policy; unavailable frequencies remain missing.
+VH/VL germline pI uses each chain's full representative V and J reference
+sequences, including locally unaligned ends, joined without D or a linker.
+The first native hit for each segment supplies both this estimate and the
+dialog's local alignment; all tied assignments remain in gene details. Local
+analysis tables display two decimals while sorting and CSV retain full
+precision. Presentation CSV downloads prefix an apostrophe to text starting
+with `=`, `+`, `-` or `@`, including after whitespace/control characters, before
+CSV quote escaping. Numeric values, internal IDs, FASTA and canonical
+humanization CSVs remain unchanged. Standalone inspection presents native
+Germline and bold Input rows, separated by a compact, unlabeled difference
+strip, with combined V/J reference
+identities. Humanization shows
+Germline (humanized), bold Humanized, Parental and Germline (parental), with
+both sequences' independently assigned V/J species and genes above. Three
+compact, unlabeled, accessibly described difference strips compare Humanized
+to its germline, Humanized to Parental, and Parental to its own germline. If parental
+numbering fails, the original sequence comparison remains usable and its
+germline is marked unavailable. The API supplies the common axis and original
+input indices; independent reference-only gaps stay separate. Unmatched
+germline junctions and uncovered ends have blank diffs without asserting a
+match or deletion. The full supplied sequence, including tails, appears once,
+with CDR/liability overlays and numbering or tail identity on hover/focus.
+Alignment headers retain the displayed representative's gene/species identities
+without tie-count annotations; no browser alignment or germline reconstruction
+is performed.
+
+The updated interface requires analysis API version 5 before requesting
+metrics or sequence annotations, avoiding mislabeled older-scale results.
+
+Analysis drafts, results and chain handoff exist only in memory. They survive
+mounted same-user reauthentication, but leaving or reloading loses them. Inputs
+never travel in URLs, browser history or persistent browser storage. The
+[accepted sequence-analysis specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/antibody-sequence-analysis.md)
+owns scientific semantics and API behavior. Rollout requires the matching API,
+frontend assets and updated humanization workflow deployment/pin for new pI/gene
+publications; historical results are not backfilled.
+
+Nanobody humanization is a separate Tool at `/tools/nanobody-humanization`.
+Manual ID/VH input and `id,vhh` CSV imports append to one editable, memory-only
+batch; service options supply the batch, construct and file limits. Preparation
+shows originals beside prepared parental sequences, retaining valid previews
+when other rows need correction. Input edits invalidate the entire reviewed
+preview and abort pending preparation; settings edits do not change the prepared
+sequence. Only explicit Submit starts a scientific Job. Check submission reuses
+the exact original request and idempotency key after an uncertain response.
+A changed preparation digest requires fresh preparation and review. Rerun with
+same inputs loads editable originals and settings, then requires preparation;
+it never submits automatically.
+
+AbNatiV2 enhanced search remains the default: one best-effort endpoint, possibly
+unchanged. **Explore more candidates** evaluates all allowed nonparent
+combinations when they fit the per-parent budget, otherwise a reproducible
+sample balanced across mutation counts. All passing designs join HuDiff
+candidates for shared ranking; the budget limits evaluations, not retained
+outputs, and does not guarantee more passing designs or a runtime/cost.
+Service options supply the default and measured per-parent and whole-job
+limits (currently 1,000 by default, up to 5,000 per parent and 10,000 per job).
+The form shows the requested parent-count-times-budget allowance;
+over-budget requests require an explicit edit, never silent scaling.
+Root seed controls exploration sampling without changing HuDiff behavior.
+
+Solvent-exposure screening starts on. Turning it off sends a zero threshold
+while preserving the edited positive value in the mounted form; turning it
+back on restores that value. An old zero-threshold rerun starts off and uses
+the positive service default as its dormant threshold. Screening is the only
+reason to predict the parent structure; unused candidate structure reports
+are omitted in either mode. VHH-loss tolerance is per-step in enhanced mode
+and relative to the original prepared parent in exploration. Settings edits
+create a new submission intent while keeping the reviewed sequence preparation.
+An `exploration_budget_exceeded` rejection preserves that review for an explicit
+budget/batch correction. `deployment_incompatible` preserves it while an
+administrator updates the workflow; neither becomes an ambiguous submission.
+Older service options block submission until the matching API is available.
+
+Both generators are concurrently eligible within the shared scheduler. Capacity
+and the existing dispatch order determine their start times; method interleaving
+or simultaneous progress is not guaranteed. Local analysis, inspection and
+preparation retain inputs after a `local_analysis_busy` response and require an
+explicit retry; the browser does not automatically repeat these operations.
+The same coded response during job submission is a known rejection before
+admission: the reviewed batch stays ready for explicit Submit, rather than
+showing the uncertain-submission recovery action.
+
+Nanobody Results use bounded server-side sorting, filtering and paging, native
+CSV and archive downloads, and the shared Job lifecycle and recovery actions.
+Tables with more than 100 pages use an explicit page-number jump instead of
+allocating a dropdown option for every page; smaller tables retain the dropdown.
+The single VH table uses VH2/VHH2 scores and the saved prepared parent as its
+comparison baseline, including in sequence inspection. It never re-imputes
+historical inputs. Selected VH sequences survive table navigation and transfer
+to local analysis as standalone FASTA entries, without inherited ranks or
+parent comparisons; the analysis limit blocks oversized transfers without
+truncation. Missing scores remain visible as missing, and nativeness bars are
+scaled within the Job while displayed numbers retain their raw units.
+Nanobody transfers initially hide VL columns in local analysis; Columns can
+re-enable them and CSV retains all fields. Unless the user chose a column set,
+an edited analysis containing light chains restores those columns. Nanobody
+result and transferred-analysis dialogs outline each IMGT hallmark (42, 49,
+50, 52) in gray across the full alignment stack. Native full-input indices
+keep the outlines on the same biological residues in all five display schemes;
+the browser does not translate numbering labels or infer missing positions.
+When full-result `nonparent_count` is zero, the page states that no new designs
+were produced. This notice uses job-wide metadata, never the current page or
+parent filter; prepared parental references and downloads remain available.
+The [nanobody specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/nanobody-humanization.md)
+owns preparation, protection, ranking and model policies. Rollout requires the
+matching API/frontend and a deployed, pinned nanobody workflow before restarting
+the API, whose startup checks cover every registered Tool. Offline verification
+uses native local preparation/annotation and deterministic fake remote science;
+it does not verify generator GPU inference or image installation.
 
 Ranking v2 adds the arithmetic mean of `humatch_vh_best_family_probability`
 and `humatch_vl_best_family_probability` as a fifth Pareto objective to

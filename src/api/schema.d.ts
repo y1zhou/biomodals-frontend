@@ -315,6 +315,57 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/antibody-sequence-analysis/analyze": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Analyze */
+        readonly post: operations["analyze_api_v1_antibody_sequence_analysis_analyze_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/antibody-sequence-analysis/options": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Options */
+        readonly get: operations["options_api_v1_antibody_sequence_analysis_options_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/antibody-sequence-analysis/sequence": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Sequence */
+        readonly post: operations["sequence_api_v1_antibody_sequence_analysis_sequence_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/auth/login": {
         readonly parameters: {
             readonly query?: never;
@@ -706,6 +757,108 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/nanobody-humanization/jobs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Submit */
+        readonly post: operations["submit_api_v1_nanobody_humanization_jobs_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/jobs/{job_id}/inputs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Inputs */
+        readonly get: operations["inputs_api_v1_nanobody_humanization_jobs__job_id__inputs_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/jobs/{job_id}/selection": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Selection */
+        readonly get: operations["selection_api_v1_nanobody_humanization_jobs__job_id__selection_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/jobs/{job_id}/selection.csv": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Selection Download */
+        readonly get: operations["selection_download_api_v1_nanobody_humanization_jobs__job_id__selection_csv_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/options": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Options */
+        readonly get: operations["options_api_v1_nanobody_humanization_options_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/nanobody-humanization/prepare": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Prepare */
+        readonly post: operations["prepare_api_v1_nanobody_humanization_prepare_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/ready": {
         readonly parameters: {
             readonly query?: never;
@@ -1043,6 +1196,125 @@ export interface components {
             readonly validation_id: string;
         };
         /**
+         * AnalysisEntry
+         * @description One pair or standalone domain, with no inherited ranking information.
+         */
+        readonly AnalysisEntry: {
+            /** Id */
+            readonly id: string;
+            /** Issues */
+            readonly issues?: readonly components["schemas"]["AnalysisIssue"][];
+            readonly unassigned?: components["schemas"]["AnalyzedChain"] | null;
+            readonly vh?: components["schemas"]["AnalyzedChain"] | null;
+            /** Vh Vl Pi */
+            readonly vh_vl_pi?: number | null;
+            readonly vl?: components["schemas"]["AnalyzedChain"] | null;
+        };
+        /**
+         * AnalysisGroup
+         * @description Independent valid/error entries in original FASTA order.
+         */
+        readonly AnalysisGroup: {
+            /** Entries */
+            readonly entries: readonly components["schemas"]["AnalysisEntry"][];
+            /** Id */
+            readonly id: string;
+            /** Issues */
+            readonly issues?: readonly components["schemas"]["AnalysisIssue"][];
+        };
+        /**
+         * AnalysisIssue
+         * @description Safe record/group validation diagnostic, without discarding other rows.
+         */
+        readonly AnalysisIssue: {
+            /** Code */
+            readonly code: string;
+            /** Detail */
+            readonly detail: string;
+        };
+        /**
+         * AnalysisOptions
+         * @description Authoritative admission limits and supported conventions.
+         */
+        readonly AnalysisOptions: {
+            /**
+             * Analysis Version
+             * @default 5
+             */
+            readonly analysis_version: string;
+            /**
+             * Arpeggia Version
+             * @default 0.10.1
+             */
+            readonly arpeggia_version: string;
+            /**
+             * Default Scheme
+             * @default imgt
+             * @enum {string}
+             */
+            readonly default_scheme: "imgt" | "kabat" | "chothia" | "martin" | "aho";
+            /**
+             * Max Chain Length
+             * @default 512
+             */
+            readonly max_chain_length: number;
+            /**
+             * Max Entries Per Group
+             * @default 1000
+             */
+            readonly max_entries_per_group: number;
+            /**
+             * Max Groups
+             * @default 2
+             */
+            readonly max_groups: number;
+            /**
+             * Max Request Bytes
+             * @default 4194304
+             */
+            readonly max_request_bytes: number;
+            /**
+             * Schemes
+             * @default [
+             *       "imgt",
+             *       "kabat",
+             *       "chothia",
+             *       "martin",
+             *       "aho"
+             *     ]
+             */
+            readonly schemes: readonly ("imgt" | "kabat" | "chothia" | "martin" | "aho")[];
+        };
+        /**
+         * AnalysisRequest
+         * @description Analyze one or two bounded FASTA groups without creating a Job.
+         */
+        readonly AnalysisRequest: {
+            /** Groups */
+            readonly groups: readonly components["schemas"]["FastaGroup"][];
+        };
+        /**
+         * AnalysisResponse
+         * @description Ephemeral metrics and one common therapeutic reference provenance block.
+         */
+        readonly AnalysisResponse: {
+            /** Groups */
+            readonly groups: readonly components["schemas"]["AnalysisGroup"][];
+            readonly reference: components["schemas"]["ReferenceInfo"];
+        };
+        /**
+         * AnalyzedChain
+         * @description Untrimmed sequence and independent chain-level scientific results.
+         */
+        readonly AnalyzedChain: {
+            /** Germline Pi */
+            readonly germline_pi: number | null;
+            readonly germlines: components["schemas"]["GermlinePresentation"];
+            readonly metrics: components["schemas"]["ProteinMetrics"];
+            /** Sequence */
+            readonly sequence: string;
+        };
+        /**
          * AuthenticationBusyResponse
          * @description Bounded Argon2 capacity is temporarily exhausted.
          */
@@ -1096,6 +1368,14 @@ export interface components {
             readonly value: boolean;
         };
         /**
+         * CandidateGermlines
+         * @description Page-bounded heavy/light assignments and therapeutic usage.
+         */
+        readonly CandidateGermlines: {
+            readonly vh: components["schemas"]["GermlinePresentation"];
+            readonly vl: components["schemas"]["GermlinePresentation"];
+        };
+        /**
          * CodedErrorResponse
          * @description Recoverable error with a stable machine-readable code.
          */
@@ -1143,6 +1423,111 @@ export interface components {
         readonly ErrorResponse: {
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * FastaGroup
+         * @description One independent input group; identifiers are scoped to this group.
+         */
+        readonly FastaGroup: {
+            /** Fasta */
+            readonly fasta: string;
+            /** Id */
+            readonly id: string;
+        };
+        /**
+         * GeneUsage
+         * @description Weighted fraction of unique approved chains assigned to this gene.
+         */
+        readonly GeneUsage: {
+            /** Frequency */
+            readonly frequency: number | null;
+            /** Gene */
+            readonly gene: string;
+            /** Species */
+            readonly species: string;
+        };
+        /**
+         * GermlineAssignment
+         * @description All best V/J reference ties, never an arbitrary representative.
+         */
+        readonly GermlineAssignment: {
+            /** Chain Type */
+            readonly chain_type: string | null;
+            /** Diagnostics */
+            readonly diagnostics: readonly string[];
+            /** Error */
+            readonly error: string | null;
+            /** J */
+            readonly j: readonly components["schemas"]["GermlineEvidence"][];
+            /** J Gene */
+            readonly j_gene: string | null;
+            /** V */
+            readonly v: readonly components["schemas"]["GermlineEvidence"][];
+            /** V Gene */
+            readonly v_gene: string | null;
+        };
+        /**
+         * GermlineEvidence
+         * @description One tied reference with its native similarity/coverage evidence.
+         */
+        readonly GermlineEvidence: {
+            /** Accession */
+            readonly accession: string;
+            /** Allele */
+            readonly allele: string;
+            /** Gene */
+            readonly gene: string;
+            /** Imgt Span */
+            readonly imgt_span: readonly [
+                number,
+                number
+            ];
+            /** Known Fr4 Pairs */
+            readonly known_fr4_pairs: number;
+            /** Known Matches */
+            readonly known_matches: number;
+            /** Known Pairs */
+            readonly known_pairs: number;
+            /** Query Coverage */
+            readonly query_coverage: number;
+            /** Query Input Start */
+            readonly query_input_start: number;
+            /** Reference Coverage */
+            readonly reference_coverage: number;
+            /** Reference Id */
+            readonly reference_id: string;
+            /** Score */
+            readonly score: number;
+            /** Species */
+            readonly species: string;
+        };
+        /**
+         * GermlinePresentation
+         * @description Frozen assignment plus current local reference frequencies.
+         */
+        readonly GermlinePresentation: {
+            readonly assignment: components["schemas"]["GermlineAssignment"];
+            /** J Usage */
+            readonly j_usage: readonly components["schemas"]["GeneUsage"][];
+            /** V Usage */
+            readonly v_usage: readonly components["schemas"]["GeneUsage"][];
+        };
+        /**
+         * GermlineReference
+         * @description Identity of one native display-representative V/J sequence.
+         */
+        readonly GermlineReference: {
+            /** Reference Ids */
+            readonly reference_ids: readonly string[];
+            /** Reference Names */
+            readonly reference_names: readonly string[];
+            /**
+             * Segment
+             * @enum {string}
+             */
+            readonly segment: "v" | "j";
+            /** Tied Reference Count */
+            readonly tied_reference_count: number;
         };
         /**
          * GromacsContinuationInfo
@@ -1584,6 +1969,18 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * Liability
+         * @description Potential sequence motif, using zero-based half-open input intervals.
+         */
+        readonly Liability: {
+            /** End */
+            readonly end: number;
+            /** Kind */
+            readonly kind: string;
+            /** Start */
+            readonly start: number;
+        };
+        /**
          * LoginRequest
          * @description Credentials submitted only by the browser login form.
          */
@@ -1607,6 +2004,176 @@ export interface components {
             readonly detail: string;
         };
         /**
+         * NanobodyInputErrors
+         * @description Submission validation keeps the same zero-based row errors as preparation.
+         */
+        readonly NanobodyInputErrors: {
+            /** Errors */
+            readonly errors: readonly components["schemas"]["PreparationIssue"][];
+        };
+        /**
+         * NanobodyOptions
+         * @description Authoritative website bounds and the complete flat native controls.
+         */
+        readonly NanobodyOptions: {
+            readonly defaults?: components["schemas"]["NanobodySettings"];
+            /**
+             * Max Csv Bytes
+             * @default 10485760
+             */
+            readonly max_csv_bytes: number;
+            /**
+             * Max Exploration Candidates Per Job
+             * @default 10000
+             */
+            readonly max_exploration_candidates_per_job: number;
+            /**
+             * Max Exploration Candidates Per Parent
+             * @default 5000
+             */
+            readonly max_exploration_candidates_per_parent: number;
+            /**
+             * Max Input Length
+             * @default 512
+             */
+            readonly max_input_length: number;
+            /** Max Parents */
+            readonly max_parents: number;
+            /**
+             * Preparation Version
+             * @default 1|arpeggia=0.10.1|IMGT-202636-7+llama-supplement
+             */
+            readonly preparation_version: string;
+            /** Settings Schema */
+            readonly settings_schema?: {
+                readonly [key: string]: unknown;
+            };
+        };
+        /**
+         * NanobodyPreparation
+         * @description All row outcomes, with a submission digest only for a valid whole batch.
+         */
+        readonly NanobodyPreparation: {
+            /** Errors */
+            readonly errors: readonly components["schemas"]["PreparationIssue"][];
+            /** Preparation Digest */
+            readonly preparation_digest: string | null;
+            /**
+             * Preparation Version
+             * @default 1|arpeggia=0.10.1|IMGT-202636-7+llama-supplement
+             */
+            readonly preparation_version: string;
+            /** Rows */
+            readonly rows: readonly components["schemas"]["PreparedVHPreview"][];
+        };
+        /**
+         * NanobodyPreparationRequest
+         * @description Editable constructs, not yet eligible scientific parents.
+         */
+        readonly NanobodyPreparationRequest: {
+            /** Parents */
+            readonly parents: readonly components["schemas"]["VHInput"][];
+        };
+        /**
+         * NanobodySelectionPage
+         * @description A bounded page; visibility defaults and score ranges cover the whole result.
+         */
+        readonly NanobodySelectionPage: {
+            /** Columns */
+            readonly columns: readonly components["schemas"]["SelectionColumn"][];
+            /** Default Hidden Columns */
+            readonly default_hidden_columns: readonly string[];
+            /**
+             * Germlines
+             * @description Page-only VH germline evidence keyed by candidate_id; missing when annotation failed.
+             */
+            readonly germlines?: {
+                readonly [key: string]: components["schemas"]["GermlinePresentation"];
+            };
+            /** Limit */
+            readonly limit: number;
+            /**
+             * Nativeness Ranges
+             * @description Finite full-result VH2/VHH2 min/max before filtering and paging; zero/zero when unavailable. Visualization only; preserve raw scores and share each original score range with its delta.
+             */
+            readonly nativeness_ranges: {
+                readonly [key: string]: components["schemas"]["NativenessRange"];
+            };
+            /**
+             * Nonparent Count
+             * @description Number of unique nonparent candidates in the whole result, before filtering or paging. Zero means no new designs were produced.
+             */
+            readonly nonparent_count: number;
+            /** Offset */
+            readonly offset: number;
+            /** Parent Ids */
+            readonly parent_ids: readonly string[];
+            readonly reference?: components["schemas"]["ReferenceInfo"] | null;
+            /** Rows */
+            readonly rows: readonly {
+                readonly [key: string]: string | number | boolean | null;
+            }[];
+            /** Total Rows */
+            readonly total_rows: number;
+        };
+        /**
+         * NanobodySettings
+         * @description Explicit native AbNatiV CLI defaults and fixed-batch HuDiff sampling.
+         */
+        readonly NanobodySettings: {
+            /**
+             * Abnativ2 Candidate Budget
+             * @default 1000
+             */
+            readonly abnativ2_candidate_budget: number;
+            /**
+             * Abnativ2 Explore
+             * @default false
+             */
+            readonly abnativ2_explore: boolean;
+            /**
+             * Abnativ2 Max Relative Vhh Score Decrease
+             * @default 0.05
+             */
+            readonly abnativ2_max_relative_vhh_score_decrease: number;
+            /**
+             * Abnativ2 Rasa Threshold
+             * @default 0.15
+             */
+            readonly abnativ2_rasa_threshold: number;
+            /**
+             * Abnativ2 Residue Score Threshold
+             * @default 0.98
+             */
+            readonly abnativ2_residue_score_threshold: number;
+            /**
+             * Hudiff Nb Candidate Count
+             * @default 10
+             */
+            readonly hudiff_nb_candidate_count: number;
+            /**
+             * Root Seed
+             * @default 0
+             */
+            readonly root_seed: number;
+        };
+        /**
+         * NanobodySubmission
+         * @description Original inputs plus the exact reviewed preparation, never trusted outputs.
+         */
+        readonly NanobodySubmission: {
+            /**
+             * Display Name
+             * @default Nanobody humanization
+             */
+            readonly display_name: string;
+            /** Parents */
+            readonly parents: readonly components["schemas"]["VHInput"][];
+            /** Preparation Digest */
+            readonly preparation_digest: string;
+            readonly settings?: components["schemas"]["NanobodySettings"];
+        };
+        /**
          * NativenessRange
          * @description Full-result finite bounds for one original nativeness score.
          */
@@ -1615,6 +2182,18 @@ export interface components {
             readonly max: number;
             /** Min */
             readonly min: number;
+        };
+        /**
+         * NumberedResidue
+         * @description One supplied residue in native order; no imputed positions.
+         */
+        readonly NumberedResidue: {
+            /** Input Index */
+            readonly input_index: number;
+            /** Label */
+            readonly label: string;
+            /** Region */
+            readonly region: string;
         };
         /**
          * OriginErrorResponse
@@ -1737,6 +2316,32 @@ export interface components {
             readonly token_res_ids: readonly number[];
         };
         /**
+         * PreparationIssue
+         * @description Safe row/field explanation, without echoing private sequence content.
+         */
+        readonly PreparationIssue: {
+            /** Code */
+            readonly code: string;
+            /** Field */
+            readonly field: string;
+            /** Message */
+            readonly message: string;
+            /** Row Index */
+            readonly row_index: number;
+        };
+        /**
+         * PreparedVHPreview
+         * @description Display only the prepared baseline; native imputation evidence stays saved.
+         */
+        readonly PreparedVHPreview: {
+            /** Id */
+            readonly id: string;
+            /** Row Index */
+            readonly row_index: number;
+            /** Vh */
+            readonly vh: string | null;
+        };
+        /**
          * PrincipalView
          * @description The small identity document needed by the separate frontend.
          */
@@ -1754,6 +2359,47 @@ export interface components {
             readonly user_id: string;
         };
         /**
+         * ProteinMetrics
+         * @description Full supplied-chain metrics, with Black–Mould mean hydrophobicity.
+         */
+        readonly ProteinMetrics: {
+            /** Gravy */
+            readonly gravy: number;
+            /** Molecular Weight Kda */
+            readonly molecular_weight_kda: number;
+            /** Pi */
+            readonly pi: number;
+        };
+        /**
+         * ReferenceInfo
+         * @description Shared FAQ provenance, never repeated per gene cell.
+         */
+        readonly ReferenceInfo: {
+            /** Detail */
+            readonly detail?: string | null;
+            /** Downloaded At */
+            readonly downloaded_at?: string | null;
+            /** Engine Version */
+            readonly engine_version?: string | null;
+            /** Germline Reference */
+            readonly germline_reference?: string | null;
+            /** Heavy Sequences */
+            readonly heavy_sequences?: number | null;
+            /** Light Sequences */
+            readonly light_sequences?: number | null;
+            /** Policy Version */
+            readonly policy_version?: string | null;
+            /** Source Sha256 */
+            readonly source_sha256?: string | null;
+            /** Source Url */
+            readonly source_url: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            readonly status: "available" | "unavailable";
+        };
+        /**
          * ResolveStateUnknownJobRequest
          * @description One explicit safe outcome after an Administrator checks Modal.
          */
@@ -1765,6 +2411,21 @@ export interface components {
              * @enum {string}
              */
             readonly resolution: "resume" | "requeue" | "cancel";
+        };
+        /**
+         * RetainedNanobodyInputs
+         * @description Original editable inputs and the saved baseline for candidate comparison.
+         */
+        readonly RetainedNanobodyInputs: {
+            /** Display Name */
+            readonly display_name: string;
+            /** Parents */
+            readonly parents: readonly components["schemas"]["VHInput"][];
+            /** Preparation Version */
+            readonly preparation_version: string;
+            /** Prepared Parents */
+            readonly prepared_parents: readonly components["schemas"]["PreparedVHPreview"][];
+            readonly settings: components["schemas"]["NanobodySettings"];
         };
         /**
          * SelectionColumn
@@ -1791,6 +2452,13 @@ export interface components {
              * @description Data-dependent defaults computed over the full result before filtering or pagination.
              */
             readonly default_hidden_columns: readonly string[];
+            /**
+             * Germlines
+             * @description Page-only evidence keyed by candidate_id; null for historical publications.
+             */
+            readonly germlines?: {
+                readonly [key: string]: components["schemas"]["CandidateGermlines"];
+            } | null;
             /** Limit */
             readonly limit: number;
             /**
@@ -1804,12 +2472,96 @@ export interface components {
             readonly offset: number;
             /** Parent Ids */
             readonly parent_ids: readonly string[];
+            /** @description One therapeutic reference provenance block for new germline-annotated publications. */
+            readonly reference?: components["schemas"]["ReferenceInfo"] | null;
             /** Rows */
             readonly rows: readonly {
                 readonly [key: string]: string | number | boolean | null;
             }[];
             /** Total Rows */
             readonly total_rows: number;
+        };
+        /**
+         * SequenceAlignment
+         * @description Native comparisons projected onto one full-input display axis.
+         *
+         *     Spaces mean unavailable reference coverage, not a match or deletion.
+         *     Differences describe Input relative to its germline or parent, and Parent
+         *     relative to its own germline. Independent
+         *     reference-only columns are separate: no germline/parent homology is inferred.
+         */
+        readonly SequenceAlignment: {
+            /** Germline */
+            readonly germline: string;
+            /** Germline Diffs */
+            readonly germline_diffs: string;
+            /** Input */
+            readonly input: string;
+            /** Input Indices */
+            readonly input_indices: readonly (number | null)[];
+            /** Parental */
+            readonly parental: string | null;
+            /** Parental Diffs */
+            readonly parental_diffs: string | null;
+            /** Parental Germline */
+            readonly parental_germline: string | null;
+            /** Parental Germline Diffs */
+            readonly parental_germline_diffs: string | null;
+        };
+        /**
+         * SequenceDetail
+         * @description Lazy numbering/CDR and liability overlays on the untrimmed sequence.
+         */
+        readonly SequenceDetail: {
+            readonly alignment: components["schemas"]["SequenceAlignment"] | null;
+            /** Cdr Definition */
+            readonly cdr_definition: string;
+            /** Chain Type */
+            readonly chain_type: string | null;
+            /** Diagnostics */
+            readonly diagnostics: readonly string[];
+            /** Domain Span */
+            readonly domain_span: readonly [
+                number,
+                number
+            ] | null;
+            /** Error */
+            readonly error: string | null;
+            /** Germlines */
+            readonly germlines: readonly components["schemas"]["GermlineReference"][];
+            /** Imgt Hallmark Indices */
+            readonly imgt_hallmark_indices: readonly number[];
+            /** Liabilities */
+            readonly liabilities: readonly components["schemas"]["Liability"][];
+            /** Parental Germline Error */
+            readonly parental_germline_error: string | null;
+            /** Parental Germlines */
+            readonly parental_germlines: readonly components["schemas"]["GermlineReference"][];
+            /** Residues */
+            readonly residues: readonly components["schemas"]["NumberedResidue"][];
+            /**
+             * Scheme
+             * @enum {string}
+             */
+            readonly scheme: "imgt" | "kabat" | "chothia" | "martin" | "aho";
+            /** Sequence */
+            readonly sequence: string;
+        };
+        /**
+         * SequenceRequest
+         * @description Number only the single chain currently opened in a sequence dialog.
+         */
+        readonly SequenceRequest: {
+            /** Parental Sequence */
+            readonly parental_sequence?: string | null;
+            /**
+             * Scheme
+             * @default imgt
+             * @enum {string}
+             */
+            readonly scheme: "imgt" | "kabat" | "chothia" | "martin" | "aho";
+            /** Sequence */
+            readonly sequence: string;
         };
         /**
          * SetPasswordRequest
@@ -1968,6 +2720,16 @@ export interface components {
              * Format: uuid
              */
             readonly validation_id: string;
+        };
+        /**
+         * VHInput
+         * @description An editable original construct; scientific errors remain row-addressable.
+         */
+        readonly VHInput: {
+            /** Id */
+            readonly id: string;
+            /** Vhh */
+            readonly vhh: string;
         };
     };
     responses: never;
@@ -3622,6 +4384,196 @@ export interface operations {
             };
         };
     };
+    readonly analyze_api_v1_antibody_sequence_analysis_analyze_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["AnalysisRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AnalysisResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly options_api_v1_antibody_sequence_analysis_options_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AnalysisOptions"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly sequence_api_v1_antibody_sequence_analysis_sequence_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["SequenceRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["SequenceDetail"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+        };
+    };
     readonly login_api_v1_auth_login_post: {
         readonly parameters: {
             readonly query?: never;
@@ -5195,6 +6147,385 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly submit_api_v1_nanobody_humanization_jobs_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["NanobodySubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodyInputErrors"] | components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly inputs_api_v1_nanobody_humanization_jobs__job_id__inputs_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["RetainedNanobodyInputs"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly selection_api_v1_nanobody_humanization_jobs__job_id__selection_get: {
+        readonly parameters: {
+            readonly query?: {
+                readonly descending?: boolean;
+                readonly limit?: number;
+                readonly offset?: number;
+                readonly parent_id?: string | null;
+                readonly sort_by?: string | null;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodySelectionPage"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly selection_download_api_v1_nanobody_humanization_jobs__job_id__selection_csv_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "text/csv": string;
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly options_api_v1_nanobody_humanization_options_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodyOptions"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly prepare_api_v1_nanobody_humanization_prepare_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["NanobodyPreparationRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["NanobodyPreparation"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };

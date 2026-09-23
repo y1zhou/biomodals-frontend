@@ -1,13 +1,14 @@
 # BioModals
 
-BioModals is a catalog of first-party biological workflows that run either in
-the browser or as durable remote computations owned by a User.
+BioModals is a catalog of first-party biological tools, including browser
+operations, immediate service analysis, and durable remote computations owned
+by a User.
 
 ## Language
 
 **Tool**:
-A complete, first-party workflow offered by BioModals. A Tool may contain
-Client Operations, create Jobs, or do both.
+A complete, first-party scientific capability offered by BioModals. A Tool may
+contain Client Operations, provide immediate sequence analysis, or create Jobs.
 _Avoid_: App, external tool
 
 **Tool Catalog**:
@@ -157,6 +158,31 @@ _Avoid_: Activity log, audit log
 **Input**:
 User-supplied data consumed by a Tool.
 _Avoid_: Payload
+
+**Antibody Sequence Analysis**:
+Sequence-derived characterization of a supplied antibody variable region or
+explicit VH–VL pair, including theoretical physicochemical properties,
+germline reference matches, numbering, and potential liability motifs. It does
+not create a Job and is not experimental validation of developability.
+_Avoid_: Humanization scoring, measured antibody properties, Local Job
+
+**Recombined VH–VL Pair**:
+A pair formed by independently selecting heavy and light variable regions from
+candidates of the same parental antibody. It does not inherit the source
+candidates' pairing scores or ranking.
+_Avoid_: cross-parent pair, generated humanization candidate
+
+**VH+VL Sequence pI**:
+The theoretical isoelectric point of the heavy sequence followed directly by
+the light sequence, with no linker. It is not an average of the chain pIs or
+an estimate for a complete antibody.
+_Avoid_: antibody pI, mean chain pI
+
+**Germline Reference Match**:
+A nearest-reference sequence similarity assignment that retains tied genes
+and their matched reference species. It is not proof of ancestry or of the
+input antibody's species.
+_Avoid_: proven germline origin, source organism
 
 **Result**:
 The retrievable output of a succeeded or partial Job.

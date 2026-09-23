@@ -2,9 +2,13 @@ import { describe, expect, test } from "bun:test"
 
 import {
   availableTools,
+  jobTools,
   filterToolCatalog,
   toolCatalog,
   toolName,
+  toolKey,
+  toolJobPath,
+  toolSubmissionPath,
 } from "../src/tools"
 
 describe("filterToolCatalog", () => {
@@ -15,7 +19,7 @@ describe("filterToolCatalog", () => {
     expect(
       filterToolCatalog(toolCatalog, "molecular").map((tool) => tool.slug)
     ).toEqual(["gromacs", "alphafold3"])
-    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization"])
+    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization", "nanobody-humanization", "antibody-sequence-analysis"])
   })
 
   test("returns all tools for blank input", () => {
@@ -40,7 +44,20 @@ describe("filterToolCatalog", () => {
       "gromacs",
       "alphafold3",
       "humanization",
+      "nanobody-humanization",
+      "antibody-sequence-analysis",
     ])
+  })
+
+  test("keeps immediate analysis out of Job filters", () => {
+    expect(jobTools.map(toolKey)).toEqual(["gromacs", "alphafold3", "humanization", "nanobody_humanization"])
+    expect(toolName("antibody-sequence-analysis")).toBe("Antibody sequence analysis")
+  })
+
+  test("maps nanobody API keys to the named Tool and browser routes", () => {
+    expect(toolName("nanobody_humanization")).toBe("Nanobody humanization")
+    expect(toolJobPath("nanobody_humanization", "job-id")).toBe("/tools/nanobody-humanization/jobs/job-id")
+    expect(toolSubmissionPath("nanobody_humanization")).toBe("/tools/nanobody-humanization/new")
   })
 
   test("keeps catalog tags specific to each tool", () => {

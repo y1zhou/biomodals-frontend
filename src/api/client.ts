@@ -1,5 +1,57 @@
 import type { components } from "@/api/schema"
 import type { HumanizationOptions, HumanizationSubmission, HumanizationSelection, SelectionQuery } from "@/humanization"
+import type { AnalysisOptions, AnalysisRequest, AnalysisResponse, SequenceDetail, SequenceRequest } from "@/antibody-analysis"
+import type { NanobodyInputs, NanobodyOptions, NanobodyPreparation, NanobodyPreparationRequest, NanobodySelection, NanobodySubmission } from "@/nanobody-humanization"
+
+export function nanobodyOptions(signal?: AbortSignal) {
+  return requestJson<NanobodyOptions>("/api/v1/nanobody-humanization/options", { signal, cache: "no-store" })
+}
+
+export function prepareNanobodies(input: NanobodyPreparationRequest, signal?: AbortSignal) {
+  return requestJson<NanobodyPreparation>("/api/v1/nanobody-humanization/prepare", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
+
+export function nanobodyInputs(jobId: string, signal?: AbortSignal) {
+  return requestJson<NanobodyInputs>(`/api/v1/nanobody-humanization/jobs/${encodeURIComponent(jobId)}/inputs`, { signal, cache: "no-store" })
+}
+
+export function submitNanobodyJob(input: NanobodySubmission, idempotencyKey: string) {
+  return requestJson<Job>("/api/v1/nanobody-humanization/jobs", {
+    method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken(), "Idempotency-Key": idempotencyKey }, body: JSON.stringify(input),
+  })
+}
+
+export function nanobodySelectionCsvUrl(jobId: string) {
+  return `/api/v1/nanobody-humanization/jobs/${encodeURIComponent(jobId)}/selection.csv`
+}
+
+export function nanobodySelection(jobId: string, query: SelectionQuery, signal?: AbortSignal) {
+  return selectionPage<NanobodySelection>("nanobody-humanization", jobId, query, signal)
+}
+
+export function antibodyAnalysisOptions(signal?: AbortSignal) {
+  return requestJson<AnalysisOptions>("/api/v1/antibody-sequence-analysis/options", { signal, cache: "no-store" })
+}
+
+export function analyzeAntibodies(input: AnalysisRequest, signal?: AbortSignal) {
+  return requestJson<AnalysisResponse>("/api/v1/antibody-sequence-analysis/analyze", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
+
+export function antibodySequenceDetail(input: SequenceRequest, signal?: AbortSignal) {
+  return requestJson<SequenceDetail>("/api/v1/antibody-sequence-analysis/sequence", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
 
 export type Job = components["schemas"]["JobView"]
 export type JobPage = components["schemas"]["JobPageView"]
@@ -593,22 +645,26 @@ export function submitHumanizationJob(input: HumanizationSubmission, idempotency
   })
 }
 
-export async function humanizationSelection(jobId: string, query: SelectionQuery, signal?: AbortSignal) {
+export function humanizationSelection(jobId: string, query: SelectionQuery, signal?: AbortSignal) {
+  return selectionPage<HumanizationSelection>("humanization", jobId, query, signal)
+}
+
+async function selectionPage<T>(tool: "humanization" | "nanobody-humanization", jobId: string, query: SelectionQuery, signal?: AbortSignal): Promise<T> {
   const params = new URLSearchParams({ offset: String(query.offset), limit: String(query.limit) })
   if (query.parentId) params.set("parent_id", query.parentId)
   if (query.sortBy) {
     params.set("sort_by", query.sortBy)
     params.set("descending", String(query.descending))
   }
-  const path = `/api/v1/humanization/jobs/${encodeURIComponent(jobId)}/selection?${params}`
+  const path = `/api/v1/${tool}/jobs/${encodeURIComponent(jobId)}/selection?${params}`
   try {
-    return await requestJson<HumanizationSelection>(path, { signal })
+    return await requestJson<T>(path, { signal, cache: "no-store" })
   } catch (error) {
     if (apiErrorCode(error) !== "result_not_cached") throw error
     signal?.throwIfAborted()
     await prepareJobDownload(jobId)
     signal?.throwIfAborted()
-    return requestJson<HumanizationSelection>(path, { signal })
+    return requestJson<T>(path, { signal, cache: "no-store" })
   }
 }
 

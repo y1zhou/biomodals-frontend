@@ -11,6 +11,154 @@ const job = { job_id: "11111111-1111-4111-8111-111111111111", display_name: "Ant
   { code: "evaluate", label: "Evaluate and rank candidates", outcome: "partial", started_at: "2026-09-07T00:00:45Z", ended_at: "2026-09-07T00:01:00Z" },
 ], warnings: ["One evaluator could not score a candidate."], can_view_logs: false }
 const columns = ["parent_id", "candidate_id", "quality_tier", "panel_order", "vh", "vl", "sapiens_vh_mean_probability"].map((name) => ({ name, type: ["quality_tier", "panel_order", "sapiens_vh_mean_probability"].includes(name) ? "number" : "string" }))
+const analysisOptions = { max_groups: 2, max_entries_per_group: 1000, max_chain_length: 512, max_request_bytes: 4194304, schemes: ["imgt", "kabat", "chothia", "martin", "aho"], default_scheme: "imgt", analysis_version: "5", arpeggia_version: "0.10.1" }
+const emptyAnalysis = { groups: [{ id: "Group 1", entries: [], issues: [] }], reference: { status: "unavailable", source_url: "https://example.test/reference.csv", detail: "Offline reference unavailable" } }
+
+for (const suffix of ["pi", "pI"]) test(`candidate headers keep chains adjacent and preserve ${suffix} sorting keys`, async ({ page }) => {
+  await mockApi(page)
+  const names = suffix === "pi" ? ["vh", "vh_pi", "vl_pi", "vh_vl_pi", "vh_v_gene", "vl"] : ["vh", "vl", "vh_pI", "vl_pI", "vh_vl_pI", "vh_v_gene"]
+  await page.route("**/selection?*", (route) => route.fulfill({ json: {
+    columns: names.map((name) => ({ name, type: name.endsWith(suffix) ? "number" : "string" })),
+    rows: [{ vh: "ACDE", vl: "EFGH", [`vh_${suffix}`]: 6.78912 }], total_rows: 1, offset: 0, limit: 50, parent_ids: [], default_hidden_columns: [], nativeness_ranges: {}, germlines: null, reference: null,
+  } }))
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  const table = page.getByRole("table", { name: "Humanization selection.csv, page 1", exact: true })
+  await expect(table.locator("thead th > button")).toHaveText(["vh", "vl", "vh_pI", "vl_pI", "vh_vl_pI", "vh_v_gene"])
+  const sorted = page.waitForResponse((response) => new URL(response.url()).searchParams.get("sort_by") === `vh_${suffix}`)
+  await table.getByRole("button", { name: "vh_pI", exact: true }).click()
+  await sorted
+  await expect(page.getByText("Sorted by vh_pI (ascending).", { exact: true })).toBeVisible()
+  await expect(table.getByTitle("6.78912", { exact: true })).toHaveText("6.789")
+  await page.getByRole("button", { name: "Columns", exact: true }).click()
+  await page.getByRole("menuitemcheckbox", { name: "vh_pI", exact: true }).click()
+  await page.keyboard.press("Escape")
+  await expect(table.locator("thead th > button")).toHaveText(["vh", "vl", "vl_pI", "vh_vl_pI", "vh_v_gene"])
+})
+
+for (const version of ["1", "2", "3", "4"]) test(`analysis version ${version} requires an API update before displaying current metrics`, async ({ page }) => {
+  const api = await mockApi(page)
+  await page.route("**/antibody-sequence-analysis/options", (route) => route.fulfill({ json: { ...analysisOptions, analysis_version: version } }))
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">test\nACDE")
+  await expect(page.getByRole("button", { name: "Analyze sequences", exact: true })).toBeDisabled()
+  await expect(page.getByRole("alert")).toContainText("updated API")
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("updated API")
+  expect(api.requests.some((request) => /POST .*antibody-sequence-analysis\/(sequence|analyze)/.test(request))).toBe(false)
+})
+
+test("common native alignment preserves full input, separate gaps and three difference strips", async ({ page }) => {
+  await mockApi(page)
+  const sequence = "ACDEFGHIKLMNPQRSTVWY"
+  const inputIndices = [0, 1, 2, null, 3, 4, null, null, ...Array.from({ length: sequence.length - 5 }, (_, i) => i + 5)]
+  const aligned = {
+    input_indices: inputIndices,
+    input: inputIndices.map((index, column) => index === null ? column === 7 ? " " : "-" : sequence[index]).join(""),
+    germline: inputIndices.map((index, column) => index === null ? column === 3 ? "K" : " " : index < 2 || index >= 18 ? " " : index === 4 || index === 11 || index === 12 ? "-" : sequence[index]).join(""),
+    germline_diffs: inputIndices.map((index, column) => column === 3 ? "-" : index === 4 ? "+" : " ").join(""),
+    parental: inputIndices.map((index, column) => index === null ? column === 6 ? "R" : column === 7 ? "-" : " " : index === 10 ? "V" : sequence[index]).join(""),
+    parental_diffs: inputIndices.map((index, column) => column === 6 ? "-" : index === 10 ? "x" : " ").join(""),
+    parental_germline: inputIndices.map((index, column) => index === null ? column === 7 ? "W" : " " : index === 2 ? "A" : sequence[index]).join(""),
+    parental_germline_diffs: inputIndices.map((index, column) => column === 7 ? "-" : index === 2 ? "x" : " ").join(""),
+  }
+  let parentalNumberingFailed = false
+  await page.route("**/antibody-sequence-analysis/sequence", (route) => {
+    const input = route.request().postDataJSON()
+    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: "H", domain_span: [2, 18], residues: Array.from({ length: 16 }, (_, index) => ({ input_index: index + 2, label: String(index + 102), region: index >= 8 && index < 11 ? "CDR1" : "FR1" })), liabilities: [{ kind: "methionine", start: 10, end: 11 }], diagnostics: [], error: null, germlines: [{ segment: "v", reference_ids: ["test-reference"], reference_names: ["Homo sapiens IGHV1*01"], tied_reference_count: 3 }, { segment: "j", reference_ids: ["j-reference"], reference_names: ["Homo sapiens IGHJ1*01"], tied_reference_count: 1 }], parental_germlines: parentalNumberingFailed ? [] : [{ segment: "v", reference_ids: ["parent-v"], reference_names: ["Mus musculus IGHV2*01"], tied_reference_count: 1 }, { segment: "j", reference_ids: ["parent-j"], reference_names: ["Mus musculus IGHJ2*01"], tied_reference_count: 1 }], parental_germline_error: parentalNumberingFailed ? "The parental domain could not be numbered." : null, alignment: parentalNumberingFailed ? { ...aligned, parental_germline: null, parental_germline_diffs: null } : aligned } })
+  })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  const dialog = page.getByRole("dialog")
+  const alignment = dialog.getByRole("region", { name: "Sequence alignment", exact: true })
+  await expect(alignment).toContainText("Homo sapiens IGHV1*01")
+  await expect(alignment.locator("col.border")).toHaveCount(0)
+  await expect(alignment).toContainText("Homo sapiens IGHJ1*01")
+  await expect(alignment).toContainText("Humanized V/J:")
+  await expect(alignment).toContainText("Parental V/J:")
+  await expect(alignment).toContainText("Mus musculus IGHV2*01")
+  await expect(alignment).toContainText("Mus musculus IGHJ2*01")
+  const rows = alignment.locator("tbody tr")
+  await expect(rows.locator("th")).toHaveText(["Germline (humanized)", "Humanized relative to its germline", "Humanized", "Humanized relative to parental", "Parental", "Parental relative to its germline", "Germline (parental)"])
+  for (const index of [1, 3, 5]) await expect(rows.nth(index).locator("th > span")).toHaveClass("sr-only")
+  for (const [index, value] of [aligned.germline, aligned.germline_diffs, aligned.input, aligned.parental_diffs, aligned.parental, aligned.parental_germline_diffs, aligned.parental_germline].entries()) expect((await rows.nth(index).locator("td").allTextContents()).join("")).toBe(value)
+  await expect(rows.nth(2)).toHaveClass(/font-bold/)
+  await expect(alignment.getByTitle("Input gap", { exact: true })).toHaveCount(2)
+  await expect(alignment.getByTitle("No input residue", { exact: true })).toHaveText(" ")
+  const residues = alignment.locator('span[tabindex="0"]')
+  await expect(residues).toHaveCount(sequence.length)
+  const methionine = residues.nth(10)
+  await expect(methionine).toHaveAttribute("aria-label", /M, input residue 11, position 110, CDR1; Methionine oxidation motif/)
+  await expect(methionine).toHaveClass(/border-rose-500/)
+  await methionine.focus()
+  await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Input residue 11: M")
+  await residues.first().focus()
+  await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Unnumbered prefix")
+  await residues.last().focus()
+  await expect(dialog.getByRole("status").filter({ hasText: "Input residue" })).toContainText("Unnumbered suffix")
+  parentalNumberingFailed = true
+  await dialog.getByLabel("Numbering scheme").selectOption("kabat")
+  await expect(dialog.getByRole("status").filter({ hasText: "Parental germline" })).toContainText("The sequence comparison remains available")
+  await expect(rows).toHaveCount(6)
+  expect((await rows.nth(4).locator("td").allTextContents()).join("")).toBe(aligned.parental)
+  await expect(rows.nth(5)).toContainText("Not available")
+})
+
+test("parent lookup is lazy, role-matched and reused across candidates of different parents", async ({ page }) => {
+  const api = await mockApi(page)
+  const rows = ["parent_a", "parent_b"].map((parent_id, index) => ({ parent_id, candidate_id: `candidate-${index}`, vh: "ACDE", vl: "ACDE" }))
+  await page.route("**/selection?*", (route) => route.fulfill({ json: { columns, rows, total_rows: 2, offset: 0, limit: 50, parent_ids: ["parent_a", "parent_b"], default_hidden_columns: [], nativeness_ranges: {}, germlines: null, reference: null } }))
+  let inputReads = 0
+  let releaseInputs!: () => void
+  const inputGate = new Promise<void>((resolve) => { releaseInputs = resolve })
+  await page.route(`**/humanization/jobs/${job.job_id}/inputs`, async (route) => {
+    inputReads++
+    await inputGate
+    return route.fulfill({ json: { display_name: job.display_name, settings: options.defaults, pairs: [{ id: "parent_b", vh: "GGG", vl: "TTT" }, { id: "parent_a", vh: "AAA", vl: "CCC" }] } })
+  })
+  const details: { sequence: string; parental_sequence?: string }[] = []
+  await page.route("**/antibody-sequence-analysis/sequence", (route) => {
+    const input = route.request().postDataJSON()
+    details.push(input)
+    return route.fulfill({ json: { ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germlines: [], parental_germlines: [], parental_germline_error: null, alignment: null, liabilities: [], diagnostics: [], error: null } })
+  })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await expect(page.getByRole("button", { name: /^Inspect VH from/ }).first()).toBeVisible()
+  expect(inputReads).toBe(0)
+  const dialog = page.getByRole("dialog")
+  for (const [candidate, role, expected] of [[0, "VH", "AAA"], [0, "VL", "CCC"], [1, "VH", "GGG"], [1, "VL", "TTT"]] as const) {
+    await page.getByRole("button", { name: new RegExp(`^Inspect ${role} from candidate-${candidate} `) }).click()
+    if (!details.length) {
+      await expect(dialog.getByRole("status")).toContainText("Loading the original parent sequence")
+      expect(details).toHaveLength(0)
+      releaseInputs()
+    }
+    await expect(dialog.getByRole("heading", { name: "Unnumbered input" })).toBeVisible()
+    expect(details.at(-1)).toMatchObject({ sequence: "ACDE", parental_sequence: expected })
+    await dialog.getByRole("button", { name: "Close sequence details" }).click()
+  }
+  expect(inputReads).toBe(1)
+  expect(details).toHaveLength(4)
+  expect(api.submissions).toHaveLength(0)
+})
+
+test("missing retained parent preserves ordinary inspection and full-sequence copy", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  const api = await mockApi(page)
+  await page.route(`**/humanization/jobs/${job.job_id}/inputs`, (route) => route.fulfill({ status: 404, json: { code: "job_input_unavailable", detail: "Retained input unavailable" } }))
+  const sequenceResponse = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence"))
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  const response = await sequenceResponse
+  expect(response.request().postDataJSON()).toEqual({ sequence: "ACDEFGHIKLMNPQRSTVWY", scheme: "imgt" })
+  const dialog = page.getByRole("dialog")
+  await expect(dialog).toContainText("Parental comparison is unavailable")
+  await expect(dialog.getByRole("heading", { name: "Unnumbered input" })).toBeVisible()
+  await dialog.getByRole("button", { name: "Copy sequence", exact: true }).click()
+  await expect(dialog.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("ACDEFGHIKLMNPQRSTVWY")
+  expect(api.submissions).toHaveLength(0)
+})
 
 async function mockApi(page: Page, { lostResponse = false, expired = false, maxPairs = 100, selectionDelay = 0, legacyOptions = false } = {}) {
   const submissions: { body: unknown; key: string | undefined }[] = []
@@ -26,6 +174,12 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
     requests.push(`${request.method()} ${url.pathname}${url.search}`)
     const respond = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (url.pathname.endsWith("/auth/me") || url.pathname.endsWith("/auth/login")) return respond(principal)
+    if (url.pathname.endsWith("/antibody-sequence-analysis/options")) return respond(analysisOptions)
+    if (url.pathname.endsWith("/antibody-sequence-analysis/sequence")) {
+      const input = request.postDataJSON()
+      return respond({ ...input, cdr_definition: input.scheme, chain_type: null, domain_span: null, residues: [], germlines: [], parental_germlines: [], parental_germline_error: null, alignment: null, liabilities: [], diagnostics: [], error: "No antibody domain in this short fixture sequence." })
+    }
+    if (url.pathname.endsWith(`/humanization/jobs/${job.job_id}/inputs`)) return respond({ display_name: job.display_name, pairs: [{ id: "ab_001", vh: "ACDEFGHIKLMNPQRSTVWY", vl: "EFG" }], settings: options.defaults })
     if (url.pathname.endsWith("/humanization/options")) return respond({ ...options, max_pairs: maxPairs, defaults: legacyOptions ? Object.fromEntries(Object.entries(options.defaults).filter(([name]) => name !== "pabnativ2_num_seeds")) : options.defaults })
     if (url.pathname.endsWith("/humanization/jobs") && request.method() === "POST") {
       submissions.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] })
@@ -310,6 +464,156 @@ test("job rows omit the ID and copy button", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Copy job ID", exact: true })).toHaveCount(0)
 })
 
+test("chain selections survive pages and filters and transfer only within-parent FASTA", async ({ page }) => {
+  const api = await mockApi(page)
+  const rows = [
+    { parent_id: "parent_a", candidate_id: "first", vh: "AAA", vl: "CCC" },
+    { parent_id: "parent_a", candidate_id: "second", vh: "GGG", vl: "CCC" },
+    { parent_id: "parent_a", candidate_id: "third", vh: "GGG", vl: "DDD" },
+    { parent_id: "parent_b", candidate_id: "fourth", vh: "AAA", vl: "EEE" },
+  ]
+  await page.route("**/selection?*", (route) => {
+    const url = new URL(route.request().url())
+    const offset = Number(url.searchParams.get("offset"))
+    const filtered = url.searchParams.get("parent_id") === "parent_b"
+    return route.fulfill({ json: { columns, rows: filtered ? [rows[3]] : offset ? rows.slice(2) : rows.slice(0, 2), total_rows: filtered ? 1 : 52, offset, limit: 50, parent_ids: ["parent_a", "parent_b"], default_hidden_columns: [], nativeness_ranges: {}, germlines: null, reference: null } })
+  })
+  const analyzed: { groups: { id: string; fasta: string }[] }[] = []
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyzed.push(route.request().postDataJSON()); return route.fulfill({ json: emptyAnalysis }) })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("checkbox", { name: "Select VH from first (parent parent_a)", exact: true }).check()
+  await page.getByRole("checkbox", { name: "Select VL from first (parent parent_a)", exact: true }).check()
+  await expect(page.getByRole("checkbox", { name: "Select VL from second (parent parent_a)", exact: true })).toBeChecked()
+  await page.getByRole("checkbox", { name: "Select VH from second (parent parent_a)", exact: true }).check()
+  await page.getByRole("button", { name: "Next page", exact: true }).click()
+  await expect(page.getByRole("checkbox", { name: "Select VH from third (parent parent_a)", exact: true })).toBeChecked()
+  await page.getByRole("checkbox", { name: "Select VL from third (parent parent_a)", exact: true }).check()
+  await page.getByRole("checkbox", { name: "Select VH from fourth (parent parent_b)", exact: true }).check()
+  await page.getByRole("button", { name: /^Filter by parent/ }).click()
+  await page.getByLabel("Parent", { exact: true }).selectOption("parent_b")
+  await expect(page.getByRole("region", { name: "Selected antibody chains" })).toContainText("4 pairs and 1 single chains")
+  await expect(page.getByRole("button", { name: "vh_v_gene", exact: true })).toHaveCount(0)
+  expect(api.requests.some((request) => request.includes("/sequence"))).toBe(false)
+  await page.getByRole("button", { name: "Analyze selected sequences", exact: true }).click()
+  await expect(page).toHaveURL(/\/tools\/antibody-sequence-analysis$/)
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeVisible()
+  expect(analyzed).toEqual([{ groups: [{ id: "Group 1", fasta: ">selected_0001\nAAA:CCC\n>selected_0002\nAAA:DDD\n>selected_0003\nGGG:CCC\n>selected_0004\nGGG:DDD\n>selected_0005\nAAA" }] }])
+  expect(api.submissions).toHaveLength(0)
+  expect(await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage }, history: history.state }))).not.toContain("AAA")
+  await page.reload()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue("")
+  expect(analyzed).toHaveLength(1)
+})
+
+test("editing a pending handoff suppresses automatic analysis", async ({ page }) => {
+  await mockApi(page)
+  const analyzed: { groups: { id: string; fasta: string }[] }[] = []
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyzed.push(route.request().postDataJSON()); return route.fulfill({ json: emptyAnalysis }) })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("checkbox", { name: "Select VH from candidate-0 (parent ab_001)", exact: true }).check()
+  // Edit as soon as the transferred form mounts, before its deferred analysis.
+  await page.evaluate(() => {
+    const observer = new MutationObserver(() => {
+      const examples = Array.from(document.querySelectorAll("button")).find((button) => button.textContent === "Load example sequences")
+      if (!examples) return
+      observer.disconnect()
+      examples.click()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
+  await page.getByRole("button", { name: "Analyze selected sequences", exact: true }).click()
+  const input = page.getByLabel("Group 1 FASTA", { exact: true })
+  await expect(input).toHaveValue(/^>pembrolizumab\n/)
+  await page.evaluate(() => new Promise((resolve) => window.setTimeout(resolve, 0)))
+  expect(analyzed).toHaveLength(0)
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toHaveCount(0)
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeFocused()
+  expect(analyzed).toEqual([{ groups: [{ id: "Group 1", fasta: await input.inputValue() }] }])
+})
+
+test("busy analysis preserves inputs for an explicit retry without revealing missing results", async ({ page }) => {
+  await mockApi(page)
+  await page.addInitScript(() => {
+    const scroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (options) {
+      if (this.textContent === "Sequence properties and germline matches") document.body.dataset.resultsScrolled = "true"
+      scroll.call(this, options)
+    }
+  })
+  await page.route("**/antibody-sequence-analysis/options", (route) => route.fulfill({ json: { ...analysisOptions, max_request_bytes: 100 } }))
+  let analyses = 0
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyses++; return analyses === 1 ? route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local sequence analysis is busy" } }) : route.fulfill({ json: emptyAnalysis }) })
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByRole("button", { name: "Load example sequences", exact: true }).click()
+  const analyze = page.getByRole("button", { name: "Analyze sequences", exact: true })
+  await analyze.click()
+  await expect(page.getByRole("alert")).toContainText("Reduce the FASTA input")
+  expect(analyses).toBe(0)
+  await expect(analyze).toBeFocused()
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">short\nACDE")
+  await expect(page.getByRole("alert")).toHaveCount(0)
+  await analyze.click()
+  await expect(page.getByRole("alert")).toContainText("Your inputs are unchanged")
+  await expect(page.getByRole("alert")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toHaveCount(0)
+  expect(await page.evaluate(() => document.body.dataset.resultsScrolled)).toBeUndefined()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue(">short\nACDE")
+  await page.evaluate(() => { window.dispatchEvent(new Event("online")); document.dispatchEvent(new Event("visibilitychange")) })
+  await page.waitForTimeout(1250) // A busy response must not use the shared automatic retry.
+  expect(analyses).toBe(1)
+  await analyze.click()
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeVisible()
+  expect(analyses).toBe(2)
+})
+
+test("busy sequence inspection preserves copy and retries only explicitly", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  const api = await mockApi(page)
+  let calls = 0
+  await page.route("**/antibody-sequence-analysis/sequence", (route) => {
+    calls++
+    if (calls === 1) return route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local sequence analysis is busy. Please try again." } })
+    return route.fallback()
+  })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  const dialog = page.getByRole("dialog")
+  await expect(dialog.getByRole("alert")).toContainText("Local sequence analysis is busy")
+  await dialog.getByRole("button", { name: "Copy sequence", exact: true }).click()
+  await expect(dialog.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("ACDEFGHIKLMNPQRSTVWY")
+  await page.evaluate(() => { window.dispatchEvent(new Event("online")); document.dispatchEvent(new Event("visibilitychange")) })
+  await page.waitForTimeout(1250)
+  expect(calls).toBe(1)
+  await dialog.getByRole("button", { name: "Try again", exact: true }).click()
+  await expect(dialog.getByRole("heading", { name: "Unnumbered input", exact: true })).toBeVisible()
+  expect(calls).toBe(2)
+  expect(api.submissions).toHaveLength(0)
+})
+
+for (const differentUser of [false, true]) test(`analysis draft ${differentUser ? "clears for another user" : "survives same-user reauthentication"}`, async ({ page }) => {
+  await mockApi(page)
+  let attempts = 0
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { attempts++; return route.fulfill({ status: attempts === 1 ? 401 : 200, json: attempts === 1 ? { detail: "Authentication required" } : emptyAnalysis }) })
+  if (differentUser) await page.route("**/auth/login", (route) => route.fulfill({ json: { ...principal, user_id: "user-two" } }))
+  await page.goto("/tools/antibody-sequence-analysis")
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">private_domain\nACDE")
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Sign in again" })
+  await dialog.getByLabel("Email", { exact: true }).fill("researcher@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("correct horse battery staple")
+  await dialog.getByRole("button", { name: "Sign in and return" }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue(differentUser ? "" : ">private_domain\nACDE")
+  expect(attempts).toBe(1)
+  if (!differentUser) {
+    await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+    await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeVisible()
+    expect(attempts).toBe(2)
+  }
+})
+
 test("candidate presentation preserves values and respects whole-result visibility defaults", async ({ page, context }) => {
   await mockApi(page)
   await context.grantPermissions(["clipboard-read", "clipboard-write"])
@@ -342,17 +646,16 @@ test("candidate presentation preserves values and respects whole-result visibili
   await parent.getByRole("button", { name: "Copy ID", exact: true }).click()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(candidateId)
   await expect(parent.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
-  for (const sequence of [row.vh, row.vl]) {
-    const details = parent.locator("details").filter({ has: page.locator("summary").filter({ hasText: new RegExp(`^${sequence.slice(0, 16)}${sequence.length > 16 ? "…" : ""}$`) }) })
-    await details.locator("summary").click()
-    await expect(details.getByText(`${sequence.length} residues`, { exact: true })).toBeVisible()
-    await details.getByRole("button", { name: "Copy sequence", exact: true }).click()
-    await expect(details.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(sequence)
+  for (const role of ["vh", "vl"] as const) {
+    await parent.getByRole("button", { name: new RegExp(`^Inspect ${role.toUpperCase()} from`) }).click()
+    const dialog = page.getByRole("dialog", { name: new RegExp(`^${role.toUpperCase()} from`) })
+    await expect(dialog.getByText(`${row[role].length} residues · Full input retained`, { exact: true })).toBeVisible()
+    await dialog.getByRole("button", { name: "Close sequence details" }).click()
   }
   await expect(parent.getByRole("button", { name: "Copied", exact: true })).toHaveCount(0, { timeout: 4000 })
   await expect(parent.getByRole("button", { name: "Copy ID", exact: true })).toBeVisible()
-  await expect(parent.getByRole("button", { name: "Copy sequence", exact: true })).toHaveCount(2)
+  await expect(parent.getByRole("button", { name: "Copy sequence", exact: true })).toHaveCount(0)
+  await expect(parent.getByRole("checkbox", { name: /^Select (VH|VL) from/ })).toHaveCount(2)
   await expect(parent.getByText("-0.250", { exact: true })).toBeVisible()
   await expect(parent.locator('[title="-0.25"] .bg-neutral-200\\/70')).toHaveAttribute("style", "left: 0%; width: 87.5%;")
   await expect(parent.getByText("0.877", { exact: true })).toBeVisible()
