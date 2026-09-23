@@ -2529,6 +2529,8 @@ export interface components {
             readonly error: string | null;
             /** Germlines */
             readonly germlines: readonly components["schemas"]["GermlineReference"][];
+            /** Imgt Hallmark Indices */
+            readonly imgt_hallmark_indices: readonly number[];
             /** Liabilities */
             readonly liabilities: readonly components["schemas"]["Liability"][];
             /** Parental Germline Error */

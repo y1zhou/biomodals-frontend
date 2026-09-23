@@ -215,8 +215,9 @@ input indices; independent reference-only gaps stay separate. Unmatched
 germline junctions and uncovered ends have blank diffs without asserting a
 match or deletion. The full supplied sequence, including tails, appears once,
 with CDR/liability overlays and numbering or tail identity on hover/focus.
-Alignment reference names and total tied-record counts disclose the displayed
-representative; no browser alignment or germline reconstruction is performed.
+Alignment headers retain the displayed representative's gene/species identities
+without tie-count annotations; no browser alignment or germline reconstruction
+is performed.
 
 The updated interface requires analysis API version 5 before requesting
 metrics or sequence annotations, avoiding mislabeled older-scale results.
@@ -286,6 +287,13 @@ to local analysis as standalone FASTA entries, without inherited ranks or
 parent comparisons; the analysis limit blocks oversized transfers without
 truncation. Missing scores remain visible as missing, and nativeness bars are
 scaled within the Job while displayed numbers retain their raw units.
+Nanobody transfers initially hide VL columns in local analysis; Columns can
+re-enable them and CSV retains all fields. Unless the user chose a column set,
+an edited analysis containing light chains restores those columns. Nanobody
+result and transferred-analysis dialogs outline each IMGT hallmark (42, 49,
+50, 52) in gray across the full alignment stack. Native full-input indices
+keep the outlines on the same biological residues in all five display schemes;
+the browser does not translate numbering labels or infer missing positions.
 When full-result `nonparent_count` is zero, the page states that no new designs
 were produced. This notice uses job-wide metadata, never the current page or
 parent filter; prepared parental references and downloads remain available.

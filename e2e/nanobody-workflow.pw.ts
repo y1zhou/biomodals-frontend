@@ -1,9 +1,28 @@
 import { readFile } from "node:fs/promises"
 import { randomUUID } from "node:crypto"
 import path from "node:path"
-import { expect, test } from "@playwright/test"
+import { expect, test, type Locator } from "@playwright/test"
+import type { SequenceDetail } from "../src/antibody-analysis"
 
 const vh = "EVQLVESGGGLVQPGGSLRLSCAASGFTFSDYWMYWVRQAPGKGLEWVSEINTNGLITKYPDSVKGRFTISRDNAKNTLYLQMNSLRPEDTAVYYCARSPSGFNRGQGTLVTVSS"
+
+async function expectHallmarkColumns(dialog: Locator, detail: SequenceDetail, rowCount: number) {
+  const alignment = dialog.getByRole("region", { name: "Sequence alignment", exact: true })
+  const rows = alignment.locator("tbody tr")
+  await expect(rows).toHaveCount(rowCount)
+  expect(detail.imgt_hallmark_indices).toHaveLength(4)
+  const columns = alignment.locator("colgroup col")
+  const outlined = await columns.evaluateAll((elements) => elements.flatMap((element, index) => getComputedStyle(element).borderLeftWidth === "1px" ? [index - 1] : []))
+  expect(outlined.map((column) => detail.alignment!.input_indices[column])).toEqual(detail.imgt_hallmark_indices)
+  const stack = (await alignment.locator("tbody").boundingBox())!
+  for (const column of outlined) {
+    const outline = columns.nth(column + 1)
+    for (const side of ["top", "right", "bottom", "left"]) await expect(outline).toHaveCSS(`border-${side}-width`, "1px")
+    const bounds = (await outline.boundingBox())!
+    expect(bounds.y).toBeCloseTo(stack.y, 0)
+    expect(bounds.height).toBeCloseTo(stack.height, 0)
+  }
+}
 
 test("nanobody exploration admission, native preparation, 300 bounded candidates and standalone analysis", async ({ page, context, browser }) => {
   test.setTimeout(120_000)
@@ -104,9 +123,25 @@ test("nanobody exploration admission, native preparation, 300 bounded candidates
   await table.getByRole("button", { name: /^Inspect VH from/ }).nth(1).click()
   const detailResponse = await inspecting
   expect(detailResponse.status()).toBe(200)
+  const detail: SequenceDetail = await detailResponse.json()
   expect(detailResponse.request().postDataJSON().parental_sequence).toBe(prepared.rows[0].vh)
   const dialog = page.getByRole("dialog")
   await expect(dialog.getByRole("region", { name: "Sequence alignment", exact: true }).locator("tbody th")).toHaveText(["Germline (humanized)", "Humanized relative to its germline", "Humanized", "Humanized relative to parental", "Parental", "Parental relative to its germline", "Germline (parental)"])
+  await expectHallmarkColumns(dialog, detail, 7)
+  for (const scheme of ["kabat", "chothia", "martin", "aho"]) {
+    const changed = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence") && response.request().postDataJSON().scheme === scheme)
+    await dialog.getByLabel("Numbering scheme").selectOption(scheme)
+    const mapped: SequenceDetail = await (await changed).json()
+    expect(mapped.imgt_hallmark_indices).toEqual(detail.imgt_hallmark_indices)
+    await expectHallmarkColumns(dialog, mapped, 7)
+  }
+  await dialog.screenshot({ path: test.info().outputPath("nanobody-four-row-hallmarks.png") })
+  const missingParentalGermline: SequenceDetail = { ...detail, parental_germlines: [], parental_germline_error: "Parental numbering unavailable", alignment: { ...detail.alignment!, parental_germline: null, parental_germline_diffs: null } }
+  await page.route("**/antibody-sequence-analysis/sequence", (route) => route.fulfill({ json: missingParentalGermline }), { times: 1 })
+  await dialog.getByLabel("Numbering scheme").selectOption("imgt")
+  await expect(dialog.getByText("Not available", { exact: true })).toBeVisible()
+  await expectHallmarkColumns(dialog, missingParentalGermline, 6)
+  await expect(dialog.locator("tbody tr").last().locator("td")).toHaveCount(detail.alignment!.input.length)
   expect(reads.filter((url) => url.endsWith("/inputs"))).toHaveLength(1)
   await dialog.getByRole("button", { name: "Close sequence details", exact: true }).click()
   const csvDownload = page.waitForEvent("download")
@@ -136,7 +171,36 @@ test("nanobody exploration admission, native preparation, 300 bounded candidates
   expect(sequences).toHaveLength(2)
   expect(sequences[0]).toBe(prepared.rows[0].vh)
   for (const sequence of sequences) expect(sequence).toMatch(/^[A-Z]+$/)
-  await expect(page.getByRole("region", { name: "Analysis results: Group 1", exact: true }).locator("tbody tr")).toHaveCount(2)
+  const local = page.getByRole("region", { name: "Analysis results: Group 1", exact: true })
+  await expect(local.locator("tbody tr")).toHaveCount(2)
+  await expect(page.getByRole("button", { name: "Columns", exact: true })).toHaveText("Columns (9/15)")
+  await expect(local.getByRole("columnheader", { name: /^VL / })).toHaveCount(0)
+  const localCsv = page.waitForEvent("download")
+  await local.getByRole("button", { name: "Download CSV", exact: true }).click()
+  expect(await readFile((await (await localCsv).path())!, "utf8")).toContain('"vl_pi"')
+  const localInspect = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence"))
+  await local.getByRole("button", { name: "VH", exact: true }).first().click()
+  const standalone: SequenceDetail = await (await localInspect).json()
+  await expectHallmarkColumns(dialog, standalone, 3)
+  for (const scheme of ["kabat", "chothia", "martin", "aho"]) {
+    const changed = page.waitForResponse((response) => response.url().endsWith("/antibody-sequence-analysis/sequence") && response.request().postDataJSON().scheme === scheme)
+    await dialog.getByLabel("Numbering scheme").selectOption(scheme)
+    const mapped: SequenceDetail = await (await changed).json()
+    expect(mapped.imgt_hallmark_indices).toEqual(standalone.imgt_hallmark_indices)
+    await expectHallmarkColumns(dialog, mapped, 3)
+  }
+  await dialog.screenshot({ path: test.info().outputPath("nanobody-two-row-hallmarks.png") })
+  await dialog.getByRole("button", { name: "Close sequence details", exact: true }).click()
+  await page.getByRole("button", { name: "Load example sequences", exact: true }).click()
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(local.getByRole("columnheader", { name: /^VL / })).toHaveCount(6)
+  await page.getByLabel("Group 1 FASTA", { exact: true }).fill(transferredFasta)
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(local.getByRole("columnheader", { name: /^VL / })).toHaveCount(0)
+  await page.getByRole("button", { name: "Columns", exact: true }).click()
+  await page.getByRole("menuitemcheckbox", { name: "VL pI", exact: true }).click()
+  await page.keyboard.press("Escape")
+  await expect(local.getByRole("columnheader", { name: "VL pI", exact: true })).toBeVisible()
   expect((await stats()).submit_calls).toBe(beforeAnalysis)
   console.log(`Nanobody offline Result: ${first.rows.length}/${first.total_rows} rows, ${(await firstResponse.body()).length} bytes in first page`)
 })

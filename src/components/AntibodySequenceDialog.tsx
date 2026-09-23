@@ -15,7 +15,7 @@ const liabilityLabels: Record<string, string> = {
 }
 const regionColors: Record<string, string> = { CDR1: "bg-sky-100 text-sky-950", CDR2: "bg-violet-100 text-violet-950", CDR3: "bg-amber-100 text-amber-950" }
 
-function NumberedSequence({ data }: { data: SequenceDetail }) {
+function NumberedSequence({ data, highlightHallmarks }: { data: SequenceDetail; highlightHallmarks: boolean }) {
   // Scrolling can trigger pointer entry without movement; keep keyboard details.
   const [hover, setHover] = useState<number | null>(null)
   const positions = new Map(data.residues.map((residue) => [residue.input_index, residue]))
@@ -55,12 +55,13 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
       <h3 className="font-medium">Numbered domain · {data.chain_type ?? "unassigned"}</h3>
       {(hasParent ? [{ label: "Humanized", references: data.germlines }, { label: "Parental", references: data.parental_germlines }] : [{ label: "", references: data.germlines }]).map(({ label, references }) => <div key={label} className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
         {label ? <strong className="font-medium text-foreground">{label} V/J:</strong> : null}
-        {references.map((reference) => <p key={reference.segment} title={`Reference IDs: ${reference.reference_ids.join(", ")}`}><strong className="font-medium text-foreground">{reference.segment.toUpperCase()}: </strong>{reference.reference_names.join("; ")}{reference.tied_reference_count > 1 ? <> · Representative of {reference.tied_reference_count} tied reference records.</> : null}</p>)}
+        {references.map((reference) => <p key={reference.segment} title={`Reference IDs: ${reference.reference_ids.join(", ")}`}><strong className="font-medium text-foreground">{reference.segment.toUpperCase()}: </strong>{reference.reference_names.join("; ")}</p>)}
       </div>)}
       {data.parental_germline_error ? <p role="status" className="rounded-lg bg-muted p-3 text-sm leading-6">Parental germline could not be assigned. {data.parental_germline_error} The sequence comparison remains available.</p> : null}
       <div className="overflow-x-auto rounded-lg border p-3" tabIndex={0} aria-label="Sequence alignment; scroll for more residues">
         <table className="w-max border-collapse font-mono text-sm leading-7">
           <caption className="sr-only">{hasParent ? "Humanized and parental sequences with their independently assigned germlines" : "Native germline and input alignment"}</caption>
+          <colgroup><col />{alignment.input_indices.map((inputIndex, column) => <col key={column} className={highlightHallmarks && inputIndex !== null && data.imgt_hallmark_indices?.includes(inputIndex) ? "border border-gray-400" : undefined} />)}</colgroup>
           <tbody>
             <tr><th scope="row" className="pr-3 text-left font-normal">{hasParent ? "Germline (humanized)" : "Germline"}</th>{Array.from(alignment.germline, (residue, index) => <td key={index} className="min-w-[1.5ch] whitespace-pre text-center">{residue}</td>)}</tr>
             {differences(alignment.germline_diffs, hasParent ? "Humanized relative to its germline" : "Input relative to its germline")}
@@ -73,7 +74,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
               {differences(alignment.parental_diffs ?? "", "Humanized relative to parental")}
               <tr><th scope="row" className="pr-3 text-left font-normal">Parental</th>{Array.from(alignment.parental, (residue, index) => <td key={index} className="whitespace-pre text-center">{residue}</td>)}</tr>
               {alignment.parental_germline_diffs !== null ? differences(alignment.parental_germline_diffs, "Parental relative to its germline") : null}
-              <tr><th scope="row" className="pr-3 text-left font-normal">Germline (parental)</th>{alignment.parental_germline !== null ? Array.from(alignment.parental_germline, (residue, index) => <td key={index} className="whitespace-pre text-center">{residue}</td>) : <td colSpan={alignment.input.length} className="text-muted-foreground">Not available</td>}</tr>
+              <tr><th scope="row" className="pr-3 text-left font-normal">Germline (parental){alignment.parental_germline === null ? <span className="block text-muted-foreground">Not available</span> : null}</th>{Array.from(alignment.parental_germline ?? " ".repeat(alignment.input.length), (residue, index) => <td key={index} className="whitespace-pre text-center">{residue}</td>)}</tr>
             </> : null}
           </tbody>
         </table>
@@ -90,7 +91,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
   </div>
 }
 
-export default function AntibodySequenceDialog({ sequence, label, parentalSequence, parentSource = "original", parentLoading = false, parentUnavailable = false, onClose }: { sequence: string; label: string; parentalSequence?: string; parentSource?: "original" | "prepared"; parentLoading?: boolean; parentUnavailable?: boolean; onClose: () => void }) {
+export default function AntibodySequenceDialog({ sequence, label, parentalSequence, parentSource = "original", parentLoading = false, parentUnavailable = false, highlightHallmarks = false, onClose }: { sequence: string; label: string; parentalSequence?: string; parentSource?: "original" | "prepared"; parentLoading?: boolean; parentUnavailable?: boolean; highlightHallmarks?: boolean; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const principal = authenticatedPrincipal(useCurrentUser().data)
@@ -130,9 +131,10 @@ export default function AntibodySequenceDialog({ sequence, label, parentalSequen
     <div className="mb-5 flex flex-wrap items-center gap-4"><label className="flex items-center gap-3 font-medium">Numbering scheme<select className="h-10 rounded-lg border bg-background px-3" value={scheme} onChange={(event) => setScheme(event.target.value as SequenceRequest["scheme"])}>{(options.data?.schemes ?? ["imgt"]).map((value) => <option value={value} key={value}>{schemeLabels[value]}</option>)}</select></label>
       <Button aria-live="polite" variant="outline" disabled={copyStatus === "Copied"} onClick={() => void copyText(sequence).then(() => setCopyStatus("Copied"), () => setCopyStatus("Copy failed. Try again."))}>{copyStatus === "Copied" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}{copyStatus === "Copied" ? "Copied" : "Copy sequence"}</Button>
       <div className="flex flex-wrap gap-2 text-sm">{Object.entries(regionColors).map(([label, color]) => <span className={`rounded px-2 py-1 ${color}`} key={label}>{label}</span>)}<span className="border-b-2 border-rose-500 px-2 py-1">Potential liability motif</span></div>
+      {highlightHallmarks ? <span className="border border-gray-400 px-2 py-1 text-sm">Gray outlines: IMGT hallmarks 42, 49, 50, 52</span> : null}
       {copyStatus && copyStatus !== "Copied" ? <p role="alert" className="text-sm text-destructive">{copyStatus}</p> : null}
     </div>
     {parentUnavailable ? <p role="status" className="mb-4 rounded-lg bg-muted p-3 text-sm leading-6">Parental comparison is unavailable because the retained parent sequence could not be loaded. Numbering, germline details and full-sequence copy remain available.</p> : null}
-    {options.data && !compatible ? <p role="alert">Sequence details require an updated API (analysis version {ANALYSIS_VERSION}). You can still copy the full sequence.</p> : options.error ? <div role="alert"><p>Sequence options could not be loaded. {options.error.message}</p><Button variant="outline" onClick={() => void options.refetch()}>Try again</Button></div> : options.isPending || parentLoading || query.isFetching ? <p role="status" className="flex gap-2 py-8"><LoaderCircle aria-hidden="true" className="animate-spin" />{parentLoading ? `Loading the ${parentSource} parent sequence…` : "Numbering this sequence…"}</p> : query.error ? <div role="alert"><p>Sequence details could not be loaded. {query.error.message}</p><Button className="mt-3" disabled={!principal || !compatible} variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : query.data ? <NumberedSequence key={scheme} data={query.data} /> : null}
+    {options.data && !compatible ? <p role="alert">Sequence details require an updated API (analysis version {ANALYSIS_VERSION}). You can still copy the full sequence.</p> : options.error ? <div role="alert"><p>Sequence options could not be loaded. {options.error.message}</p><Button variant="outline" onClick={() => void options.refetch()}>Try again</Button></div> : options.isPending || parentLoading || query.isFetching ? <p role="status" className="flex gap-2 py-8"><LoaderCircle aria-hidden="true" className="animate-spin" />{parentLoading ? `Loading the ${parentSource} parent sequence…` : "Numbering this sequence…"}</p> : query.error ? <div role="alert"><p>Sequence details could not be loaded. {query.error.message}</p><Button className="mt-3" disabled={!principal || !compatible} variant="outline" onClick={() => void query.refetch()}>Try again</Button></div> : query.data ? <NumberedSequence key={scheme} data={query.data} highlightHallmarks={highlightHallmarks} /> : null}
   </dialog>
 }

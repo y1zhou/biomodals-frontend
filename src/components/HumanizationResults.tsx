@@ -303,7 +303,7 @@ export default function HumanizationResults({ jobId, nanobody = false }: { jobId
           </div>
         </div>
       </> : null}
-      {inspected ? <AntibodySequenceDialog key={`${inspected.parentId}:${inspected.role}:${inspected.sequence}`} sequence={inspected.sequence} label={inspected.label} parentalSequence={parentalSequence} parentSource={nanobody ? "prepared" : "original"} parentLoading={inputs.isPending} parentUnavailable={!inputs.isPending && !parentalSequence} onClose={() => setInspected(null)} /> : null}
+      {inspected ? <AntibodySequenceDialog key={`${inspected.parentId}:${inspected.role}:${inspected.sequence}`} sequence={inspected.sequence} label={inspected.label} parentalSequence={parentalSequence} parentSource={nanobody ? "prepared" : "original"} parentLoading={inputs.isPending} parentUnavailable={!inputs.isPending && !parentalSequence} highlightHallmarks={nanobody} onClose={() => setInspected(null)} /> : null}
     </CardContent>
   </Card>
 }

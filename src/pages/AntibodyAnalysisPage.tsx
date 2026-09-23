@@ -19,7 +19,7 @@ export default function AntibodyAnalysisPage() {
   const { transfer, setTransfer } = useAntibodyTransfer()
   const [source] = useState(transfer)
   const [groups, setGroups] = useState(() => [{ id: "Group 1", fasta: transfer ? selectedFasta(transfer.entries) : "" }])
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set())
+  const [columnChoice, setColumnChoice] = useState<ReadonlySet<string> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inspected, setInspected] = useState<{ sequence: string; label: string } | null>(null)
   const [fileNames, setFileNames] = useState<Record<string, string>>({})
@@ -89,6 +89,8 @@ export default function AntibodyAnalysisPage() {
   const result = mutation.data
   const hasUnassigned = result?.groups.some((group) => group.entries.some((entry) => entry.unassigned))
   const availableColumns = analysisColumns.filter((column) => !column.name.startsWith("unassigned_") || hasUnassigned)
+  const hasLightChain = result?.groups.some((group) => group.entries.some((entry) => entry.vl))
+  const hidden = columnChoice ?? new Set(source?.singleDomain && !hasLightChain ? analysisColumns.filter((column) => column.name.startsWith("vl_")).map((column) => column.name) : [])
   const columns = availableColumns.filter((column) => !hidden.has(column.name))
   const analyzedGroups = mutation.variables?.input.groups
   const inputsChanged = result && (groups.length !== analyzedGroups?.length || groups.some((group, index) => group.id !== analyzedGroups?.[index]?.id || group.fasta !== analyzedGroups?.[index]?.fasta))
@@ -132,9 +134,9 @@ export default function AntibodyAnalysisPage() {
         <Menu.Trigger aria-label="Columns" className={buttonVariants({ variant: "outline" })}><Columns3 aria-hidden="true" /> Columns ({columns.length}/{availableColumns.length}) <ChevronDown aria-hidden="true" /></Menu.Trigger>
         <Menu.Portal><Menu.Positioner align="start" className="z-50" sideOffset={8}>
           <Menu.Popup className="max-h-[min(24rem,var(--available-height))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-            <Menu.Item closeOnClick={false} className="cursor-pointer rounded px-3 py-2 font-medium outline-none data-highlighted:bg-accent" onClick={() => setHidden(new Set())}>Show all columns</Menu.Item>
+            <Menu.Item closeOnClick={false} className="cursor-pointer rounded px-3 py-2 font-medium outline-none data-highlighted:bg-accent" onClick={() => setColumnChoice(new Set())}>Show all columns</Menu.Item>
             <Menu.Separator className="my-1 border-t" />
-            {availableColumns.map((column) => <Menu.CheckboxItem key={column.name} checked={!hidden.has(column.name)} closeOnClick={false} className="flex cursor-pointer items-start gap-2 rounded px-3 py-2 text-sm outline-none data-highlighted:bg-accent" onCheckedChange={(checked) => setHidden((current) => { const next = new Set(current); if (checked) next.delete(column.name); else next.add(column.name); return next })}>
+            {availableColumns.map((column) => <Menu.CheckboxItem key={column.name} checked={!hidden.has(column.name)} closeOnClick={false} className="flex cursor-pointer items-start gap-2 rounded px-3 py-2 text-sm outline-none data-highlighted:bg-accent" onCheckedChange={(checked) => setColumnChoice(() => { const next = new Set(hidden); if (checked) next.delete(column.name); else next.add(column.name); return next })}>
               <span className="mt-1 size-4 shrink-0"><Menu.CheckboxItemIndicator><Check aria-hidden="true" className="size-4" /></Menu.CheckboxItemIndicator></span><span>{column.label}</span>
             </Menu.CheckboxItem>)}
           </Menu.Popup>
@@ -142,6 +144,6 @@ export default function AntibodyAnalysisPage() {
       </Menu.Root>
       <div className={`grid items-start gap-5 ${result.groups.length === 2 ? "xl:grid-cols-2" : ""}`}>{result.groups.map((group) => <AntibodyAnalysisTable key={`${mutation.submittedAt}:${group.id}`} group={group} columns={columns} origins={source && group.id === "Group 1" ? source.entries : undefined} onInspect={(sequence, label) => setInspected({ sequence, label })} />)}</div>
     </section> : null}
-    {inspected ? <AntibodySequenceDialog key={inspected.sequence} {...inspected} onClose={() => setInspected(null)} /> : null}
+    {inspected ? <AntibodySequenceDialog key={inspected.sequence} {...inspected} highlightHallmarks={source?.singleDomain} onClose={() => setInspected(null)} /> : null}
   </main>
 }
