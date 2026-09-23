@@ -202,12 +202,13 @@ sequences, including locally unaligned ends, joined without D or a linker.
 The first native hit for each segment supplies both this estimate and the
 dialog's local alignment; all tied assignments remain in gene details. Local
 analysis tables display two decimals while sorting and CSV retain full
-precision. Standalone inspection presents one native Germline–Diffs–Input grid,
-with Input in bold and combined V/J reference identities. Humanization shows
+precision. Standalone inspection presents native Germline and bold Input rows,
+separated by a compact, unlabeled difference strip, with combined V/J reference
+identities. Humanization shows
 Germline (humanized), bold Humanized, Parental and Germline (parental), with
 both sequences' independently assigned V/J species and genes above. Three
-unlabeled, accessibly described difference strips compare Humanized to its
-germline, Humanized to Parental, and Parental to its own germline. If parental
+compact, unlabeled, accessibly described difference strips compare Humanized
+to its germline, Humanized to Parental, and Parental to its own germline. If parental
 numbering fails, the original sequence comparison remains usable and its
 germline is marked unavailable. The API supplies the common axis and original
 input indices; independent reference-only gaps stay separate. Unmatched

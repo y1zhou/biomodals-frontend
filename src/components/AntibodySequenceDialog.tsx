@@ -44,7 +44,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
   const alignment = data.alignment
   const hasParent = alignment?.parental != null
   function differences(values: string, description: string) {
-    return <tr><th scope="row" className="pr-3 text-left font-normal">{hasParent ? <span className="sr-only">{description}</span> : "Diffs"}</th>{Array.from(values, (operation, index) => <td key={index} className="whitespace-pre text-center">{operation}</td>)}</tr>
+    return <tr className="leading-none"><th scope="row" className="pr-3 text-left font-normal"><span className="sr-only">{description}</span></th>{Array.from(values, (operation, index) => <td key={index} className="whitespace-pre text-center">{operation}</td>)}</tr>
   }
   return <div className="space-y-5">
     <p className="text-sm leading-6 text-muted-foreground">Potential liabilities are checked across the full supplied sequence, including unnumbered tails. Odd cysteine count uses the full sequence, but conserved cysteines at IMGT 23 and 104 are not marked. Underlines flag potential motifs, not measured experimental risk.</p>
@@ -63,7 +63,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
           <caption className="sr-only">{hasParent ? "Humanized and parental sequences with their independently assigned germlines" : "Native germline and input alignment"}</caption>
           <tbody>
             <tr><th scope="row" className="pr-3 text-left font-normal">{hasParent ? "Germline (humanized)" : "Germline"}</th>{Array.from(alignment.germline, (residue, index) => <td key={index} className="min-w-[1.5ch] whitespace-pre text-center">{residue}</td>)}</tr>
-            {differences(alignment.germline_diffs, "Humanized relative to its germline")}
+            {differences(alignment.germline_diffs, hasParent ? "Humanized relative to its germline" : "Input relative to its germline")}
             <tr className="font-bold"><th scope="row" className="pr-3 text-left">{hasParent ? "Humanized" : "Input"}</th>{alignment.input_indices.map((inputIndex, column) => {
               if (inputIndex === null) return <td key={column} className="whitespace-pre text-center" title={alignment.input[column] === "-" ? "Input gap" : "No input residue"}>{alignment.input[column]}</td>
               const info = annotation(inputIndex)
@@ -78,7 +78,7 @@ function NumberedSequence({ data }: { data: SequenceDetail }) {
           </tbody>
         </table>
       </div>
-      <details className="text-sm leading-6 text-muted-foreground"><summary className="cursor-pointer">Read sequence alignments</summary><p className="mt-2">{hasParent ? "The three difference strips describe Humanized relative to its germline, Humanized relative to Parental, and Parental relative to its own germline, from top to bottom." : "The Diffs row describes Input relative to its germline."} + = insertion; - = deletion; : = positive-BLOSUM62 substitution; x = other mismatch. Blank differences at aligned residues mean exact matches. Unmatched germline junctions and uncovered ends have blank differences without asserting a match or deletion. Reference-only gaps are kept separate; the grid does not assert homology between germlines. Hover or focus {hasParent ? "Humanized" : "Input"} to identify numbered positions and unnumbered tails.</p></details>
+      <details className="text-sm leading-6 text-muted-foreground"><summary className="cursor-pointer">Read sequence alignments</summary><p className="mt-2">{hasParent ? "The three difference strips describe Humanized relative to its germline, Humanized relative to Parental, and Parental relative to its own germline, from top to bottom." : "The difference strip describes Input relative to its germline."} + = insertion; - = deletion; : = positive-BLOSUM62 substitution; x = other mismatch. Blank differences at aligned residues mean exact matches. Unmatched germline junctions and uncovered ends have blank differences without asserting a match or deletion. Reference-only gaps are kept separate; the grid does not assert homology between germlines. Hover or focus {hasParent ? "Humanized" : "Input"} to identify numbered positions and unnumbered tails.</p></details>
     </section> : span ? <>
       {span[0] > 0 ? <section><h3 className="mb-2 font-medium">Unnumbered prefix</h3>{residues(tail(0, span[0]))}</section> : null}
       <section className="space-y-4"><h3 className="font-medium">Numbered domain · {data.chain_type ?? "unassigned"}</h3>{residues(data.residues)}
