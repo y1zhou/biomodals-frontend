@@ -36,6 +36,79 @@ async function add(page: Page, sequence = "a c\nd") {
   await page.getByRole("button", { name: "Add sequence", exact: true }).click()
 }
 
+for (const nonparentCount of [0, 2]) test(`no-new-designs notice uses full-result count ${nonparentCount} across pages and filters`, async ({ page }) => {
+  await mockApi(page)
+  await page.route(`**/api/v1/jobs/${job.job_id}`, (route) => route.fulfill({ json: { ...job, state: "succeeded" } }))
+  await page.route("**/nanobody-humanization/jobs/*/selection?*", (route) => {
+    const url = new URL(route.request().url())
+    const offset = Number(url.searchParams.get("offset"))
+    const filtered = url.searchParams.has("parent_id")
+    // Both visible pages contain only a parent, even when other designs exist.
+    return route.fulfill({ json: { columns: [{ name: "parent_id", type: "string" }, { name: "is_parent", type: "boolean" }], rows: filtered ? [] : [{ parent_id: "parent", is_parent: true }], total_rows: filtered ? 0 : 100, offset, limit: 50, parent_ids: ["parent"], nonparent_count: nonparentCount, default_hidden_columns: [], nativeness_ranges: {}, germlines: null, reference: null } })
+  })
+  await page.goto(`/tools/nanobody-humanization/jobs/${job.job_id}`)
+  const notice = page.getByText("No new designs were produced.", { exact: true })
+  await expect(page.getByText("1–1 of 100 rows", { exact: true })).toBeVisible()
+  await expect(notice).toHaveCount(nonparentCount === 0 ? 1 : 0)
+  await page.getByRole("button", { name: "Next page", exact: true }).click()
+  await expect(page.getByText("51–51 of 100 rows", { exact: true })).toBeVisible()
+  await expect(notice).toHaveCount(nonparentCount === 0 ? 1 : 0)
+  await page.getByRole("button", { name: /^Filter by parent/ }).click()
+  await page.getByLabel("Parent", { exact: true }).selectOption("parent")
+  await expect(page.getByText("0 of 0 rows", { exact: true })).toBeVisible()
+  await expect(notice).toHaveCount(nonparentCount === 0 ? 1 : 0)
+})
+
+test("busy local preparation keeps originals and retries only on an explicit click", async ({ page }) => {
+  await mockApi(page)
+  const calls: Parent[][] = []
+  await page.route("**/nanobody-humanization/prepare", (route) => {
+    const parents = route.request().postDataJSON().parents
+    calls.push(parents)
+    return calls.length === 1 ? route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local sequence analysis is busy. Please try again." } }) : route.fulfill({ json: preview(parents) })
+  })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Local sequence analysis is busy")
+  await expect(page.getByRole("group", { name: "Parent 1", exact: true }).getByLabel("Original VH · normalized", { exact: true })).toHaveValue("ACD")
+  await page.evaluate(() => { window.dispatchEvent(new Event("online")); document.dispatchEvent(new Event("visibilitychange")) })
+  await page.waitForTimeout(1250) // Cross the shared default query retry interval.
+  expect(calls).toHaveLength(1)
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeEnabled()
+  expect(calls).toEqual([[{ id: "nb_001", vhh: "ACD" }], [{ id: "nb_001", vhh: "ACD" }]])
+})
+
+test("busy job admission keeps the reviewed intent for explicit Submit, not Check submission", async ({ page }) => {
+  const api = await mockApi(page)
+  const submissions: { body: unknown; key: string }[] = []
+  await page.route("**/nanobody-humanization/jobs", (route) => {
+    const request = route.request()
+    submissions.push({ body: request.postDataJSON(), key: request.headers()["idempotency-key"] })
+    return submissions.length === 1 ? route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local sequence analysis is busy. Please try again." } }) : route.fulfill({ status: 202, json: job })
+  })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await page.getByText("Advanced settings", { exact: true }).click()
+  await page.getByLabel("Root seed", { exact: true }).fill("42")
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Your reviewed batch and settings are unchanged")
+  await expect(page.getByRole("status")).toContainText("Batch prepared")
+  await expect(page.getByRole("button", { name: "Check submission", exact: true })).toHaveCount(0)
+  await expect(page.getByLabel("Root seed", { exact: true })).toHaveValue("42")
+  await page.waitForTimeout(1250)
+  expect(submissions).toHaveLength(1)
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/nanobody-humanization/jobs/${job.job_id}$`))
+  expect(api.preparations).toHaveLength(1)
+  expect(submissions).toHaveLength(2)
+  expect(submissions[1]).toEqual(submissions[0])
+  expect(submissions[0].body).toMatchObject({ parents: [{ id: "nb_001", vhh: "ACD" }], settings: { root_seed: 42 }, preparation_digest: "a".repeat(64) })
+})
+
 test("manual and CSV inputs share an editable preview without scientific submission", async ({ page }) => {
   const api = await mockApi(page)
   await page.goto("/tools/nanobody-humanization/new")

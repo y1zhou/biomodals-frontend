@@ -240,6 +240,15 @@ A changed preparation digest requires fresh preparation and review. Rerun with
 same inputs loads editable originals and settings, then requires preparation;
 it never submits automatically.
 
+Both generators are concurrently eligible within the shared scheduler. Capacity
+and the existing dispatch order determine their start times; method interleaving
+or simultaneous progress is not guaranteed. Local analysis, inspection and
+preparation retain inputs after a `local_analysis_busy` response and require an
+explicit retry; the browser does not automatically repeat these operations.
+The same coded response during job submission is a known rejection before
+admission: the reviewed batch stays ready for explicit Submit, rather than
+showing the uncertain-submission recovery action.
+
 Nanobody Results use bounded server-side sorting, filtering and paging, native
 CSV and archive downloads, and the shared Job lifecycle and recovery actions.
 The single VH table uses VH2/VHH2 scores and the saved prepared parent as its
@@ -249,6 +258,9 @@ to local analysis as standalone FASTA entries, without inherited ranks or
 parent comparisons; the analysis limit blocks oversized transfers without
 truncation. Missing scores remain visible as missing, and nativeness bars are
 scaled within the Job while displayed numbers retain their raw units.
+When full-result `nonparent_count` is zero, the page states that no new designs
+were produced. This notice uses job-wide metadata, never the current page or
+parent filter; prepared parental references and downloads remain available.
 The [nanobody specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/nanobody-humanization.md)
 owns preparation, protection, ranking and model policies. Rollout requires the
 matching API/frontend and a deployed, pinned nanobody workflow before restarting

@@ -136,7 +136,7 @@ export default function HumanizationResults({ jobId, nanobody = false }: { jobId
     if (!analysisOptions.data) return
     try {
       const entries = selectedEntries(selection, analysisOptions.data.max_entries_per_group)
-      setTransfer({ sourceJobId: jobId, entries, singleDomain: nanobody })
+      setTransfer({ entries, singleDomain: nanobody })
       navigate(antibodyAnalysisPath)
     } catch (error) { setSelectionError(error instanceof Error ? error.message : "The selection could not be analyzed.") }
   }
@@ -145,6 +145,7 @@ export default function HumanizationResults({ jobId, nanobody = false }: { jobId
     <CardHeader>
       <CardTitle>{nanobody ? "Nanobody humanization candidates" : "Humanization candidates"}</CardTitle>
       <p className="text-sm leading-7 text-muted-foreground">{nanobody ? "Compare candidates with their frozen prepared parents, shown as gray rows. Trimming and terminal completion are preparation, not generator mutations. Inspection uses the saved prepared baseline." : "Compare candidates with their unchanged parents, shown as gray rows."}</p>
+      {nanobody && data && "nonparent_count" in data && data.nonparent_count === 0 ? <p role="status" className="rounded-lg border bg-muted/40 p-3 leading-7"><strong>No new designs were produced.</strong> The prepared parents remain available as references.</p> : null}
       {nanobody ? <NanobodyScoreGuide /> : <section aria-labelledby="candidate-scores-heading" className="mt-3 w-full space-y-3">
           <h3 className="text-lg font-semibold" id="candidate-scores-heading">Understand the ranking and scores</h3>
           <details className="text-sm leading-7 text-muted-foreground">

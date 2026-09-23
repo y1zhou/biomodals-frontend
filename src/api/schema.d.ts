@@ -2089,6 +2089,11 @@ export interface components {
             readonly nativeness_ranges: {
                 readonly [key: string]: components["schemas"]["NativenessRange"];
             };
+            /**
+             * Nonparent Count
+             * @description Number of unique nonparent candidates in the whole result, before filtering or paging. Zero means no new designs were produced.
+             */
+            readonly nonparent_count: number;
             /** Offset */
             readonly offset: number;
             /** Parent Ids */
@@ -4417,6 +4422,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly options_api_v1_antibody_sequence_analysis_options_get: {
@@ -4521,6 +4537,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6163,6 +6190,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly inputs_api_v1_nanobody_humanization_jobs__job_id__inputs_get: {
@@ -6444,6 +6482,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };

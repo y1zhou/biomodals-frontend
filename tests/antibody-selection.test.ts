@@ -18,6 +18,7 @@ test("combinations stay within parent, singleton roles stay standalone, and rank
   const selected = [chain("a", "vh", "AAA"), chain("a", "vh", "CCC"), chain("a", "vl", "DDD"), chain("a", "vl", "EEE"), chain("a", "vl", "FFF"), chain("b", "vh", "GGG"), chain("c", "vl", "HHH")]
   expect(selectionCounts(selected)).toEqual({ pairs: 6, singles: 2 })
   const entries = selectedEntries(selected, 8)
+  expect(entries[0]).toMatchObject({ parentId: "a", vhOrigins: ["AAA"], vlOrigins: ["DDD"] })
   expect(entries.map(({ vh, vl }) => [vh, vl])).toEqual([["AAA", "DDD"], ["AAA", "EEE"], ["AAA", "FFF"], ["CCC", "DDD"], ["CCC", "EEE"], ["CCC", "FFF"], ["GGG", undefined], [undefined, "HHH"]])
   expect(entries.at(-1)?.parentId).toBe("c")
   expect(entries.every((entry) => !("quality_tier" in entry) && !("panel_order" in entry))).toBe(true)

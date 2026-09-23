@@ -531,7 +531,7 @@ test("editing a pending handoff suppresses automatic analysis", async ({ page })
   expect(analyzed).toEqual([{ groups: [{ id: "Group 1", fasta: await input.inputValue() }] }])
 })
 
-test("analysis input and API errors stay at the form without revealing results", async ({ page }) => {
+test("busy analysis preserves inputs for an explicit retry without revealing missing results", async ({ page }) => {
   await mockApi(page)
   await page.addInitScript(() => {
     const scroll = Element.prototype.scrollIntoView
@@ -542,7 +542,7 @@ test("analysis input and API errors stay at the form without revealing results",
   })
   await page.route("**/antibody-sequence-analysis/options", (route) => route.fulfill({ json: { ...analysisOptions, max_request_bytes: 100 } }))
   let analyses = 0
-  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyses++; return route.fulfill({ status: 503, json: { detail: "Analysis temporarily unavailable" } }) })
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => { analyses++; return analyses === 1 ? route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local sequence analysis is busy" } }) : route.fulfill({ json: emptyAnalysis }) })
   await page.goto("/tools/antibody-sequence-analysis")
   await page.getByRole("button", { name: "Load example sequences", exact: true }).click()
   const analyze = page.getByRole("button", { name: "Analyze sequences", exact: true })
@@ -553,11 +553,42 @@ test("analysis input and API errors stay at the form without revealing results",
   await page.getByLabel("Group 1 FASTA", { exact: true }).fill(">short\nACDE")
   await expect(page.getByRole("alert")).toHaveCount(0)
   await analyze.click()
-  await expect(page.getByRole("alert")).toContainText("Analysis temporarily unavailable")
+  await expect(page.getByRole("alert")).toContainText("Your inputs are unchanged")
   await expect(page.getByRole("alert")).toBeVisible()
   await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toHaveCount(0)
   expect(await page.evaluate(() => document.body.dataset.resultsScrolled)).toBeUndefined()
+  await expect(page.getByLabel("Group 1 FASTA", { exact: true })).toHaveValue(">short\nACDE")
+  await page.evaluate(() => { window.dispatchEvent(new Event("online")); document.dispatchEvent(new Event("visibilitychange")) })
+  await page.waitForTimeout(1250) // A busy response must not use the shared automatic retry.
   expect(analyses).toBe(1)
+  await analyze.click()
+  await expect(page.getByRole("heading", { name: "Sequence properties and germline matches" })).toBeVisible()
+  expect(analyses).toBe(2)
+})
+
+test("busy sequence inspection preserves copy and retries only explicitly", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  const api = await mockApi(page)
+  let calls = 0
+  await page.route("**/antibody-sequence-analysis/sequence", (route) => {
+    calls++
+    if (calls === 1) return route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local sequence analysis is busy. Please try again." } })
+    return route.fallback()
+  })
+  await page.goto(`/tools/humanization/jobs/${job.job_id}`)
+  await page.getByRole("button", { name: /^Inspect VH from/ }).first().click()
+  const dialog = page.getByRole("dialog")
+  await expect(dialog.getByRole("alert")).toContainText("Local sequence analysis is busy")
+  await dialog.getByRole("button", { name: "Copy sequence", exact: true }).click()
+  await expect(dialog.getByRole("button", { name: "Copied", exact: true })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("ACDEFGHIKLMNPQRSTVWY")
+  await page.evaluate(() => { window.dispatchEvent(new Event("online")); document.dispatchEvent(new Event("visibilitychange")) })
+  await page.waitForTimeout(1250)
+  expect(calls).toBe(1)
+  await dialog.getByRole("button", { name: "Try again", exact: true }).click()
+  await expect(dialog.getByRole("heading", { name: "Unnumbered input", exact: true })).toBeVisible()
+  expect(calls).toBe(2)
+  expect(api.submissions).toHaveLength(0)
 })
 
 for (const differentUser of [false, true]) test(`analysis draft ${differentUser ? "clears for another user" : "survives same-user reauthentication"}`, async ({ page }) => {

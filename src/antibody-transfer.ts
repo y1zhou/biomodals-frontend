@@ -2,7 +2,6 @@ import { createContext, useContext, type Dispatch, type SetStateAction } from "r
 import type { SelectedEntry } from "@/antibody-selection"
 
 export interface AntibodyTransfer {
-  sourceJobId: string
   entries: readonly SelectedEntry[]
   singleDomain?: boolean
 }

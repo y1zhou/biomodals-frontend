@@ -52,6 +52,7 @@ test("nanobody native preparation, 300 bounded candidates, saved baseline and st
   const first = await firstResponse.json()
   expect(first.rows).toHaveLength(50)
   expect(first.total_rows).toBe(300)
+  expect(first.nonparent_count).toBe(200)
   expect(first.columns).toHaveLength(19)
   expect(Object.keys(first.germlines)).toHaveLength(50)
   expect(first.germlines[first.rows[0].candidate_id].assignment).toBeDefined()

@@ -100,7 +100,8 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
     else blocker.reset()
   }, [blocker])
 
-  const ambiguous = submission.error && (!(submission.error instanceof ApiError) || submission.error.status === 0 || submission.error.status >= 500)
+  const submissionBusy = apiErrorCode(submission.error) === "local_analysis_busy"
+  const ambiguous = submission.error && !submissionBusy && (!(submission.error instanceof ApiError) || submission.error.status === 0 || submission.error.status >= 500)
   function editIntent() {
     if (ambiguous) setPreviousUnconfirmed(true)
     intent.current = null
@@ -251,7 +252,7 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
         <Button type="submit" disabled={!canPrepare}>{mutation.isPending ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{mutation.isPending ? "Preparing sequences…" : "Prepare sequences"}</Button>
         <Button className="ml-3" type="button" disabled={!canSubmit} onClick={() => submit()}>{submission.isPending ? "Submitting…" : "Submit humanization"}</Button>
         {ambiguous && intent.current ? <Button className="ml-3" type="button" variant="outline" disabled={!principal || submission.isPending} onClick={() => submit(true)}>Check submission</Button> : null}
-        {submission.error ? <p role="alert" className="text-destructive">{apiErrorCode(submission.error) === "preparation_changed" ? "Prepared inputs changed. Prepare and review the batch again before submitting." : ambiguous ? "The submission could not be confirmed. Check submission to reuse the original request without creating another intent." : `Submission was rejected. ${submission.error.message}`}</p> : null}
+        {submission.error ? <p role="alert" className="text-destructive">{apiErrorCode(submission.error) === "preparation_changed" ? "Prepared inputs changed. Prepare and review the batch again before submitting." : submissionBusy ? "Local sequence analysis is busy. Your reviewed batch and settings are unchanged. Click Submit humanization to try again when capacity is available." : ambiguous ? "The submission could not be confirmed. Check submission to reuse the original request without creating another intent." : `Submission was rejected. ${submission.error.message}`}</p> : null}
         {previousUnconfirmed ? <p role="alert">An earlier submission was not confirmed. Check <Link className="underline" to="/jobs">My Jobs</Link> before submitting an edited batch.</p> : null}
         <p className="text-sm leading-7 text-muted-foreground">Only Submit humanization starts a scientific job. Preparation is local to the service. This draft exists only in memory and is lost when you leave or reload.</p>
       </fieldset>

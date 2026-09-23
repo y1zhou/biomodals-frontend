@@ -3,7 +3,7 @@ import { Menu } from "@base-ui/react/menu"
 import { ArrowLeft, Check, ChevronDown, Columns3, LoaderCircle, Plus } from "lucide-react"
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { Link } from "react-router"
-import { analyzeAntibodies, antibodyAnalysisOptions } from "@/api/client"
+import { analyzeAntibodies, antibodyAnalysisOptions, apiErrorCode } from "@/api/client"
 import { ANALYSIS_VERSION, analysisColumns, exampleAntibodyFasta, type AnalysisRequest } from "@/antibody-analysis"
 import { selectedFasta } from "@/antibody-selection"
 import { useAntibodyTransfer } from "@/antibody-transfer"
@@ -116,7 +116,7 @@ export default function AntibodyAnalysisPage() {
       {options.data && !compatible ? <p role="alert">Sequence analysis requires an updated API (analysis version {ANALYSIS_VERSION}). Your input remains editable.</p> : null}
       {options.isPending ? <p role="status">Loading analysis limits…</p> : null}
       {options.error ? <div role="alert"><p>Analysis options could not be loaded. {options.error.message}</p><Button type="button" variant="outline" onClick={() => void options.refetch()}>Reload options</Button></div> : null}
-      {error || mutation.error ? <p role="alert" className="rounded-lg bg-destructive/10 p-3 leading-7 text-destructive">{error ?? `Analysis could not be completed. ${mutation.error?.message} Sign in if needed, then try again.`}</p> : null}
+      {error || mutation.error ? <p role="alert" className="rounded-lg bg-destructive/10 p-3 leading-7 text-destructive">{error ?? (apiErrorCode(mutation.error) === "local_analysis_busy" ? "Local sequence analysis is busy. Your inputs are unchanged. Click Analyze sequences to try again when capacity is available." : `Analysis could not be completed. ${mutation.error?.message} Sign in if needed, then try again.`)}</p> : null}
     </form>
     {result ? <section className="space-y-5" aria-label="Analysis results">
       <h2 ref={resultsHeading} tabIndex={-1} className="scroll-mt-24 text-2xl font-semibold">Sequence properties and germline matches</h2>
