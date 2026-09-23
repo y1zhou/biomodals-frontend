@@ -80,12 +80,7 @@ function NumberedSequence({ data, highlightHallmarks }: { data: SequenceDetail; 
         </table>
       </div>
       <details className="text-sm leading-6 text-muted-foreground"><summary className="cursor-pointer">Read sequence alignments</summary><p className="mt-2">{hasParent ? "The three difference strips describe Humanized relative to its germline, Humanized relative to Parental, and Parental relative to its own germline, from top to bottom." : "The difference strip describes Input relative to its germline."} + = insertion; - = deletion; : = positive-BLOSUM62 substitution; x = other mismatch. Blank differences at aligned residues mean exact matches. Unmatched germline junctions and uncovered ends have blank differences without asserting a match or deletion. Reference-only gaps are kept separate; the grid does not assert homology between germlines. Hover or focus {hasParent ? "Humanized" : "Input"} to identify numbered positions and unnumbered tails.</p></details>
-    </section> : span ? <>
-      {span[0] > 0 ? <section><h3 className="mb-2 font-medium">Unnumbered prefix</h3>{residues(tail(0, span[0]))}</section> : null}
-      <section className="space-y-4"><h3 className="font-medium">Numbered domain · {data.chain_type ?? "unassigned"}</h3>{residues(data.residues)}
-      </section>
-      {span[1] < data.sequence.length ? <section><h3 className="mb-2 font-medium">Unnumbered suffix</h3>{residues(tail(span[1], data.sequence.length))}</section> : null}
-    </> : <section><h3 className="mb-2 font-medium">Unnumbered input</h3>{residues(tail(0, data.sequence.length))}</section>}
+    </section> : <section><h3 className="mb-2 font-medium">Unnumbered input</h3>{residues(tail(0, data.sequence.length))}</section>}
     {data.error ? <p role="status" className="rounded-lg bg-muted p-3 leading-6">{data.error}</p> : null}
     {data.diagnostics.map((text, index) => <p key={index} className="text-sm leading-6 text-muted-foreground">{text}</p>)}
   </div>
