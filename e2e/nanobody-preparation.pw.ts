@@ -36,6 +36,31 @@ async function add(page: Page, sequence = "a c\nd") {
   await page.getByRole("button", { name: "Add sequence", exact: true }).click()
 }
 
+test("large candidate results jump to any page without enumerating page options", async ({ page }) => {
+  await mockApi(page)
+  await page.route(`**/api/v1/jobs/${job.job_id}`, (route) => route.fulfill({ json: { ...job, state: "succeeded" } }))
+  const queries: URLSearchParams[] = []
+  await page.route("**/nanobody-humanization/jobs/*/selection?*", (route) => {
+    const params = new URL(route.request().url()).searchParams
+    queries.push(params)
+    const offset = Number(params.get("offset"))
+    return route.fulfill({ json: { columns: [{ name: "candidate_id", type: "string" }], rows: Array.from({ length: 50 }, (_, i) => ({ candidate_id: `candidate_${offset + i}` })), total_rows: 2_000_000, offset, limit: 50, parent_ids: [], default_hidden_columns: [], nativeness_ranges: {}, nonparent_count: 1_999_999 } })
+  })
+  await page.goto(`/tools/nanobody-humanization/jobs/${job.job_id}`)
+  await expect(page.getByText("1–50 of 2000000 rows", { exact: true })).toBeVisible()
+  const jump = page.getByRole("form", { name: "Jump to candidate page", exact: true })
+  await expect(jump.getByRole("spinbutton", { name: "Page", exact: true })).toHaveAttribute("max", "40000")
+  await expect(page.getByRole("navigation", { name: "Candidate pages", exact: true }).locator("option")).toHaveCount(0)
+  await jump.getByLabel("Page", { exact: true }).fill("40001")
+  await jump.getByRole("button", { name: "Go", exact: true }).click()
+  expect(queries).toHaveLength(1)
+  await jump.getByLabel("Page", { exact: true }).fill("40000")
+  await jump.getByLabel("Page", { exact: true }).press("Enter")
+  await expect(page.getByText("1999951–2000000 of 2000000 rows", { exact: true })).toBeVisible()
+  expect(queries.map((query) => [query.get("offset"), query.get("limit")])).toEqual([["0", "50"], ["1999950", "50"]])
+  await expect(page.getByRole("button", { name: "Next page", exact: true })).toBeDisabled()
+})
+
 for (const nonparentCount of [0, 2]) test(`no-new-designs notice uses full-result count ${nonparentCount} across pages and filters`, async ({ page }) => {
   await mockApi(page)
   await page.route(`**/api/v1/jobs/${job.job_id}`, (route) => route.fulfill({ json: { ...job, state: "succeeded" } }))

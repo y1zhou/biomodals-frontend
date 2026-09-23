@@ -287,10 +287,17 @@ export default function HumanizationResults({ jobId, nanobody = false }: { jobId
             </label>
             <nav aria-label="Candidate pages" className="flex items-center gap-2">
               <Button aria-label="Previous page" disabled={data.offset === 0 || query.isFetching} onClick={() => setView({ ...view, offset: Math.max(0, view.offset - view.limit) })} size="icon" title="Previous page" type="button" variant="outline"><ChevronLeft aria-hidden="true" /></Button>
-              <label className="flex items-center gap-2 text-sm">Page
+              {pageCount > 100 ? <form aria-label="Jump to candidate page" className="flex items-center gap-2 text-sm" onSubmit={(event) => {
+                event.preventDefault()
+                const page = Number(new FormData(event.currentTarget).get("page"))
+                if (!loadingPage && Number.isInteger(page) && page >= 1 && page <= pageCount) setView({ ...view, offset: (page - 1) * view.limit })
+              }}>
+                <label className="flex items-center gap-2">Page <input aria-label="Page" name="page" type="number" required min={1} max={pageCount} step={1} key={`${currentPage}:${pageCount}`} defaultValue={currentPage} disabled={loadingPage} className={`${selectClass} w-24`} /></label>
+                <span>of {pageCount}</span><Button type="submit" variant="outline" disabled={loadingPage}>Go</Button>
+              </form> : <label className="flex items-center gap-2 text-sm">Page
                 <select aria-label="Page" className={selectClass} disabled={loadingPage || pageCount === 1} onChange={(event) => setView({ ...view, offset: (Number(event.target.value) - 1) * view.limit })} value={currentPage}>{Array.from({ length: pageCount }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select>
                 <span>of {pageCount}</span>
-              </label>
+              </label>}
               <Button aria-label="Next page" disabled={data.offset + data.rows.length >= data.total_rows || query.isFetching} onClick={() => setView({ ...view, offset: view.offset + view.limit })} size="icon" title="Next page" type="button" variant="outline"><ChevronRight aria-hidden="true" /></Button>
             </nav>
           </div>

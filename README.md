@@ -252,6 +252,8 @@ showing the uncertain-submission recovery action.
 
 Nanobody Results use bounded server-side sorting, filtering and paging, native
 CSV and archive downloads, and the shared Job lifecycle and recovery actions.
+Tables with more than 100 pages use an explicit page-number jump instead of
+allocating a dropdown option for every page; smaller tables retain the dropdown.
 The single VH table uses VH2/VHH2 scores and the saved prepared parent as its
 comparison baseline, including in sequence inspection. It never re-imputes
 historical inputs. Selected VH sequences survive table navigation and transfer
