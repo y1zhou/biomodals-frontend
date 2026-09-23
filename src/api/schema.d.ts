@@ -2023,6 +2023,16 @@ export interface components {
              */
             readonly max_csv_bytes: number;
             /**
+             * Max Exploration Candidates Per Job
+             * @default 10000
+             */
+            readonly max_exploration_candidates_per_job: number;
+            /**
+             * Max Exploration Candidates Per Parent
+             * @default 5000
+             */
+            readonly max_exploration_candidates_per_parent: number;
+            /**
              * Max Input Length
              * @default 512
              */
@@ -2111,6 +2121,16 @@ export interface components {
          * @description Explicit native AbNatiV CLI defaults and fixed-batch HuDiff sampling.
          */
         readonly NanobodySettings: {
+            /**
+             * Abnativ2 Candidate Budget
+             * @default 1000
+             */
+            readonly abnativ2_candidate_budget: number;
+            /**
+             * Abnativ2 Explore
+             * @default false
+             */
+            readonly abnativ2_explore: boolean;
             /**
              * Abnativ2 Max Relative Vhh Score Decrease
              * @default 0.05
@@ -6157,6 +6177,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["JobView"];
                 };
             };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
             /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
@@ -6176,7 +6207,7 @@ export interface operations {
                     readonly [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["NanobodyInputErrors"];
+                    readonly "application/json": components["schemas"]["NanobodyInputErrors"] | components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Internal Server Error */

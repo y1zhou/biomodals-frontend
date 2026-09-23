@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { normalizeSequence, settingMetadata } from "@/humanization"
 import { randomUUID } from "@/lib/uuid"
-import { nanobodySettingGroups, nanobodySettingInfo, nextParentId, parseNanobodyCsv, type NanobodyParent, type NanobodyPreparation, type NanobodySettings, type NanobodySubmission } from "@/nanobody-humanization"
+import { nanobodySettingGroups, nanobodySettingInfo, nextParentId, parseNanobodyCsv, type NanobodyNumericSetting, type NanobodyParent, type NanobodyPreparation, type NanobodySettings, type NanobodySubmission } from "@/nanobody-humanization"
 import { jobKey, jobListKey } from "@/jobs"
 import { nanobodyPaths } from "@/tools"
 
@@ -33,7 +33,9 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
   const [parents, setParents] = useState<BatchRow[]>([])
   const [entry, setEntry] = useState<NanobodyParent>({ id: "nb_001", vhh: "" })
   const [displayName, setDisplayName] = useState("")
-  const [settingsEdits, setSettingsEdits] = useState<Partial<Record<keyof NanobodySettings, string>>>({})
+  const [settingsEdits, setSettingsEdits] = useState<Partial<Record<NanobodyNumericSetting, string>>>({})
+  const [exposureEnabled, setExposureEnabled] = useState<boolean>()
+  const [explorationEnabled, setExplorationEnabled] = useState<boolean>()
   const [batchPage, setBatchPage] = useState(0)
   const [importError, setImportError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
@@ -54,7 +56,9 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
     setParents(source.parents.map((parent) => ({ ...parent, key: randomUUID() })))
     setEntry({ id: nextParentId(source.parents), vhh: "" })
     setDisplayName(source.display_name)
-    setSettingsEdits(Object.fromEntries(Object.entries(source.settings).map(([name, value]) => [name, String(value)])))
+    setExposureEnabled(source.settings.abnativ2_rasa_threshold > 0)
+    setExplorationEnabled(source.settings.abnativ2_explore ?? false)
+    setSettingsEdits(Object.fromEntries(Object.entries(source.settings).filter(([name, value]) => name !== "abnativ2_explore" && (name !== "abnativ2_rasa_threshold" || Number(value) > 0)).map(([name, value]) => [name, String(value)])))
     setInputsLoaded(true)
   }, [sourceInputs.data, inputsLoaded])
   const mutation = useMutation({
@@ -89,7 +93,7 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
   const pageCount = Math.max(1, Math.ceil(parents.length / pageSize))
   const currentPage = Math.min(batchPage, pageCount - 1)
   const offset = currentPage * pageSize
-  const dirty = Boolean(parents.length || entry.vhh || entry.id !== "nb_001" || displayName || Object.keys(settingsEdits).length || importing)
+  const dirty = Boolean(parents.length || entry.vhh || entry.id !== "nb_001" || displayName || Object.keys(settingsEdits).length || exposureEnabled !== undefined || explorationEnabled !== undefined || importing)
   const blocker = useBlocker(() => !allowNavigation.current && (dirty || submitting.current))
   useBeforeUnload(useCallback((event) => {
     if (!allowNavigation.current && (dirty || submitting.current)) { event.preventDefault(); event.returnValue = true }
@@ -143,23 +147,31 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
     }
   }
 
-  const settingNames = Object.keys(nanobodySettingInfo) as (keyof NanobodySettings)[]
+  const settingNames = Object.keys(nanobodySettingInfo) as NanobodyNumericSetting[]
   const defaults = options.data?.defaults
-  const optionsReady = options.data && typeof options.data.max_csv_bytes === "number" && typeof options.data.max_input_length === "number" && typeof options.data.preparation_version === "string" && settingNames.every((name) => typeof defaults?.[name] === "number")
-  const settings: Record<string, number> = {}
-  const settingErrors: Partial<Record<keyof NanobodySettings, boolean>> = {}
+  const screenExposure = exposureEnabled ?? (defaults?.abnativ2_rasa_threshold ?? 0) > 0
+  const explore = explorationEnabled ?? defaults?.abnativ2_explore ?? false
+  const optionsReady = options.data && typeof options.data.max_csv_bytes === "number" && typeof options.data.max_input_length === "number" && typeof options.data.preparation_version === "string" && typeof defaults?.abnativ2_explore === "boolean" && [options.data.max_exploration_candidates_per_parent, options.data.max_exploration_candidates_per_job].every((value) => Number.isSafeInteger(value) && value > 0) && settingNames.every((name) => typeof defaults?.[name] === "number" && Number.isFinite(defaults[name]))
+  const numericSettings: Record<string, number> = {}
+  const settingErrors: Partial<Record<NanobodyNumericSetting, boolean>> = {}
   for (const name of settingNames) {
     const value = settingsEdits[name] ?? defaults?.[name] ?? ""
-    const numeric = Number(value)
+    const exposure = name === "abnativ2_rasa_threshold"
+    const numeric = exposure && !screenExposure ? 0 : Number(value)
     const metadata = settingMetadata(options.data, name)
-    settings[name] = numeric
-    settingErrors[name] = value === "" || !Number.isFinite(numeric) || metadata.type === "integer" && !Number.isInteger(numeric) || metadata.minimum !== undefined && numeric < metadata.minimum || metadata.maximum !== undefined && numeric > metadata.maximum
+    const budget = name === "abnativ2_candidate_budget"
+    const invalid = value === "" || !Number.isFinite(numeric) || exposure && numeric <= 0 || (metadata.type === "integer" || budget) && !Number.isInteger(numeric) || metadata.minimum !== undefined && numeric < metadata.minimum || metadata.maximum !== undefined && numeric > metadata.maximum || budget && options.data !== undefined && numeric > options.data.max_exploration_candidates_per_parent
+    numericSettings[name] = budget && !explore && invalid ? Number(defaults?.[name]) : numeric
+    settingErrors[name] = exposure && !screenExposure || budget && !explore ? false : invalid
   }
+  const settings = { ...numericSettings, abnativ2_explore: explore } as NanobodySettings
+  const requestedAllowance = parents.length * settings.abnativ2_candidate_budget
+  const overBudget = explore && !settingErrors.abnativ2_candidate_budget && options.data && requestedAllowance > options.data.max_exploration_candidates_per_job
   const normalizedName = displayName.trim().replace(/\s+/g, " ") || "Nanobody humanization"
   const oversized = parents.some((parent) => [...parent.id].length > 200 || options.data?.max_input_length !== undefined && parent.vhh.length > options.data.max_input_length)
   const overLimit = options.data && parents.length > options.data.max_parents
   const canPrepare = principal && inputsLoaded && optionsReady && parents.length > 0 && !overLimit && !oversized && !entry.vhh && !importing && !mutation.isPending && !submission.isPending
-  const canSubmit = canPrepare && preview?.preparation_digest && !policyChanged && !errors.length && !Object.values(settingErrors).some(Boolean) && normalizedName.length <= 120
+  const canSubmit = canPrepare && preview?.preparation_digest && !policyChanged && !errors.length && !overBudget && !Object.values(settingErrors).some(Boolean) && normalizedName.length <= 120
   function prepare(event: FormEvent) {
     event.preventDefault()
     if (!canPrepare) return
@@ -171,7 +183,7 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
   }
   function submit(replay = false) {
     if (!principal || submitting.current || submission.isPending || (replay ? !intent.current : !canSubmit)) return
-    const request = intent.current ?? { key: randomUUID(), input: { display_name: normalizedName, parents: parents.map(({ id, vhh }) => ({ id, vhh })), settings: settings as NanobodySettings, preparation_digest: preview!.preparation_digest! } }
+    const request = intent.current ?? { key: randomUUID(), input: { display_name: normalizedName, parents: parents.map(({ id, vhh }) => ({ id, vhh })), settings, preparation_digest: preview!.preparation_digest! } }
     intent.current = request
     submitting.current = true
     submission.mutate(request)
@@ -187,7 +199,7 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
     {sourceJob ? <div className="rounded-lg border bg-muted/30 p-4 leading-7">{inputsLoaded ? <p>Original inputs copied from the <Link className="underline" to={nanobodyPaths.job(sourceJob)}>previous job</Link>. Review the configuration and prepare again before submitting a new job.</p> : sourceInputs.error ? <div role="alert"><p>Retained inputs could not be loaded. {sourceInputs.error instanceof ApiError && sourceInputs.error.status === 404 ? "This job or its original inputs are unavailable to you." : sourceInputs.error.message}</p><Button className="mt-3" variant="outline" onClick={() => void sourceInputs.refetch()}>Retry loading inputs</Button></div> : <p role="status">Loading original inputs…</p>}</div> : null}
     {options.isPending ? <p role="status" className="flex items-center gap-2"><LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" />Loading preparation limits and defaults…</p> : null}
     {options.error ? <div role="alert"><p>Preparation options could not be loaded. {options.error.message}</p><Button className="mt-2" onClick={() => void options.refetch()} variant="outline">Retry options</Button></div> : null}
-    {options.data && !optionsReady ? <p role="alert">Preparation needs updated service options. Reload the options before continuing.</p> : null}
+    {options.data && !optionsReady ? <div role="alert"><p>Humanization needs updated service options with exploration settings and limits. Reload the options before continuing.</p><Button className="mt-2" type="button" variant="outline" onClick={() => void options.refetch()}>Reload options</Button></div> : null}
     <form className="space-y-6" noValidate onSubmit={prepare}>
       <fieldset className="space-y-6" disabled={!principal || importing || !inputsLoaded || submission.isPending}>
         <div className="max-w-md"><label htmlFor="nanobody-name" className="text-sm font-medium">Job name</label><Input id="nanobody-name" className="mt-2" value={displayName} placeholder="Nanobody humanization" onChange={(event) => { editIntent(); setDisplayName(event.target.value) }} aria-invalid={normalizedName.length > 120} />{normalizedName.length > 120 ? <p className="text-sm text-destructive">Use at most 120 characters.</p> : null}</div>
@@ -237,14 +249,24 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
         </Card>
         <details className="rounded-xl border p-5"><summary className="cursor-pointer text-lg font-semibold">Advanced settings</summary>
           <p className="mt-3 leading-7 text-muted-foreground">One configuration applies to the entire batch. Both native CDR masks, all prepared-parent cysteines, and parental IMGT 42/49/50/52 are protected. Other framework positions, including completed termini, may change.</p>
-          {nanobodySettingGroups.map((group) => <fieldset key={group.label} className="mt-5 border-t pt-4"><legend className="px-1 text-lg font-medium">{group.label}</legend><div className="grid gap-5 md:grid-cols-2">{group.names.map((name) => {
-            const info = nanobodySettingInfo[name]
+          {nanobodySettingGroups.map((group) => <fieldset key={group.label} className="mt-5 border-t pt-4"><legend className="px-1 text-lg font-medium">{group.label}</legend>
+            {group.label === "AbNatiV2 VHH" ? <div className="mb-5 space-y-2">
+              <label className="flex items-center gap-2 font-medium"><input type="checkbox" className="size-4" checked={explore} disabled={!optionsReady} onChange={(event) => { editIntent(); setExplorationEnabled(event.target.checked) }} />Explore more candidates</label>
+              <p className="text-sm leading-7 text-muted-foreground">{explore ? "Evaluate all allowed nonparent combinations if they fit the budget; otherwise reproducibly sample unique combinations, balancing the allowance across mutation counts and redistributing exhausted groups. Every passing design enters shared ranking with HuDiff. No additional sampling replaces rejected designs." : "Enhanced search returns one best-effort endpoint per parent, which may be unchanged. Enable exploration to evaluate more combinations; additional passing designs are not guaranteed."}</p>
+              {explore && optionsReady ? <p className="text-sm leading-7 text-muted-foreground" aria-live="polite">{settingErrors.abnativ2_candidate_budget ? "Enter a valid per-parent budget to calculate the requested allowance." : `Requested exploration allowance: ${parents.length} × ${settings.abnativ2_candidate_budget} = ${requestedAllowance} combinations.`} Service limits: {options.data.max_exploration_candidates_per_parent} per parent and {options.data.max_exploration_candidates_per_job} per job. Actual native space is determined during execution.</p> : null}
+              <label className="flex items-center gap-2 font-medium"><input type="checkbox" className="size-4" checked={screenExposure} disabled={!optionsReady} onChange={(event) => { editIntent(); setExposureEnabled(event.target.checked) }} />Screen by solvent exposure</label>
+              <p className="text-sm leading-7 text-muted-foreground">Screening uses a predicted parent structure to restrict proposed changes to exposed positions. Turning it off also admits buried positions and can expand the search; sequence protections and model criteria still apply. These scores do not establish fold retention.</p>
+            </div> : null}
+            <div className="grid gap-5 md:grid-cols-2">{group.names.map((name) => {
+            if (name === "abnativ2_candidate_budget" && !explore) return null
+            const info = name === "abnativ2_max_relative_vhh_score_decrease" && explore ? { label: "Allowed VHH score decrease from prepared parent", help: "Relative VHH-score loss allowed from the original prepared parent during exploration. This is a total parent-relative allowance, not a per-step tolerance." } : nanobodySettingInfo[name]
             const metadata = settingMetadata(options.data, name)
             const value = settingsEdits[name] ?? defaults?.[name] ?? ""
             const invalid = settingErrors[name]
-            return <div key={name}><label className="text-sm font-medium" htmlFor={`nano-${name}`}>{info.label}</label><Input id={`nano-${name}`} type="number" disabled={!optionsReady} min={metadata.minimum} max={metadata.maximum} step={metadata.type === "integer" ? 1 : "any"} value={value} aria-invalid={!!optionsReady && !!invalid} onChange={(event) => { editIntent(); setSettingsEdits((current) => ({ ...current, [name]: event.target.value })) }} /><p className="mt-1 text-sm leading-7 text-muted-foreground">{info.help}</p>{optionsReady && invalid ? <p className="text-sm text-destructive">Enter a valid number within the displayed bounds.</p> : null}</div>
+            return <div key={name}><label className="text-sm font-medium" htmlFor={`nano-${name}`}>{info.label}</label><Input id={`nano-${name}`} type="number" disabled={!optionsReady || name === "abnativ2_rasa_threshold" && !screenExposure} min={metadata.minimum} max={name === "abnativ2_candidate_budget" ? options.data?.max_exploration_candidates_per_parent : metadata.maximum} step={metadata.type === "integer" ? 1 : "any"} value={value} aria-invalid={!!optionsReady && !!invalid} onChange={(event) => { editIntent(); setSettingsEdits((current) => ({ ...current, [name]: event.target.value })) }} /><p className="mt-1 text-sm leading-7 text-muted-foreground">{info.help}</p>{optionsReady && invalid ? <p className="text-sm text-destructive">Enter a valid number within the displayed bounds{name === "abnativ2_rasa_threshold" ? ", greater than zero while screening is on" : ""}.</p> : null}</div>
           })}</div></fieldset>)}
         </details>
+        {overBudget ? <p role="alert" className="text-destructive">Requested exploration allowance {requestedAllowance} exceeds the service limit of {options.data?.max_exploration_candidates_per_job} combinations per job. Reduce the batch or per-parent budget before submitting. Nothing has been scaled automatically.</p> : null}
         {entry.vhh ? <p className="text-sm text-muted-foreground">Add or clear the sequence above before preparing the batch.</p> : null}
         {mutation.error ? <p role="alert" className="text-destructive">Preparation could not be completed. {mutation.error.message} Retry explicitly after correcting any input or session problem.</p> : null}
         {policyChanged ? <p role="alert">The preparation policy changed. <button type="button" className="underline" onClick={() => { discardPreview(); void options.refetch() }}>Reload options</button> and prepare again.</p> : null}
@@ -252,7 +274,7 @@ function NanobodySubmissionForm({ sourceJob }: { sourceJob: string }) {
         <Button type="submit" disabled={!canPrepare}>{mutation.isPending ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{mutation.isPending ? "Preparing sequences…" : "Prepare sequences"}</Button>
         <Button className="ml-3" type="button" disabled={!canSubmit} onClick={() => submit()}>{submission.isPending ? "Submitting…" : "Submit humanization"}</Button>
         {ambiguous && intent.current ? <Button className="ml-3" type="button" variant="outline" disabled={!principal || submission.isPending} onClick={() => submit(true)}>Check submission</Button> : null}
-        {submission.error ? <p role="alert" className="text-destructive">{apiErrorCode(submission.error) === "preparation_changed" ? "Prepared inputs changed. Prepare and review the batch again before submitting." : submissionBusy ? "Local sequence analysis is busy. Your reviewed batch and settings are unchanged. Click Submit humanization to try again when capacity is available." : ambiguous ? "The submission could not be confirmed. Check submission to reuse the original request without creating another intent." : `Submission was rejected. ${submission.error.message}`}</p> : null}
+        {submission.error ? <p role="alert" className="text-destructive">{apiErrorCode(submission.error) === "preparation_changed" ? "Prepared inputs changed. Prepare and review the batch again before submitting." : apiErrorCode(submission.error) === "exploration_budget_exceeded" ? `Submission was rejected. ${submission.error.message} Your reviewed inputs and settings are preserved. Reduce the batch or per-parent budget, then submit explicitly.` : apiErrorCode(submission.error) === "deployment_incompatible" ? `Submission was rejected. ${submission.error.message} Your reviewed batch is preserved. Ask an administrator to update the workflow before trying again.` : submissionBusy ? "Local sequence analysis is busy. Your reviewed batch and settings are unchanged. Click Submit humanization to try again when capacity is available." : ambiguous ? "The submission could not be confirmed. Check submission to reuse the original request without creating another intent." : `Submission was rejected. ${submission.error.message}`}</p> : null}
         {previousUnconfirmed ? <p role="alert">An earlier submission was not confirmed. Check <Link className="underline" to="/jobs">My Jobs</Link> before submitting an edited batch.</p> : null}
         <p className="text-sm leading-7 text-muted-foreground">Only Submit humanization starts a scientific job. Preparation is local to the service. This draft exists only in memory and is lost when you leave or reload.</p>
       </fieldset>

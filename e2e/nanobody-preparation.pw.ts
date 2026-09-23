@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test"
 
 const principal = { user_id: "nano-user", display_name: "Researcher", email: "nano@example.test", is_admin: false }
-const defaults = { root_seed: 0, hudiff_nb_candidate_count: 10, abnativ2_residue_score_threshold: 0.98, abnativ2_rasa_threshold: 0.15, abnativ2_max_relative_vhh_score_decrease: 0.05 }
-const options = { max_parents: 100, max_input_length: 512, max_csv_bytes: 10485760, preparation_version: "1|arpeggia=0.10.1|IMGT-202636-7+llama-supplement", defaults, settings_schema: { properties: {
+const defaults = { root_seed: 0, hudiff_nb_candidate_count: 10, abnativ2_residue_score_threshold: 0.98, abnativ2_rasa_threshold: 0.15, abnativ2_max_relative_vhh_score_decrease: 0.05, abnativ2_explore: false, abnativ2_candidate_budget: 1000 }
+const options = { max_parents: 100, max_input_length: 512, max_csv_bytes: 10485760, max_exploration_candidates_per_parent: 5000, max_exploration_candidates_per_job: 10000, preparation_version: "1|arpeggia=0.10.1|IMGT-202636-7+llama-supplement", defaults, settings_schema: { properties: {
+  abnativ2_explore: { type: "boolean" }, abnativ2_candidate_budget: { type: "integer", minimum: 1, maximum: 5000 },
   root_seed: { type: "integer", minimum: 0, maximum: 4294967295 }, hudiff_nb_candidate_count: { type: "integer", minimum: 1, maximum: 25 },
   abnativ2_residue_score_threshold: { type: "number", minimum: 0, maximum: 1 }, abnativ2_rasa_threshold: { type: "number", minimum: 0, maximum: 1 }, abnativ2_max_relative_vhh_score_decrease: { type: "number", minimum: 0, maximum: 1 },
 } } }
@@ -35,6 +36,138 @@ async function add(page: Page, sequence = "a c\nd") {
   await page.getByLabel("VH sequence", { exact: true }).fill(sequence)
   await page.getByRole("button", { name: "Add sequence", exact: true }).click()
 }
+
+test("exposure screening preserves its positive draft and reviewed parents", async ({ page }) => {
+  const api = await mockApi(page)
+  const submissions: { settings: typeof defaults; preparation_digest: string }[] = []
+  await page.route("**/nanobody-humanization/jobs", (route) => {
+    submissions.push(route.request().postDataJSON())
+    return route.fulfill({ status: 422, json: { detail: "Offline admission rejection" } })
+  })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await page.getByText("Advanced settings", { exact: true }).click()
+  const screening = page.getByRole("checkbox", { name: "Screen by solvent exposure", exact: true })
+  const threshold = page.getByLabel("Solvent exposure threshold", { exact: true })
+  const submit = page.getByRole("button", { name: "Submit humanization", exact: true })
+  await expect(screening).toBeChecked()
+  await expect(threshold).toHaveValue("0.15")
+  await threshold.fill("0")
+  await expect(submit).toBeDisabled()
+  await screening.uncheck()
+  await expect(threshold).toBeDisabled()
+  await expect(submit).toBeEnabled()
+  await screening.check()
+  await threshold.fill("0.23")
+  await screening.uncheck()
+  await screening.check()
+  await expect(threshold).toHaveValue("0.23")
+  await screening.uncheck()
+  expect(submissions).toHaveLength(0)
+  await submit.click()
+  await expect(page.getByRole("alert")).toContainText("Offline admission rejection")
+  expect(submissions[0].settings).toMatchObject({ abnativ2_rasa_threshold: 0, root_seed: 0, hudiff_nb_candidate_count: 10 })
+  await screening.check()
+  await submit.click()
+  await expect(page.getByRole("alert")).toContainText("Offline admission rejection")
+  expect(submissions[1].settings.abnativ2_rasa_threshold).toBe(0.23)
+  expect(submissions[1].preparation_digest).toBe(submissions[0].preparation_digest)
+  expect(api.preparations).toHaveLength(1)
+  await expect(page.getByRole("status")).toContainText("Batch prepared")
+})
+
+test("exploration uses service budgets, mode-specific loss and unchanged preparation", async ({ page }) => {
+  const api = await mockApi(page, { max_exploration_candidates_per_parent: 2500, max_exploration_candidates_per_job: 3000 })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await add(page)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await page.getByText("Advanced settings", { exact: true }).click()
+  const explore = page.getByRole("checkbox", { name: "Explore more candidates", exact: true })
+  const submit = page.getByRole("button", { name: "Submit humanization", exact: true })
+  await expect(explore).not.toBeChecked()
+  await expect(page.getByLabel("Allowed per-step VHH score decrease", { exact: true })).toHaveValue("0.05")
+  await explore.check()
+  const budget = page.getByLabel("Candidate evaluations per parent", { exact: true })
+  await expect(budget).toHaveValue("1000")
+  await expect(budget).toHaveAttribute("max", "2500")
+  await expect(page.getByLabel("Allowed VHH score decrease from prepared parent", { exact: true })).toHaveValue("0.05")
+  await expect(page.getByText("Requested exploration allowance:")).toContainText("2 × 1000 = 2000")
+  await budget.fill("2501")
+  await expect(budget).toHaveAttribute("aria-invalid", "true")
+  await expect(submit).toBeDisabled()
+  await budget.fill("2000")
+  await expect(page.getByRole("alert")).toContainText("4000 exceeds the service limit of 3000")
+  await expect(submit).toBeDisabled()
+  await explore.uncheck()
+  await expect(submit).toBeEnabled()
+  await explore.check()
+  await expect(budget).toHaveValue("2000")
+  for (const invalid of ["", "0", "1.5"]) {
+    await budget.fill(invalid)
+    await expect(submit).toBeDisabled()
+  }
+  await budget.fill("1500")
+  await expect(submit).toBeEnabled()
+  await expect(page.getByText("Requested exploration allowance:")).toContainText("2 × 1500 = 3000")
+  await page.getByLabel("Allowed VHH score decrease from prepared parent", { exact: true }).fill("0.08")
+  await explore.uncheck()
+  await expect(page.getByLabel("Allowed per-step VHH score decrease", { exact: true })).toHaveValue("0.08")
+  await expect(page.getByLabel("Root seed", { exact: true })).toHaveValue("0")
+  await expect(page.getByLabel("Sampling attempts per parent", { exact: true })).toHaveValue("10")
+  await expect(page.getByRole("status")).toContainText("Batch prepared")
+  expect(api.preparations).toHaveLength(1)
+  expect(api.requests.filter((request) => request.startsWith("POST "))).toEqual(["POST /api/v1/nanobody-humanization/prepare"])
+})
+
+for (const [status, code, detail] of [[422, "exploration_budget_exceeded", "Reduce the exploration allowance"], [409, "deployment_incompatible", "Workflow update required"]] as const) test(`${code} preserves review for explicit retry`, async ({ page }) => {
+  const api = await mockApi(page)
+  const submissions: { body: unknown; key: string }[] = []
+  await page.route("**/nanobody-humanization/jobs", (route) => {
+    submissions.push({ body: route.request().postDataJSON(), key: route.request().headers()["idempotency-key"] })
+    return submissions.length === 1 ? route.fulfill({ status, json: { code, detail } }) : route.fulfill({ status: 202, json: job })
+  })
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await page.getByText("Advanced settings", { exact: true }).click()
+  await page.getByRole("checkbox", { name: "Explore more candidates", exact: true }).check()
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText(detail)
+  await expect(page.getByRole("status")).toContainText("Batch prepared")
+  await expect(page.getByRole("button", { name: "Check submission", exact: true })).toHaveCount(0)
+  await expect(page.getByLabel("Candidate evaluations per parent", { exact: true })).toHaveValue("1000")
+  await page.waitForTimeout(1250) // A known rejection must not be automatically retried.
+  expect(submissions).toHaveLength(1)
+  if (code === "exploration_budget_exceeded") await page.getByLabel("Candidate evaluations per parent", { exact: true }).fill("500")
+  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/nanobody-humanization/jobs/${job.job_id}$`))
+  expect(submissions).toHaveLength(2)
+  expect(api.preparations).toHaveLength(1)
+  if (code === "exploration_budget_exceeded") {
+    expect(submissions[1].body).toMatchObject({ settings: { abnativ2_explore: true, abnativ2_candidate_budget: 500 }, preparation_digest: "a".repeat(64) })
+    expect(submissions[1].key).not.toBe(submissions[0].key)
+  } else expect(submissions[1]).toEqual(submissions[0])
+})
+
+test("older options block submission until explicitly reloaded without losing inputs", async ({ page }) => {
+  const api = await mockApi(page)
+  let reads = 0
+  const { abnativ2_explore: _, abnativ2_candidate_budget: __, ...oldDefaults } = defaults
+  await page.route("**/nanobody-humanization/options", (route) => route.fulfill({ json: ++reads === 1 ? { max_parents: 100, max_csv_bytes: 10485760, max_input_length: 512, preparation_version: options.preparation_version, defaults: oldDefaults, settings_schema: options.settings_schema } : options }))
+  await page.goto("/tools/nanobody-humanization/new")
+  await add(page)
+  await expect(page.getByRole("alert")).toContainText("updated service options")
+  await expect(page.getByRole("button", { name: "Prepare sequences", exact: true })).toBeDisabled()
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
+  expect(api.preparations).toHaveLength(0)
+  await page.getByRole("button", { name: "Reload options", exact: true }).click()
+  await expect(page.getByRole("group", { name: "Parent 1", exact: true }).getByLabel("Original VH · normalized", { exact: true })).toHaveValue("ACD")
+  await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeEnabled()
+  expect(reads).toBe(2)
+})
 
 test("large candidate results jump to any page without enumerating page options", async ({ page }) => {
   await mockApi(page)
@@ -183,21 +316,25 @@ test("uncertain submission checks the exact request and key; edits create a new 
   await add(page)
   await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
   await expect(page.getByRole("status")).toContainText("Batch prepared")
+  await page.getByText("Advanced settings", { exact: true }).click()
+  await page.getByRole("checkbox", { name: "Explore more candidates", exact: true }).check()
+  await page.getByLabel("Candidate evaluations per parent", { exact: true }).fill("1250")
   expect(submissions).toHaveLength(0)
   await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
   await page.getByRole("button", { name: "Check submission", exact: true }).click()
   await expect(page.getByRole("button", { name: "Check submission", exact: true })).toBeEnabled()
   expect(submissions).toHaveLength(2)
   expect(submissions[1]).toEqual(submissions[0])
-  expect(submissions[0].body).toEqual({ display_name: "Nanobody humanization", parents: [{ id: "nb_001", vhh: "ACD" }], settings: defaults, preparation_digest: "a".repeat(64) })
+  expect(submissions[0].body).toEqual({ display_name: "Nanobody humanization", parents: [{ id: "nb_001", vhh: "ACD" }], settings: { ...defaults, abnativ2_explore: true, abnativ2_candidate_budget: 1250 }, preparation_digest: "a".repeat(64) })
   expect(submissions[0].key).toMatch(/^[0-9a-f-]{36}$/)
   await page.getByLabel("Job name", { exact: true }).fill("  New   intent  ")
+  await page.getByLabel("Candidate evaluations per parent", { exact: true }).fill("500")
   await expect(page.getByRole("alert")).toContainText("earlier submission was not confirmed")
   await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/nanobody-humanization/jobs/${job.job_id}$`))
   expect(submissions).toHaveLength(3)
   expect(submissions[2].key).not.toBe(submissions[0].key)
-  expect(submissions[2].body).toMatchObject({ display_name: "New intent" })
+  expect(submissions[2].body).toMatchObject({ display_name: "New intent", settings: { abnativ2_explore: true, abnativ2_candidate_budget: 500 } })
   expect(api.preparations).toHaveLength(1)
   await expect(page.getByRole("link", { name: "Rerun with same inputs", exact: true })).toHaveAttribute("href", `/tools/nanobody-humanization/new?source_job=${job.job_id}`)
 })
@@ -228,7 +365,8 @@ test("a changed digest requires review again and semantic row errors remain edit
 
 test("rerun copies originals and saved settings but requires new preparation", async ({ page }) => {
   const api = await mockApi(page)
-  await page.route(`**/nanobody-humanization/jobs/${job.job_id}/inputs`, (route) => route.fulfill({ json: { display_name: "Previous name", parents: [{ id: "original", vhh: "ACDE" }], settings: { ...defaults, root_seed: 42, hudiff_nb_candidate_count: 3 }, prepared_parents: [{ row_index: 0, id: "original", vh: "QVQLACDE" }], preparation_version: "old-policy" } }))
+  const { abnativ2_explore: _, abnativ2_candidate_budget: __, ...legacySettings } = defaults
+  await page.route(`**/nanobody-humanization/jobs/${job.job_id}/inputs`, (route) => route.fulfill({ json: { display_name: "Previous name", parents: [{ id: "original", vhh: "ACDE" }], settings: { ...legacySettings, root_seed: 42, hudiff_nb_candidate_count: 3, abnativ2_rasa_threshold: 0 }, prepared_parents: [{ row_index: 0, id: "original", vh: "QVQLACDE" }], preparation_version: "old-policy" } }))
   await page.goto(`/tools/nanobody-humanization/jobs/${job.job_id}`)
   await page.getByRole("link", { name: "Rerun with same inputs", exact: true }).click()
   await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("Previous name")
@@ -237,11 +375,32 @@ test("rerun copies originals and saved settings but requires new preparation", a
   await page.getByText("Advanced settings", { exact: true }).click()
   await expect(page.getByLabel("Root seed", { exact: true })).toHaveValue("42")
   await expect(page.getByLabel("Sampling attempts per parent", { exact: true })).toHaveValue("3")
+  await expect(page.getByRole("checkbox", { name: "Screen by solvent exposure", exact: true })).not.toBeChecked()
+  await expect(page.getByLabel("Solvent exposure threshold", { exact: true })).toHaveValue("0.15")
+  await expect(page.getByLabel("Solvent exposure threshold", { exact: true })).toBeDisabled()
+  await expect(page.getByRole("checkbox", { name: "Explore more candidates", exact: true })).not.toBeChecked()
   await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
   expect(api.requests.filter((request) => request.startsWith("POST "))).toEqual([])
   await page.getByRole("button", { name: "Prepare sequences", exact: true }).click()
   await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeEnabled()
   expect(api.preparations).toEqual([[{ id: "original", vhh: "ACDE" }]])
+})
+
+test("exploration rerun restores mode and budget without preparing or submitting", async ({ page }) => {
+  const api = await mockApi(page)
+  await page.route(`**/nanobody-humanization/jobs/${job.job_id}/inputs`, (route) => route.fulfill({ json: { display_name: "Explore again", parents: [{ id: "original", vhh: "ACDE" }], settings: { ...defaults, abnativ2_explore: true, abnativ2_candidate_budget: 1370, abnativ2_max_relative_vhh_score_decrease: 0.08, abnativ2_rasa_threshold: 0.23, root_seed: 42, hudiff_nb_candidate_count: 3 }, prepared_parents: [{ row_index: 0, id: "original", vh: "QVQLACDE" }], preparation_version: "old-policy" } }))
+  await page.goto(`/tools/nanobody-humanization/new?source_job=${job.job_id}`)
+  await expect(page.getByLabel("Job name", { exact: true })).toHaveValue("Explore again")
+  await page.getByText("Advanced settings", { exact: true }).click()
+  await expect(page.getByRole("checkbox", { name: "Explore more candidates", exact: true })).toBeChecked()
+  await expect(page.getByLabel("Candidate evaluations per parent", { exact: true })).toHaveValue("1370")
+  await expect(page.getByLabel("Allowed VHH score decrease from prepared parent", { exact: true })).toHaveValue("0.08")
+  await expect(page.getByRole("checkbox", { name: "Screen by solvent exposure", exact: true })).toBeChecked()
+  await expect(page.getByLabel("Solvent exposure threshold", { exact: true })).toHaveValue("0.23")
+  await expect(page.getByLabel("Root seed", { exact: true })).toHaveValue("42")
+  await expect(page.getByLabel("Sampling attempts per parent", { exact: true })).toHaveValue("3")
+  expect(api.requests.filter((request) => request.startsWith("POST "))).toEqual([])
+  await expect(page.getByRole("button", { name: "Submit humanization", exact: true })).toBeDisabled()
 })
 
 test("invalid rows retain valid previews and corrections require fresh preparation", async ({ page }) => {

@@ -241,6 +241,31 @@ A changed preparation digest requires fresh preparation and review. Rerun with
 same inputs loads editable originals and settings, then requires preparation;
 it never submits automatically.
 
+AbNatiV2 enhanced search remains the default: one best-effort endpoint, possibly
+unchanged. **Explore more candidates** evaluates all allowed nonparent
+combinations when they fit the per-parent budget, otherwise a reproducible
+sample balanced across mutation counts. All passing designs join HuDiff
+candidates for shared ranking; the budget limits evaluations, not retained
+outputs, and does not guarantee more passing designs or a runtime/cost.
+Service options supply the default and measured per-parent and whole-job
+limits (currently 1,000 by default, up to 5,000 per parent and 10,000 per job).
+The form shows the requested parent-count-times-budget allowance;
+over-budget requests require an explicit edit, never silent scaling.
+Root seed controls exploration sampling without changing HuDiff behavior.
+
+Solvent-exposure screening starts on. Turning it off sends a zero threshold
+while preserving the edited positive value in the mounted form; turning it
+back on restores that value. An old zero-threshold rerun starts off and uses
+the positive service default as its dormant threshold. Screening is the only
+reason to predict the parent structure; unused candidate structure reports
+are omitted in either mode. VHH-loss tolerance is per-step in enhanced mode
+and relative to the original prepared parent in exploration. Settings edits
+create a new submission intent while keeping the reviewed sequence preparation.
+An `exploration_budget_exceeded` rejection preserves that review for an explicit
+budget/batch correction. `deployment_incompatible` preserves it while an
+administrator updates the workflow; neither becomes an ambiguous submission.
+Older service options block submission until the matching API is available.
+
 Both generators are concurrently eligible within the shared scheduler. Capacity
 and the existing dispatch order determine their start times; method interleaving
 or simultaneous progress is not guaranteed. Local analysis, inspection and

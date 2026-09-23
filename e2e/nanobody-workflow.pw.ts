@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises"
+import { randomUUID } from "node:crypto"
 import path from "node:path"
 import { expect, test } from "@playwright/test"
 
 const vh = "EVQLVESGGGLVQPGGSLRLSCAASGFTFSDYWMYWVRQAPGKGLEWVSEINTNGLITKYPDSVKGRFTISRDNAKNTLYLQMNSLRPEDTAVYYCARSPSGFNRGQGTLVTVSS"
 
-test("nanobody native preparation, 300 bounded candidates, saved baseline and standalone analysis", async ({ page, context, browser }) => {
+test("nanobody exploration admission, native preparation, 300 bounded candidates and standalone analysis", async ({ page, context, browser }) => {
   test.setTimeout(120_000)
   const stats = async () => JSON.parse(await readFile(path.join(process.env.BIOMODALS_BROWSER_ROOT!, "stats.json"), "utf8"))
   let setup = ""
@@ -16,7 +17,10 @@ test("nanobody native preparation, 300 bounded candidates, saved baseline and st
   await expect(page).toHaveURL(process.env.BIOMODALS_BROWSER_ORIGIN + "/")
   await page.getByRole("link", { name: /Nanobody humanization/ }).click()
   await expect(page).toHaveURL(/\/tools\/nanobody-humanization$/)
+  const optionsRead = page.waitForResponse((response) => response.url().endsWith("/nanobody-humanization/options"))
   await page.getByRole("link", { name: "Submit a job", exact: true }).click()
+  const options = await (await optionsRead).json()
+  expect(options.defaults).toMatchObject({ abnativ2_explore: false, abnativ2_candidate_budget: 1000, root_seed: 0, hudiff_nb_candidate_count: 10 })
   const originals = Array.from({ length: 100 }, (_, index) => ({ id: `nb_${String(index).padStart(3, "0")}`, vhh: index === 0 ? vh.slice(3) : vh }))
   const before = (await stats()).submit_calls
   await page.getByLabel("CSV file", { exact: true }).setInputFiles({ name: "nanobodies.csv", mimeType: "text/csv", buffer: Buffer.from("id,vhh\n" + originals.map(({ id, vhh }) => `${id},${vhh}`).join("\n")) })
@@ -30,13 +34,29 @@ test("nanobody native preparation, 300 bounded candidates, saved baseline and st
   expect(prepared.preparation_digest).toMatch(/^[0-9a-f]{64}$/)
   expect(prepared.rows[0].vh).not.toBe(originals[0].vhh)
   expect((await stats()).submit_calls).toBe(before)
+  const csrf = (await context.cookies()).find((cookie) => cookie.name === "biomodals-csrf")!.value
+  const rejected = await context.request.post("/api/v1/nanobody-humanization/jobs", { headers: { Origin: process.env.BIOMODALS_BROWSER_ORIGIN!, "X-CSRF-Token": csrf, "Idempotency-Key": randomUUID() }, data: { display_name: "Offline over-budget check", parents: originals, preparation_digest: prepared.preparation_digest, settings: { ...options.defaults, abnativ2_explore: true } } })
+  expect(rejected.status()).toBe(422)
+  expect((await rejected.json()).code).toBe("exploration_budget_exceeded")
+  expect((await stats()).submit_calls).toBe(before)
+  await page.getByText("Advanced settings", { exact: true }).click()
+  const submit = page.getByRole("button", { name: "Submit humanization", exact: true })
+  await expect(submit).toBeEnabled() // Enhanced mode has no P x B exploration allowance.
+  await page.getByRole("checkbox", { name: "Explore more candidates", exact: true }).check()
+  await expect(submit).toBeDisabled()
+  await page.getByLabel("Candidate evaluations per parent", { exact: true }).fill(String(options.max_exploration_candidates_per_job / originals.length))
+  await page.getByRole("checkbox", { name: "Screen by solvent exposure", exact: true }).uncheck()
+  await expect(submit).toBeEnabled()
   const submitting = page.waitForResponse((response) => response.url().endsWith("/nanobody-humanization/jobs") && response.request().method() === "POST")
-  await page.getByRole("button", { name: "Submit humanization", exact: true }).click()
+  await submit.click()
   const submission = await submitting
   expect(submission.status()).toBe(202)
   expect(submission.request().postDataJSON().parents).toEqual(originals)
   expect(submission.request().postDataJSON().preparation_digest).toBe(prepared.preparation_digest)
+  expect(submission.request().postDataJSON().settings).toMatchObject({ abnativ2_explore: true, abnativ2_candidate_budget: 100, abnativ2_rasa_threshold: 0, root_seed: 0, hudiff_nb_candidate_count: 10 })
   const job = await submission.json()
+  const retained = await (await context.request.get(`/api/v1/nanobody-humanization/jobs/${job.job_id}/inputs`)).json()
+  expect(retained.settings).toEqual(submission.request().postDataJSON().settings)
   expect(job.tool).toBe("nanobody_humanization")
   await expect(page).toHaveURL(new RegExp(`/nanobody-humanization/jobs/${job.job_id}$`))
   const stages = page.getByRole("table", { name: "Execution stages", exact: true })
