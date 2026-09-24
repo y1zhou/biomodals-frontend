@@ -424,6 +424,19 @@ deployment with its exact version pinned. Job operation/source metadata is
 backend-owned; historical simulation Jobs default to `run`. See the
 [clustering specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-trajectory-clustering.md).
 
+Owners can **Delete** a completed, partially completed, failed or cancelled
+Job from its detail page beside Refresh. Confirmation explains the permanent
+loss of website access: there is no Trash or Restore. Accepted deletion returns
+to My Jobs and clears that Job's cached browser queries. Local cached results
+and retained inputs are cleaned up asynchronously; existing downloads may
+finish. Remote outputs, execution records, logs and billing remain unchanged.
+Existing linked continuation/clustering Jobs remain usable, but deleted
+sources cannot admit new work. Replaying a deleted submission returns
+`job_deleted`; the browser does not rotate its key or automatically create a
+replacement. Already-open tabs update on their next request or navigation,
+not through live cross-tab synchronization. See the
+[deletion specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/job-deletion.md).
+
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown
 remote states, the local Result cache, and optional Modal billing reports.

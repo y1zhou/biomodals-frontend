@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import type { QueryClient } from "@tanstack/react-query"
 
 import {
   ApiError,
@@ -10,6 +11,19 @@ import {
 
 export const jobListKey = ["jobs"] as const
 export const jobKey = (jobId: string) => ["jobs", jobId] as const
+
+export async function discardJobQueries(queryClient: QueryClient, jobId: string) {
+  // Job detail, logs, previews, inputs and source checks include the UUID as
+  // a top-level key. Public options/reference caches do not belong to a Job.
+  const scoped = { predicate: ({ queryKey }: { queryKey: readonly unknown[] }) => queryKey.includes(jobId) }
+  await Promise.all([
+    queryClient.cancelQueries(scoped),
+    queryClient.cancelQueries({ queryKey: jobListKey, exact: true }),
+  ])
+  queryClient.setQueryData<Job[]>(jobListKey, (jobs) => jobs?.filter((job) => job.job_id !== jobId))
+  queryClient.removeQueries(scoped)
+  await queryClient.invalidateQueries({ queryKey: jobListKey, exact: true, refetchType: "none" })
+}
 
 const timestamp = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",

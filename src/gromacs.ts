@@ -139,6 +139,7 @@ export function submissionErrorMessage(error: unknown, hasFieldErrors: boolean) 
   }
 
   const code = apiErrorCode(error)
+  if (code === "job_deleted") return "This submission belongs to a deleted job. It cannot be restored, and retrying this request will not create a replacement job."
   if (error.status === 401 || code === "csrf_invalid") return null
   if (isServiceConfigurationError(error)) return SERVICE_CONFIGURATION_ERROR_MESSAGE
   if (error.status === 422) {

@@ -528,6 +528,13 @@ export function deleteAlphaFold3Validation(validationId: string) {
   )
 }
 
+export function deleteJob(jobId: string) {
+  return requestResponse(`/api/v1/jobs/${encodeURIComponent(jobId)}`, {
+    method: "DELETE",
+    headers: { "X-CSRF-Token": csrfToken() },
+  })
+}
+
 export function alphaFold3DocumentUrl(validationId: string) {
   return `/api/v1/alphafold3/validations/${encodeURIComponent(validationId)}/document`
 }

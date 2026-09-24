@@ -770,14 +770,19 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   const sourceResponse = await context.request.get(`/api/v1/jobs/${completedJobId}`)
   const originalSource = await sourceResponse.json()
   const beforeContinuations = (await browserStats()).submit_calls
+  const continuationIntents = new Map<string, { source: string; input: unknown; key: string }>()
   async function continueProduction(source: string, additional: number, name: string) {
     await page.goto(`/tools/gromacs/jobs/${source}`)
     await page.getByRole("link", { name: "Extend simulation", exact: true }).click()
     await page.getByLabel("Additional production time (ns)", { exact: true }).fill(String(additional))
     await page.getByLabel("Job name (optional)", { exact: true }).fill(name)
+    const submission = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/continue"))
     await page.getByRole("button", { name: "Submit continuation", exact: true }).click()
     await expect(page).toHaveURL(/\/tools\/gromacs\/jobs\/[0-9a-f-]+$/)
-    return page.url().split("/").at(-1)!
+    const request = await submission
+    const id = page.url().split("/").at(-1)!
+    continuationIntents.set(id, { source, input: request.postDataJSON(), key: request.headers()["idempotency-key"] })
+    return id
   }
   async function completed(id: string) {
     await expect.poll(async () => {
@@ -842,6 +847,44 @@ test("MVP password, jobs, download, cancellation, and sign-out", async ({
   expect(finishedAnalysis).toMatchObject({ state: "succeeded", operation: "trajectory_clustering", source_job_id: chained })
   expect(await (await context.request.get(`/api/v1/jobs/${chained}`)).json()).toEqual(clusteringSource)
   await expect.poll(async () => (await browserStats()).submit_calls - beforeContinuations).toBe(4)
+
+  // Deleting a source leaves its admitted child and exact replay usable.
+  const clusteringRequest = accepted.request()
+  const clusteringHeaders = {
+    Origin: origin,
+    "X-CSRF-Token": clusteringRequest.headers()["x-csrf-token"],
+    "Idempotency-Key": clusteringRequest.headers()["idempotency-key"],
+  }
+  const clusteringInput = clusteringRequest.postDataJSON()
+  await page.goto(`/tools/gromacs/jobs/${chained}`)
+  await page.getByRole("button", { name: "Delete", exact: true }).click()
+  await page.getByRole("dialog", { name: "Delete this job?", exact: true }).getByRole("button", { name: "Delete job", exact: true }).click()
+  await expect(page).toHaveURL(`${origin}/jobs`)
+  await expect(page.getByText("Browser chained continuation", { exact: true })).toHaveCount(0)
+  expect((await context.request.get(`/api/v1/jobs/${chained}`)).status()).toBe(404)
+  expect((await context.request.delete(`/api/v1/jobs/${chained}`, { headers: clusteringHeaders })).status()).toBe(202)
+  const removedIntent = continuationIntents.get(chained)!
+  const parentReplay = await context.request.post(`/api/v1/gromacs/jobs/${removedIntent.source}/continue`, { headers: { ...clusteringHeaders, "Idempotency-Key": removedIntent.key }, data: removedIntent.input })
+  expect(parentReplay.status()).toBe(409)
+  expect((await parentReplay.json()).code).toBe("job_deleted")
+  const replay = await context.request.post(`/api/v1/gromacs/jobs/${chained}/clustering`, { headers: clusteringHeaders, data: clusteringInput })
+  expect(replay.status()).toBe(202)
+  expect(await replay.json()).toEqual(finishedAnalysis)
+  const retainedArchive = await context.request.get(`/api/v1/jobs/${analysis.job_id}/download`)
+  expect(retainedArchive.status()).toBe(200)
+  expect(await retainedArchive.body()).toEqual(clusterArchive)
+  await page.getByRole("link", { name: "Browser clusters", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Download result", exact: true })).toBeVisible()
+  await page.getByRole("link", { name: "View source simulation", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Job unavailable", exact: true })).toBeVisible()
+  await page.goBack()
+  await page.getByRole("button", { name: "Delete", exact: true }).click()
+  await page.getByRole("dialog", { name: "Delete this job?", exact: true }).getByRole("button", { name: "Delete job", exact: true }).click()
+  await expect(page).toHaveURL(`${origin}/jobs`)
+  const deletedReplay = await context.request.post(`/api/v1/gromacs/jobs/${chained}/clustering`, { headers: clusteringHeaders, data: clusteringInput })
+  expect(deletedReplay.status()).toBe(409)
+  expect((await deletedReplay.json()).code).toBe("job_deleted")
+  expect((await browserStats()).submit_calls - beforeContinuations).toBe(4)
 
   await page.goto("/jobs")
   await expect(page.getByText("Browser success workflow", { exact: true })).toBeVisible()

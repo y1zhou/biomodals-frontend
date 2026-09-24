@@ -30,6 +30,7 @@ function errorMessage(error: unknown) {
   if (!error) return null
   const code = apiErrorCode(error)
   if (code === "origin_not_allowed") return SERVICE_CONFIGURATION_ERROR_MESSAGE
+  if (code === "job_deleted") return "This submission belongs to a deleted job. It cannot be restored, and retrying this request will not create a replacement job."
   if (error instanceof ApiError && (error.status === 401 || code === "csrf_invalid")) return "Sign in again, then retry your action. Your batch stays on this page."
   if (code === "active_job_limit_reached") return "An active-job limit has been reached. Wait for capacity, then retry."
   if (code === "humanization_input_invalid") return (error as ApiError).message
