@@ -96,6 +96,8 @@ export const humanizationPaths = {
 const gromacsOverviewPath = toolOverviewPath(gromacsTool)
 
 export const gromacsPaths = {
+  clusteringRoute: `${gromacsOverviewPath}/jobs/:jobId/cluster`,
+  clustering: (jobId: string) => `${gromacsOverviewPath}/jobs/${encodeURIComponent(jobId)}/cluster`,
   continuationRoute: `${gromacsOverviewPath}/jobs/:jobId/continue`,
   continuation: (jobId: string) => `${gromacsOverviewPath}/jobs/${encodeURIComponent(jobId)}/continue`,
   overview: gromacsOverviewPath,

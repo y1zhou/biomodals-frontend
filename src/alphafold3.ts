@@ -1,19 +1,26 @@
 import { randomUUID } from "./lib/uuid"
+import { regularChemistry, proteinModifications, type ProteinModification, type GlycanAttachment, type CovalentBond } from "./alphafold3-chemistry"
 
 export type EntityType = "protein" | "dna" | "rna" | "ligand"
 export type LigandFormat = "ccd" | "smiles"
 
 export interface AlphaFold3Entity {
   chainIds: string[]
+  copyIds?: string[]
   copies: number
   description: string
   id: string
   ligandFormat: LigandFormat
   sequence: string
   type: EntityType
+  modifications?: ProteinModification[]
+  glycans?: GlycanAttachment[]
+  chemistryNeedsReview?: boolean
 }
 
 export interface AlphaFold3Draft {
+  bonds?: CovalentBond[]
+  bondsNeedReview?: boolean
   entities: AlphaFold3Entity[]
   expertFilename: string
   expertJson: string
@@ -59,6 +66,7 @@ export function chainId(index: number) {
 export function newAlphaFold3Entity(type: EntityType): AlphaFold3Entity {
   return {
     chainIds: ["A"],
+    copyIds: [randomUUID()],
     copies: 1,
     description: "",
     id: randomUUID(),
@@ -73,7 +81,7 @@ export function resizeEntityCopies(
   copies: number
 ): AlphaFold3Entity {
   const bounded = Math.max(1, Math.min(MAX_ENTITY_COPIES, Math.trunc(copies) || 1))
-  return { ...entity, copies: bounded }
+  return { ...entity, copies: bounded, copyIds: Array.from({ length: bounded }, (_, index) => entity.copyIds?.[index] ?? randomUUID()) }
 }
 
 export function reindexEntities(entities: AlphaFold3Entity[]) {
@@ -87,7 +95,7 @@ export function reindexEntities(entities: AlphaFold3Entity[]) {
       { length: copies },
       () => chainId(nextChainIndex++)
     )
-    return { ...entity, chainIds, copies }
+    return { ...resizeEntityCopies(entity, copies), chainIds }
   })
 }
 
@@ -148,10 +156,14 @@ export function expandEntityRecords(
 ) {
   const source = entities[index]
   if (source.type === "ligand") return reindexEntities(entities)
+  if (records.length > 1 && ((source.modifications?.length ?? 0) + (source.glycans?.length ?? 0) > 0)) {
+    throw new Error("Remove protein modifications and glycans before expanding multiple FASTA records, then configure each entity separately.")
+  }
   const replacements = records.map((record, recordIndex) => ({
     ...source,
     chainIds: [],
     copies: records.length === 1 ? source.copies : 1,
+    copyIds: recordIndex === 0 ? source.copyIds?.slice(0, records.length === 1 ? source.copies : 1) : undefined,
     description: record.description,
     id: recordIndex === 0 ? source.id : randomUUID(),
     sequence: record.sequence,
@@ -208,9 +220,14 @@ export function regularAlphaFold3Document(draft: AlphaFold3Draft) {
   if (!name) throw new Error("Enter a job name.")
   let nextChainIndex = 0
   const sequences: object[] = []
-  for (const entity of draft.entities) {
+  const copies = new Map<string, string>()
+  const entities = reindexEntities(draft.entities)
+  for (const entity of entities) {
+    const registerCopies = (ids: string[]) => ids.forEach((id, index) => { const copyId = entity.copyIds?.[index]; if (copyId) copies.set(copyId, id) })
     if (entity.type === "ligand") {
       const id = Array.from({ length: entity.copies }, () => chainId(nextChainIndex++))
+      registerCopies(id)
+      proteinModifications(entity, "")
       const value = entity.sequence.trim()
       if (!value) throw new Error("Enter CCD codes or a SMILES string.")
       if (entity.ligandFormat === "smiles") {
@@ -223,9 +240,13 @@ export function regularAlphaFold3Document(draft: AlphaFold3Draft) {
       continue
     }
     const records = parsePolymerRecords(entity.sequence)
+    if (records.length > 1 && ((entity.modifications?.length ?? 0) + (entity.glycans?.length ?? 0) > 0 || draft.bonds?.some((bond) => bond.ends.some((end) => end.entityId === entity.id)))) {
+      throw new Error("Expand FASTA records into separate entities before configuring chemistry.")
+    }
     for (const record of records) {
       const copies = records.length === 1 ? entity.copies : 1
       const id = Array.from({ length: copies }, () => chainId(nextChainIndex++))
+      if (records.length === 1) registerCopies(id)
       const description = record.description || (
         records.length === 1 ? entity.description : ""
       )
@@ -234,15 +255,18 @@ export function regularAlphaFold3Document(draft: AlphaFold3Draft) {
           ...(description ? { description } : {}),
           id,
           sequence: record.sequence,
+          ...proteinModifications(entity, record.sequence),
         },
       })
     }
   }
+  const chemistry = regularChemistry({ ...draft, entities }, copies, () => chainId(nextChainIndex++))
   return {
     dialect: "alphafold3",
     modelSeeds: parseModelSeeds(draft.seeds),
     name,
-    sequences,
+    sequences: [...sequences, ...chemistry.ligands],
+    ...(chemistry.bonds.length ? { bondedAtomPairs: chemistry.bonds } : {}),
     version: 1,
   }
 }
