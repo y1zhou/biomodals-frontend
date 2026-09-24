@@ -7,6 +7,7 @@ import {
   Clipboard,
   Download,
   LoaderCircle,
+  Network,
   RotateCcw,
   StepForward,
   XCircle,
@@ -309,6 +310,12 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             <JobStatusBadge state={job.state} />
           </div>
 
+          {job.tool === "gromacs" && job.operation === "trajectory_clustering" ? <div className="mt-6 space-y-2 rounded-lg border p-4">
+            <p className="font-semibold">Trajectory clustering analysis</p>
+            <p className="leading-7 text-muted-foreground">This job analyzes the source’s full production history without running additional molecular dynamics. Its archive contains frame memberships, medoid protein structures, and provenance.</p>
+            {job.source_job_id ? <Link className="underline underline-offset-4" to={gromacsPaths.job(job.source_job_id)}>View source simulation</Link> : null}
+          </div> : null}
+
           {jobQuery.isError ? (
             <div
               className="mt-6 flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
@@ -387,9 +394,9 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                       : job.tool === "alphafold3" ? "Download all results" : "Download result"}
                   </Button>
                 ) : null}
-                {job.tool === "gromacs" && job.state === "succeeded" ? <Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.continuation(job.job_id)}>
+                {job.tool === "gromacs" && (job.operation ?? "run") === "run" && job.state === "succeeded" ? <><Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.continuation(job.job_id)}>
                   <StepForward aria-hidden="true" /> Extend simulation
-                </Link> : null}
+                </Link><Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.clustering(job.job_id)}><Network aria-hidden="true" />Cluster trajectory</Link></> : null}
                 {job.tool === "humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={humanizationPaths.rerun(job.job_id)}>
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}
@@ -397,7 +404,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}
                 {job.tool === "nanobody_humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={nanobodyPaths.rerun(job.job_id)}><RotateCcw aria-hidden="true" />Rerun with same inputs</Link> : null}
-                {canStartAgain && job.tool !== "humanization" && job.tool !== "alphafold3" && job.tool !== "nanobody_humanization" ? (
+                {canStartAgain && (job.operation ?? "run") === "run" && job.tool !== "humanization" && job.tool !== "alphafold3" && job.tool !== "nanobody_humanization" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job
@@ -427,7 +434,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
           {job.tool === "alphafold3" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading prediction viewer…</p>}><AlphaFold3Results jobId={job.job_id} key={job.job_id} /></Suspense> : null}
           {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
           {job.tool === "nanobody_humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} nanobody /></Suspense> : null}
-          {job.tool === "gromacs" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading trajectory overview…</p>}><GromacsResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
+          {job.tool === "gromacs" && (job.operation ?? "run") === "run" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading trajectory overview…</p>}><GromacsResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
             <CardHeader>

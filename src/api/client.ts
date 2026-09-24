@@ -112,6 +112,21 @@ export interface GromacsSubmission {
 export type GromacsContinuationInput = components["schemas"]["GromacsContinuationSubmission"]
 export type GromacsContinuationInfo = components["schemas"]["GromacsContinuationInfo"]
 
+export type GromacsClusteringInput = components["schemas"]["GromacsClusteringSubmission"]
+export type GromacsClusteringInfo = components["schemas"]["GromacsClusteringInfo"]
+
+export function gromacsClusteringInfo(sourceJobId: string, signal?: AbortSignal) {
+  return requestJson<GromacsClusteringInfo>(`/api/v1/gromacs/jobs/${encodeURIComponent(sourceJobId)}/clustering`, { signal, cache: "no-store" })
+}
+
+export function clusterGromacsJob(sourceJobId: string, input: GromacsClusteringInput, idempotencyKey: string) {
+  return requestJson<Job>(`/api/v1/gromacs/jobs/${encodeURIComponent(sourceJobId)}/clustering`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken(), "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(input),
+  })
+}
+
 export function gromacsContinuationInfo(sourceJobId: string, signal?: AbortSignal) {
   return requestJson<GromacsContinuationInfo>(`/api/v1/gromacs/jobs/${encodeURIComponent(sourceJobId)}/continuation`, { signal, cache: "no-store" })
 }

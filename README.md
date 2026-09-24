@@ -369,7 +369,7 @@ Unapplied edits must be applied or discarded before continuing. File replacement
 remains available after applying or discarding edits. Rerun validation, Clear,
 and submission leave unrelated browser drafts and recovery references intact.
 
-Completed GROMACS Jobs show a **Trajectory overview** before Execution stages:
+Completed GROMACS simulation Jobs show a **Trajectory overview** before Execution stages:
 the existing production RMSD, radius-of-gyration, and RMSF PNG figures. The
 browser fetches only these images, restoring the Result cache once if needed;
 it does not download the full archive or recompute the plots. An unavailable
@@ -398,6 +398,28 @@ children.
 opening the form never submits work. Continuation recovery is isolated from
 fresh GROMACS submissions. Availability and scientific behavior follow the
 [continuation specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-continuation.md).
+
+**Cluster trajectory** on a completed GROMACS simulation opens a separate
+analysis form. Review retained-source availability, frame/atom counts and
+advisory memory warnings, then explicitly submit an editable positive RMSD
+cutoff (initially 2 Å) and optional name. Warnings do not block submission;
+estimates do not guarantee completion. Native GROMOS uses fitted C-alpha RMSD
+over every frame of cumulative production, with a 12-hour execution deadline.
+There is no sampling, extra MD, or change to the source.
+
+The linked analysis Job uses shared progress, cancellation, result recovery
+and archive download. It links to its source in every state and does not offer
+MD plots, extension or new-simulation actions. Its archive contains memberships
+CSV (zero-based frame, time in ns, one-based cluster ID and medoid marker),
+whole-protein medoid PDBs, and provenance; the trajectory remains in the source
+archive. **Check submission** replays the original key and exact settings,
+including after source inspection fails. Pending clustering intent is scoped
+to owner/source and separate from simulation and continuation intents.
+
+Clustering requires coordinated frontend/API rollout and an updated GROMACS
+deployment with its exact version pinned. Job operation/source metadata is
+backend-owned; historical simulation Jobs default to `run`. See the
+[clustering specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-trajectory-clustering.md).
 
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown

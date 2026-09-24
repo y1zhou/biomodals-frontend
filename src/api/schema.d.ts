@@ -468,6 +468,24 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/gromacs/jobs/{job_id}/clustering": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Clustering Info */
+        readonly get: operations["clustering_info_api_v1_gromacs_jobs__job_id__clustering_get"];
+        readonly put?: never;
+        /** Submit Clustering */
+        readonly post: operations["submit_clustering_api_v1_gromacs_jobs__job_id__clustering_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/gromacs/jobs/{job_id}/continuation": {
         readonly parameters: {
             readonly query?: never;
@@ -1611,6 +1629,58 @@ export interface components {
             readonly tied_reference_count: number;
         };
         /**
+         * GromacsClusteringInfo
+         * @description Source eligibility and advisory resource demand, never a size admission cap.
+         */
+        readonly GromacsClusteringInfo: {
+            /** Ca Atoms */
+            readonly ca_atoms?: number | null;
+            /** Code */
+            readonly code?: string | null;
+            /**
+             * Deadline Seconds
+             * @default 43200
+             */
+            readonly deadline_seconds: number;
+            /**
+             * Default Cutoff Angstrom
+             * @default 2
+             */
+            readonly default_cutoff_angstrom: number;
+            /** Detail */
+            readonly detail: string;
+            /** Eligible */
+            readonly eligible: boolean;
+            /** Estimated Memory Bytes */
+            readonly estimated_memory_bytes?: number | null;
+            /** Frame Count */
+            readonly frame_count?: number | null;
+            /** Protein Atoms */
+            readonly protein_atoms?: number | null;
+            /** Source Display Name */
+            readonly source_display_name: string;
+            /**
+             * Source Job Id
+             * Format: uuid
+             */
+            readonly source_job_id: string;
+            /** Warnings */
+            readonly warnings?: readonly string[];
+        };
+        /**
+         * GromacsClusteringSubmission
+         * @description Native all-frame GROMOS settings; no simulation parameters.
+         */
+        readonly GromacsClusteringSubmission: {
+            /**
+             * Cutoff Angstrom
+             * @default 2
+             */
+            readonly cutoff_angstrom: number;
+            /** Display Name */
+            readonly display_name?: string | null;
+        };
+        /**
          * GromacsContinuationInfo
          * @description Read-only source evidence and inherited defaults for the continuation form.
          */
@@ -1952,6 +2022,12 @@ export interface components {
             readonly target_id: string;
         };
         /**
+         * JobOperation
+         * @description Immutable purpose of a Job, independent of its lifecycle state.
+         * @enum {string}
+         */
+        readonly JobOperation: "run" | "trajectory_clustering";
+        /**
          * JobPageView
          * @description One bounded page of private Job history.
          */
@@ -2017,8 +2093,12 @@ export interface components {
              * Format: uuid
              */
             readonly job_id: string;
+            /** @default run */
+            readonly operation: components["schemas"]["JobOperation"];
             /** Result Size Bytes */
             readonly result_size_bytes?: number | null;
+            /** Source Job Id */
+            readonly source_job_id?: string | null;
             /** Stages */
             readonly stages: readonly components["schemas"]["JobStageView"][];
             readonly state: components["schemas"]["JobState"];
@@ -5141,6 +5221,172 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly clustering_info_api_v1_gromacs_jobs__job_id__clustering_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["GromacsClusteringInfo"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Gateway Timeout */
+            readonly 504: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly submit_clustering_api_v1_gromacs_jobs__job_id__clustering_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["GromacsClusteringSubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Gateway Timeout */
+            readonly 504: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };

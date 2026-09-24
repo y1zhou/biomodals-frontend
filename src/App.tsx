@@ -28,6 +28,7 @@ import {
 const GromacsOverviewPage = lazy(() => import("@/pages/GromacsOverviewPage"))
 const GromacsSubmissionPage = lazy(() => import("@/pages/GromacsSubmissionPage"))
 const GromacsContinuationPage = lazy(() => import("@/pages/GromacsContinuationPage"))
+const GromacsClusteringPage = lazy(() => import("@/pages/GromacsClusteringPage"))
 const AlphaFold3OverviewPage = lazy(() => import("@/pages/AlphaFold3OverviewPage"))
 const AlphaFold3SubmissionPage = lazy(() => import("@/pages/AlphaFold3SubmissionPage"))
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage"))
@@ -194,6 +195,9 @@ export default function App() {
       if (tool.slug === "gromacs" && /^\/tools\/gromacs\/jobs\/[^/]+\/continue$/.test(path)) {
         titles[path] = "Extend simulation · GROMACS"
       }
+      if (tool.slug === "gromacs" && /^\/tools\/gromacs\/jobs\/[^/]+\/cluster$/.test(path)) {
+        titles[path] = "Cluster trajectory · GROMACS"
+      }
     }
     document.title = `${titles[path] ?? "Page not found"} | BioModals`
   }, [pathname])
@@ -214,6 +218,7 @@ export default function App() {
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
             <Route element={<GromacsContinuationPage />} path={gromacsPaths.continuationRoute} />
+            <Route element={<GromacsClusteringPage />} path={gromacsPaths.clusteringRoute} />
             <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
             <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
             <Route element={<NanobodySubmissionPage />} path={nanobodyPaths.submission} />
