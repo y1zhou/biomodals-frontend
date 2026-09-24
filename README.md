@@ -112,6 +112,18 @@ small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating
 a Job.
 
+Regular AlphaFold3 input supports protein PTMs by one-based input position and
+CCD code, plus explicitly placed single-NAG or NAG2Man3-core glycans at Asn.
+These annotations apply to every entity copy; use separate entities for
+asymmetric chemistry. Residue context helps review each site. Sequence/type/copy
+edits preserve annotations and request review rather than silently relocating
+them. Advanced covalent bonds retain stable entity/copy identities as chain
+letters change; removed copies require repaired endpoints. SMILES endpoints,
+polymer–polymer bonds and explicit disulfide constraints are unsupported.
+Custom chemistry remains in Expert JSON. The
+[chemistry specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/alphafold3-chemistry-inputs.md)
+owns native preflight and rollout requirements.
+
 Antibody humanization accepts an editable ID/VH/VL batch through manual entry
 or CSV import, with one set of scientific settings for the batch. The editor
 renders 50 pairs per page while retaining every imported row and validating the

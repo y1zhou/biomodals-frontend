@@ -64,6 +64,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import FileDropZone from "@/components/FileDropZone"
+import { ProteinChemistryEditor, CovalentBondEditor } from "@/components/AlphaFold3ChemistryEditor"
 import { Input } from "@/components/ui/input"
 import { SelectField } from "@/components/ui/select-field"
 import { cn } from "@/lib/utils"
@@ -229,6 +230,7 @@ function EntityEditor({
           <Button aria-label="Remove entity" onClick={onRemove} size="icon-sm" type="button" variant="ghost"><Trash2 /></Button>
         </div>
       </div>
+      <ProteinChemistryEditor entity={entity} onChange={onChange} />
     </div>
   )
 }
@@ -603,10 +605,14 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
     setFormError("")
     setDraft((current) => {
       const nextEntity = copies === undefined
-        ? entity
+        ? { ...entity }
         : resizeEntityCopies(entity, copies)
+      const previous = current.entities[index]
+      const changed = previous.sequence !== nextEntity.sequence || previous.type !== nextEntity.type || previous.copies !== nextEntity.copies || previous.ligandFormat !== nextEntity.ligandFormat
+      if (changed && ((nextEntity.modifications?.length ?? 0) + (nextEntity.glycans?.length ?? 0) > 0)) nextEntity.chemistryNeedsReview = true
       return {
         ...current,
+        bondsNeedReview: current.bondsNeedReview || changed && current.bonds?.some((bond) => bond.ends.some((end) => end.entityId === entity.id)),
         entities: reindexEntities(
           current.entities.map((value, position) => position === index ? nextEntity : value)
         ),
@@ -625,9 +631,11 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
   }
 
   function expandEntity(index: number, records: PolymerRecord[]) {
+    const expanded = expandEntityRecords(draft.entities, index, records)
     setDraft((current) => ({
       ...current,
-      entities: expandEntityRecords(current.entities, index, records),
+      entities: expanded,
+      bondsNeedReview: current.bondsNeedReview || records.length > 1 && current.bonds?.some((bond) => bond.ends.some((end) => end.entityId === current.entities[index].id)),
     }))
   }
 
@@ -643,6 +651,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
   function removeEntity(index: number) {
     setDraft((current) => ({
       ...current,
+      bondsNeedReview: current.bondsNeedReview || current.bonds?.some((bond) => bond.ends.some((end) => end.entityId === current.entities[index].id)),
       entities: reindexEntities(
         current.entities.filter((_, position) => position !== index)
       ),
@@ -805,6 +814,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
       </div>
 
       <form className="mt-8 space-y-6" noValidate onSubmit={validate}>
+        <fieldset disabled={validationMutation.isPending} className="space-y-6">
         <Card>
           <CardHeader><CardTitle>Job</CardTitle></CardHeader>
           <CardContent className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -845,7 +855,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
           </Card>
         ) : (
           <Card>
-            <CardHeader><CardTitle>Native AlphaFold3 JSON</CardTitle><p className="text-sm text-muted-foreground">Use this mode for modifications, covalent bonds, custom CCD definitions, templates, or embedded MSAs. The job name above replaces the document name.</p></CardHeader>
+            <CardHeader><CardTitle>Native AlphaFold3 JSON</CardTitle><p className="text-sm text-muted-foreground">Use this mode for custom chemistry, inline CCD definitions, templates, or embedded MSAs. The job name above replaces the document name. Polymer–polymer bonds, including disulfide constraints, remain unsupported.</p></CardHeader>
             <CardContent>
               <FileDropZone
                 accept=".json,application/json"
@@ -878,6 +888,8 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
           </Card>
         )}
 
+        {draft.mode === "regular" ? <CovalentBondEditor entities={draft.entities} bonds={draft.bonds ?? []} needsReview={!!draft.bondsNeedReview} onChange={(bonds, bondsNeedReview) => setDraft({ ...draft, bonds, bondsNeedReview })} /> : null}
+
         <details className="rounded-xl border bg-card p-6">
           <summary className="cursor-pointer font-heading font-semibold">Advanced prediction settings</summary>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -890,12 +902,14 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
         </details>
 
         {formError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {validationMutation.isPending ? <p role="status" className="text-muted-foreground">Checking modifications and covalent bonds…</p> : null}
           <Button disabled={jsonPending || validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson || expertReadState !== "idle")} size="lg" type="submit">
             {validationMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
             Continue and preview job
           </Button>
         </div>
+        </fieldset>
       </form>
     </main>
   )
