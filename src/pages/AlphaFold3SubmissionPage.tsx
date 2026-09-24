@@ -24,9 +24,11 @@ import { Link, useNavigate, useSearchParams } from "react-router"
 
 import {
   alphaFold3DocumentUrl,
+  alphaFold3Capabilities,
   alphaFold3Inputs,
   ApiError,
   apiRequestId,
+  apiErrorCode,
   deleteAlphaFold3Validation,
   inspectAlphaFold3Validation,
   submitAlphaFold3Job,
@@ -241,6 +243,7 @@ function Confirmation({
   onSubmit,
   pending,
   submissionError,
+  revalidationRequired,
   validation,
 }: {
   onBack: () => void
@@ -248,6 +251,7 @@ function Confirmation({
   onSubmit: () => void
   pending: boolean
   submissionError: string
+  revalidationRequired: boolean
   validation: AlphaFold3Validation
 }) {
   const preview = validation.preview as Record<string, unknown>
@@ -259,6 +263,10 @@ function Confirmation({
   const advancedCounts = typeof preview.advanced_counts === "object" && preview.advanced_counts !== null
     ? preview.advanced_counts as Record<string, unknown>
     : {}
+  const chemistry = validation.chemistry
+  const hasChemistry = chemistry ? !!(chemistry.modifications.length || chemistry.ligands.length || chemistry.bonds.length || chemistry.custom_ccd)
+    : entities.some((entity) => entity.type === "ligand") || ["modifications", "bonds", "custom_ccd"].some((key) => Number(advancedCounts[key] ?? 0) > 0)
+  const chemistryBlocked = revalidationRequired || hasChemistry && validation.chemistry_checked !== true
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10 lg:px-8 lg:py-14">
@@ -271,7 +279,7 @@ function Confirmation({
         <h1 className="font-heading text-3xl font-semibold">Confirm AlphaFold3 job</h1>
         <a className={buttonVariants({ size: "sm", variant: "outline" })} download href={alphaFold3DocumentUrl(validation.validation_id)}><Download />Download JSON</a>
       </div>
-      <p className="mt-3 text-muted-foreground">Review the parsed server input before remote execution begins.</p>
+      <p className="mt-3 text-muted-foreground">Review the checked input before prediction begins.</p>
       <Card className="mt-8">
         <CardHeader><CardTitle>{String(preview.name ?? "AlphaFold3 job")}</CardTitle></CardHeader>
         <CardContent className="space-y-6">
@@ -305,7 +313,7 @@ function Confirmation({
             </div>
           </div>
           <div>
-            <h2 className="font-medium">Expert input summary</h2>
+            <h2 className="font-medium">Input summary</h2>
             <div className="mt-2 grid grid-cols-6 gap-2 text-sm">
               {[["Modifications", "modifications"], ["Bonds", "bonds"]].map(([label, key]) => (
                 <div className="col-span-3 rounded-lg bg-muted p-3" key={key}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{Number(advancedCounts[key] ?? 0).toLocaleString()}</p></div>
@@ -315,6 +323,15 @@ function Confirmation({
               ))}
             </div>
           </div>
+          {chemistry && hasChemistry ? <section aria-label="Chemistry review" className="space-y-4">
+            <h2 className="text-lg font-semibold">Modifications and covalent bonds</h2>
+            <p className="leading-7 text-muted-foreground">{validation.chemistry_checked ? "Native component and atom checks passed." : "Native chemistry has not been checked."} Positions below are one-based input residues/components. These checks do not establish biological plausibility or guarantee prediction success.</p>
+            {chemistry.modifications.length ? <div className="max-h-72 overflow-auto rounded-lg border"><table className="w-full text-left"><caption className="sr-only">Residue modifications</caption><thead><tr>{["Chains", "Type", "Position", "CCD"].map((label) => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{chemistry.modifications.map((site, index) => <tr className="border-t" key={index}><td className="p-3">{site.ids.join(", ")}</td><td className="p-3">{site.entity_type}</td><td className="p-3">{site.position}</td><td className="p-3 font-mono">{site.ccd_code}</td></tr>)}</tbody></table></div> : null}
+            {chemistry.ligands.length ? <div><h3 className="font-medium">Ligand components</h3><ul className="mt-2 max-h-64 space-y-2 overflow-auto rounded-lg border p-3">{chemistry.ligands.map((ligand, index) => <li key={index}><strong>{ligand.ids.join(", ")}</strong>: {ligand.ccd_codes.length ? ligand.ccd_codes.map((ccd, position) => `${position + 1}: ${ccd}`).join(" · ") : "SMILES ligand (no named bond endpoints)"}</li>)}</ul></div> : null}
+            {chemistry.bonds.length ? <div><h3 className="font-medium">Bond endpoints · chain / position / atom</h3><ol className="mt-2 max-h-64 space-y-2 overflow-auto rounded-lg border p-3 font-mono">{chemistry.bonds.map((bond, index) => <li key={index}>{bond.map(([chain, position, atom]) => `${chain} / ${position} / ${atom}`).join(" ↔ ")}</li>)}</ol></div> : null}
+            {chemistry.custom_ccd ? <p>Inline custom CCD definitions are included in the checked document.</p> : null}
+          </section> : null}
+          {chemistryBlocked ? <p role="alert" className="rounded-lg border border-amber-300 p-4">Chemistry needs to be checked again before prediction. Choose Back to edit, then Continue to check the current input and deployment.</p> : null}
           {warnings.length > 0 ? (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
               <p className="font-medium">Validation warnings</p>
@@ -334,7 +351,7 @@ function Confirmation({
                 Preparing and queuing your job…
               </p>
             ) : null}
-            <Button disabled={pending || (requiresConfirmation && !confirmed)} onClick={onSubmit} size="lg">
+            <Button disabled={pending || chemistryBlocked || (requiresConfirmation && !confirmed)} onClick={onSubmit} size="lg">
               {pending ? <LoaderCircle className="animate-spin" /> : null}
               {pending ? "Submitting job…" : "Submit prediction"}
             </Button>
@@ -445,6 +462,9 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
   const [expertReadState, setExpertReadState] = useState<"idle" | "reading" | "error">("idle")
   const [expertReadError, setExpertReadError] = useState("")
   const [jsonPending, setJsonPending] = useState(false)
+  const capabilities = useQuery({ queryKey: ["alphafold3-capabilities", ownerUserId], queryFn: ({ signal }) => alphaFold3Capabilities(signal), enabled: !!ownerUserId, retry: false, staleTime: Infinity, refetchOnWindowFocus: false })
+  const chemistrySupported = capabilities.data?.chemistry_preflight === 1
+  useExpireSession(capabilities.error)
   const validationController = useRef<AbortController | null>(null)
   const draftChanged = useRef(false)
   const expertFileSelection = useRef(0)
@@ -696,6 +716,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
 
   function validate(event: FormEvent) {
     event.preventDefault()
+    if (!chemistrySupported) return
     if (jsonPending) return
     if (draft.mode === "expert" && expertReadState !== "idle") return
     try {
@@ -795,6 +816,7 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
         })}
         pending={submissionMutation.isPending}
         submissionError={submissionMutation.error ? errorMessage(submissionMutation.error) : formError}
+        revalidationRequired={apiErrorCode(submissionMutation.error) === "chemistry_revalidation_required"}
         validation={validation}
       />
     )
@@ -901,10 +923,15 @@ function AlphaFold3SubmissionForm({ rerunDraft }: { rerunDraft?: AlphaFold3Draft
           </div>
         </details>
 
-        {formError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
+        {formError ? <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{formError}</p> : null}
+        {!chemistrySupported ? <div role={capabilities.isPending ? "status" : "alert"} className="space-y-3 rounded-lg border p-4">
+          <p>{capabilities.isPending ? "Checking input-validation support…" : "Chemistry validation is unavailable. An updated API is required before continuing."}</p>
+          {capabilities.error && !(capabilities.error instanceof ApiError && capabilities.error.status === 404) ? <p>{errorMessage(capabilities.error)}</p> : null}
+          {!capabilities.isPending ? <Button type="button" variant="outline" disabled={capabilities.isFetching} onClick={() => void capabilities.refetch()}>Check again</Button> : null}
+        </div> : null}
         <div className="flex flex-wrap items-center justify-end gap-3">
           {validationMutation.isPending ? <p role="status" className="text-muted-foreground">Checking modifications and covalent bonds…</p> : null}
-          <Button disabled={jsonPending || validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson || expertReadState !== "idle")} size="lg" type="submit">
+          <Button disabled={!chemistrySupported || jsonPending || validationMutation.isPending || (draft.mode === "regular" ? draft.entities.length === 0 : !draft.expertJson || expertReadState !== "idle")} size="lg" type="submit">
             {validationMutation.isPending ? <LoaderCircle className="animate-spin" /> : null}
             Continue and preview job
           </Button>

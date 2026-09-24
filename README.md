@@ -123,6 +123,14 @@ polymer–polymer bonds and explicit disulfide constraints are unsupported.
 Custom chemistry remains in Expert JSON. The
 [chemistry specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/alphafold3-chemistry-inputs.md)
 owns native preflight and rollout requirements.
+The authenticated API capability check gates Continue. Continue checks native
+components and atom names before retaining input; the same confirmation page
+then lists modifications, ligand components and bond endpoints. Historical
+chemistry without a receipt, or a changed deployment, requires an explicit
+return to editing and another Continue. Preflight failures preserve the draft
+for manual retry. These checks do not establish biological plausibility or
+guarantee inference success. Roll out the matching API and pinned AF3 deployment
+before enabling this frontend; no prediction is submitted during preflight.
 
 Antibody humanization accepts an editable ID/VH/VL batch through manual entry
 or CSV import, with one set of scientific settings for the batch. The editor

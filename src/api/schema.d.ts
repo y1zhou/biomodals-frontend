@@ -178,6 +178,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/alphafold3/capabilities": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Capabilities */
+        readonly get: operations["capabilities_api_v1_alphafold3_capabilities_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/alphafold3/jobs": {
         readonly parameters: {
             readonly query?: never;
@@ -1185,6 +1202,18 @@ export interface components {
             readonly user_id: string;
         };
         /**
+         * AlphaFold3Capabilities
+         * @description API support; Continue also verifies the pinned native deployment.
+         */
+        readonly AlphaFold3Capabilities: {
+            /**
+             * Chemistry Preflight
+             * @default 1
+             * @constant
+             */
+            readonly chemistry_preflight: 1;
+        };
+        /**
          * AlphaFold3JobRequest
          * @description Job creation consumes an already validated server resource.
          */
@@ -1374,6 +1403,58 @@ export interface components {
         readonly CandidateGermlines: {
             readonly vh: components["schemas"]["GermlinePresentation"];
             readonly vl: components["schemas"]["GermlinePresentation"];
+        };
+        /**
+         * ChemistryLigand
+         * @description Named components of a ligand; empty for a SMILES ligand.
+         */
+        readonly ChemistryLigand: {
+            /** Ccd Codes */
+            readonly ccd_codes: readonly string[];
+            /** Ids */
+            readonly ids: readonly string[];
+        };
+        /**
+         * ChemistryModification
+         * @description One input-indexed replacement, shared by every listed chain copy.
+         */
+        readonly ChemistryModification: {
+            /** Ccd Code */
+            readonly ccd_code: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            readonly entity_type: "protein" | "rna" | "dna";
+            /** Ids */
+            readonly ids: readonly string[];
+            /** Position */
+            readonly position: number;
+        };
+        /**
+         * ChemistryPreview
+         * @description Confirmation data with native one-based residue and atom endpoints.
+         */
+        readonly ChemistryPreview: {
+            /** Bonds */
+            readonly bonds: readonly (readonly [
+                readonly [
+                    string,
+                    number,
+                    string
+                ],
+                readonly [
+                    string,
+                    number,
+                    string
+                ]
+            ])[];
+            /** Custom Ccd */
+            readonly custom_ccd: boolean;
+            /** Ligands */
+            readonly ligands: readonly components["schemas"]["ChemistryLigand"][];
+            /** Modifications */
+            readonly modifications: readonly components["schemas"]["ChemistryModification"][];
         };
         /**
          * CodedErrorResponse
@@ -2699,6 +2780,9 @@ export interface components {
          * @description Bounded confirmation data for one retained native document.
          */
         readonly ValidationView: {
+            readonly chemistry: components["schemas"]["ChemistryPreview"] | null;
+            /** Chemistry Checked */
+            readonly chemistry_checked: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3786,6 +3870,50 @@ export interface operations {
             };
         };
     };
+    readonly capabilities_api_v1_alphafold3_capabilities_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["AlphaFold3Capabilities"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     readonly submit_job_api_v1_alphafold3_jobs_post: {
         readonly parameters: {
             readonly query?: never;
@@ -3812,6 +3940,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Request Entity Too Large */
@@ -4155,6 +4294,28 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ValidationView"];
                 };
             };
+            /** @description Bad Request */
+            readonly 400: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
             /** @description Request Entity Too Large */
             readonly 413: {
                 headers: {
@@ -4197,6 +4358,28 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Gateway Timeout */
+            readonly 504: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Insufficient Storage */

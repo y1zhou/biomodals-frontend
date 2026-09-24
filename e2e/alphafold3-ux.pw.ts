@@ -181,6 +181,7 @@ async function mockApi(page: Page, { paeError = false, cacheMiss = false, state 
     requests.push(url)
     const respond = (body: unknown, status = 200) => route.fulfill({ status, json: body })
     if (url.pathname.endsWith("/auth/me")) return respond(principal)
+    if (url.pathname.endsWith("/alphafold3/capabilities")) return respond({ chemistry_preflight: 1 })
     if (url.pathname.endsWith("/prepare-download")) { restores++; return route.fulfill({ status: 204 }) }
     if (url.pathname.endsWith("/prediction")) {
       if (cacheMiss && restores === 0) return respond({ code: "result_not_cached", detail: "Evicted" }, 409)

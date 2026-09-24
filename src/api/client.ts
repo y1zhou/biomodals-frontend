@@ -489,6 +489,10 @@ export function validateAlphaFold3(
   )
 }
 
+export function alphaFold3Capabilities(signal?: AbortSignal) {
+  return requestJson<components["schemas"]["AlphaFold3Capabilities"]>("/api/v1/alphafold3/capabilities", { signal, cache: "no-store" })
+}
+
 export function inspectAlphaFold3Validation(
   validationId: string,
   signal?: AbortSignal
