@@ -30,13 +30,13 @@ export default function AntibodyAnalysisPage() {
   const options = useQuery({ queryKey: ["antibody-analysis-options"], queryFn: ({ signal }) => antibodyAnalysisOptions(signal), enabled: !!principal, retry: false, staleTime: Infinity })
   const compatible = options.data?.analysis_version === ANALYSIS_VERSION
   const mutation = useMutation({
-    mutationFn: ({ input, signal }: { input: AnalysisRequest; signal: AbortSignal; revealResults: boolean }) => analyzeAntibodies(input, signal),
+    mutationFn: ({ input, signal }: { input: AnalysisRequest; signal: AbortSignal }) => analyzeAntibodies(input, signal),
     retry: false, gcTime: 0,
   })
   useExpireSession(options.error ?? mutation.error)
   useEffect(() => () => { request.current?.abort(); fileVersions.current = {} }, [])
   useEffect(() => {
-    if (!mutation.isSuccess || !mutation.variables.revealResults) return
+    if (!mutation.isSuccess) return
     resultsHeading.current?.focus({ preventScroll: true })
     resultsHeading.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" })
   }, [mutation.isSuccess, mutation.variables])
@@ -51,7 +51,7 @@ export default function AntibodyAnalysisPage() {
     }, 0)
     return () => window.clearTimeout(timer)
   })
-  function runAnalysis(inputGroups = groups, revealResults = false) {
+  function runAnalysis(inputGroups = groups) {
     if (!compatible || !options.data || !principal || mutation.isPending) return
     const input = { groups: inputGroups }
     if (new TextEncoder().encode(JSON.stringify(input)).byteLength > options.data.max_request_bytes) {
@@ -61,10 +61,10 @@ export default function AntibodyAnalysisPage() {
     setError(null)
     request.current?.abort()
     request.current = new AbortController()
-    mutation.mutate({ input, signal: request.current.signal, revealResults })
+    mutation.mutate({ input, signal: request.current.signal })
   }
   function stopAutomaticAnalysis() { automaticStarted.current = true; setTransfer(null) }
-  function submit(event: FormEvent) { event.preventDefault(); stopAutomaticAnalysis(); runAnalysis(groups, true) }
+  function submit(event: FormEvent) { event.preventDefault(); stopAutomaticAnalysis(); runAnalysis(groups) }
   function edit(id: string, fasta: string) {
     stopAutomaticAnalysis()
     fileVersions.current[id] = (fileVersions.current[id] ?? 0) + 1

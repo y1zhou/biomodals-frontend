@@ -25,6 +25,7 @@ function ContinuationSourcePage({ ownerId, sourceJobId }: { ownerId: string; sou
   const principal = authenticatedPrincipal(useCurrentUser().data)
   // Capture immutable source defaults once so reauthentication preserves the form.
   const [source, setSource] = useState<GromacsContinuationInfo | null>(null)
+  const [pending] = useState(() => readContinuationIntent(window.sessionStorage, continuationStorageKey(ownerId, sourceJobId)))
   const query = useQuery({
     queryKey: ["gromacs-continuation", ownerId, sourceJobId],
     queryFn: ({ signal }) => gromacsContinuationInfo(sourceJobId, signal),
@@ -34,10 +35,10 @@ function ContinuationSourcePage({ ownerId, sourceJobId }: { ownerId: string; sou
   })
   useExpireSession(query.error)
   useEffect(() => { if (query.data) setSource(query.data) }, [query.data])
-  const pending = source ? readContinuationIntent(window.sessionStorage, continuationStorageKey(ownerId, sourceJobId)) : null
   const canStart = !!source?.eligible && source.simulation_time_ns !== null && source.cpu_only !== null
-  if (source && (canStart || pending)) {
-    return <ContinuationForm ownerId={ownerId} sourceJobId={sourceJobId} sourceName={source.source_display_name} sourceTimeNs={source.simulation_time_ns} sourceCpuOnly={source.cpu_only ?? pending!.input.cpu_only} parentJobId={source.parent_job_id} eligible={canStart} sourceDetail={source.detail} />
+  // Source visibility cannot prevent recovery of an already-admitted child.
+  if (canStart || pending) {
+    return <ContinuationForm ownerId={ownerId} sourceJobId={sourceJobId} sourceName={source?.source_display_name ?? "Source simulation"} sourceTimeNs={source?.simulation_time_ns ?? null} sourceCpuOnly={source?.cpu_only ?? pending!.input.cpu_only} parentJobId={source?.parent_job_id ?? null} eligible={canStart} sourceDetail={source?.detail ?? "The source is not available for new continuations."} />
   }
   const failed = !query.isFetching && (!!source || !!query.error)
   const missing = query.error instanceof ApiError && query.error.status === 404

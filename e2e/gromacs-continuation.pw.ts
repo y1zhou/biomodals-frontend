@@ -173,7 +173,7 @@ test("leaving a pending source check aborts its read", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/jobs/${sourceId}$`))
 })
 
-test("lost response restores the exact continuation intent without touching fresh submission storage", async ({ page }) => {
+for (const sourceDeleted of [false, true]) test(`lost response restores the exact continuation intent with ${sourceDeleted ? "deleted" : "unavailable"} source`, async ({ page }) => {
   await mockApi(page)
   const freshKey = "44444444-4444-4444-8444-444444444444"
   await page.addInitScript((key) => { sessionStorage.setItem("biomodals:gromacs:pending-idempotency-key", key); Object.defineProperty(crypto, "randomUUID", { value: undefined }) }, freshKey)
@@ -187,7 +187,7 @@ test("lost response restores the exact continuation intent without touching fres
   await page.getByLabel("Additional production time (ns)", { exact: true }).fill("10")
   await page.getByRole("button", { name: "Submit continuation", exact: true }).click()
   await expect(page.getByRole("button", { name: "Check submission", exact: true })).toBeVisible()
-  await page.route("**/continuation", (route) => route.fulfill({ json: { ...info, eligible: false, simulation_time_ns: null, cpu_only: null, code: "source_unavailable", detail: "Source is no longer available for new work." } }))
+  await page.route("**/continuation", (route) => route.fulfill(sourceDeleted ? { status: 404, json: { detail: "Not found" } } : { json: { ...info, eligible: false, simulation_time_ns: null, cpu_only: null, code: "source_unavailable", detail: "Source is no longer available for new work." } }))
   page.on("dialog", (dialog) => dialog.accept())
   await page.reload()
   await expect(page.getByLabel("Additional production time (ns)", { exact: true })).toHaveValue("10")

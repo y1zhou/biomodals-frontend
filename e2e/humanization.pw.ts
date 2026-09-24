@@ -505,6 +505,61 @@ test("chain selections survive pages and filters and transfer only within-parent
   expect(analyzed).toHaveLength(1)
 })
 
+for (const tool of ["humanization", "nanobody_humanization"] as const) test(`${tool} transfer reveals results once and leaves table interactions in place`, async ({ page }) => {
+  const api = await mockApi(page)
+  const reduced = tool === "humanization"
+  await page.emulateMedia({ reducedMotion: reduced ? "reduce" : "no-preference" })
+  await page.addInitScript(() => {
+    const scroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (options) {
+      if (this.textContent === "Sequence properties and germline matches") {
+        const previous = JSON.parse(document.body.dataset.resultScrolls ?? "[]")
+        document.body.dataset.resultScrolls = JSON.stringify([...previous, options])
+      }
+      scroll.call(this, options)
+    }
+  })
+  await page.route(`**/api/v1/jobs/${job.job_id}`, (route) => route.fulfill({ json: { ...job, tool } }))
+  const rows = Array.from({ length: 51 }, (_, i) => ({ parent_id: "parent", candidate_id: `candidate-${i}`, vh: `ACDE${"G".repeat(i)}`, vl: "EFGH" }))
+  await page.route("**/selection?*", (route) => {
+    const offset = Number(new URL(route.request().url()).searchParams.get("offset"))
+    return route.fulfill({ json: { columns: tool === "humanization" ? columns : columns.filter((column) => column.name !== "vl"), rows: rows.slice(offset, offset + 50), total_rows: rows.length, offset, limit: 50, parent_ids: ["parent"], default_hidden_columns: [], nativeness_ranges: {}, nonparent_count: 51, germlines: null, reference: null } })
+  })
+  let fail = false
+  const analyzed: { groups: { id: string; fasta: string }[] }[] = []
+  await page.route("**/antibody-sequence-analysis/analyze", (route) => {
+    const input = route.request().postDataJSON()
+    analyzed.push(input)
+    if (fail) return route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Local analysis is busy" } })
+    return route.fulfill({ json: { ...emptyAnalysis, groups: input.groups.map((group: { id: string; fasta: string }) => ({ id: group.id, issues: [], entries: group.fasta.split(">").filter(Boolean).map((record) => ({ id: record.split("\n")[0], vh: null, vl: null, unassigned: null, vh_vl_pi: null, issues: [] })) })) } })
+  })
+  await page.goto(`/tools/${tool.replaceAll("_", "-")}/jobs/${job.job_id}`)
+  for (let i = 0; i < 50; i++) await page.getByRole("checkbox", { name: `Select VH from candidate-${i} (parent parent)`, exact: true }).check()
+  if (tool === "humanization") await page.getByRole("checkbox", { name: "Select VL from candidate-0 (parent parent)", exact: true }).check()
+  await page.getByRole("button", { name: "Next page", exact: true }).click()
+  await page.getByRole("checkbox", { name: "Select VH from candidate-50 (parent parent)", exact: true }).check()
+  await page.getByRole("button", { name: "Analyze selected sequences", exact: true }).click()
+  const heading = page.getByRole("heading", { name: "Sequence properties and germline matches", exact: true })
+  await expect(heading).toBeFocused()
+  await expect(heading).toBeInViewport()
+  const scrolls = () => page.evaluate(() => JSON.parse(document.body.dataset.resultScrolls ?? "[]"))
+  expect(await scrolls()).toEqual([{ behavior: reduced ? "instant" : "smooth", block: "start" }])
+  expect(analyzed).toHaveLength(1)
+  expect(analyzed[0].groups[0].fasta.includes(":")).toBe(tool === "humanization")
+  const group = page.getByRole("region", { name: "Analysis results: Group 1", exact: true })
+  await group.getByRole("button", { name: "Next Group 1 page", exact: true }).click()
+  await expect(group.getByRole("table")).toHaveAccessibleName("Group 1 antibody analysis, page 2")
+  await group.getByRole("button", { name: "ID", exact: true }).click()
+  await expect(group.getByRole("table")).toHaveAccessibleName("Group 1 antibody analysis, page 1")
+  expect(await scrolls()).toHaveLength(1)
+  fail = true
+  await page.getByRole("button", { name: "Analyze sequences", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Your inputs are unchanged")
+  expect(await scrolls()).toHaveLength(1)
+  expect(analyzed).toHaveLength(2)
+  expect(api.submissions).toHaveLength(0)
+})
+
 test("editing a pending handoff suppresses automatic analysis", async ({ page }) => {
   await mockApi(page)
   const analyzed: { groups: { id: string; fasta: string }[] }[] = []

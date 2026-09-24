@@ -33,6 +33,7 @@ import {
 import { adminStorageKey } from "@/admin"
 import { useExpireSession } from "@/auth-state"
 import StageLogs from "@/components/JobLogs"
+import DeleteJobAction from "@/components/DeleteJobAction"
 import JobStatusBadge from "@/components/JobStatusBadge"
 import { RefreshButton } from "@/components/RefreshButton"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -111,6 +112,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
   const queryClient = useQueryClient()
   const confirmationDialog = useRef<HTMLDialogElement>(null)
   const [copied, setCopied] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [expandedLogStage, setExpandedLogStage] = useState<string | null>(null)
   const visibility = useDocumentVisibility()
   const jobQuery = useQuery({
@@ -264,19 +266,25 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
             <ArrowLeft aria-hidden="true" data-icon="inline-start" />
             My Jobs
           </Link>
-          <RefreshButton
-            disabled={jobQuery.isFetching}
-            onRefresh={async () => {
-              await queryClient.cancelQueries({ queryKey: jobKey(jobId) })
-              const refreshed = await refreshJob(jobId)
-              queryClient.setQueryData(jobKey(jobId), refreshed)
-              queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
-                jobs?.map((candidate) =>
-                  candidate.job_id === refreshed.job_id ? refreshed : candidate
-                )
-              )
-            }}
-          />
+          <div className="flex gap-3">
+            <RefreshButton
+              disabled={jobQuery.isFetching}
+              onRefresh={async () => {
+                setRefreshing(true)
+                try {
+                  await queryClient.cancelQueries({ queryKey: jobKey(jobId) })
+                  const refreshed = await refreshJob(jobId)
+                  queryClient.setQueryData(jobKey(jobId), refreshed)
+                  queryClient.setQueryData<Job[]>(jobListKey, (jobs) =>
+                    jobs?.map((candidate) =>
+                      candidate.job_id === refreshed.job_id ? refreshed : candidate
+                    )
+                  )
+                } finally { setRefreshing(false) }
+              }}
+            />
+            <DeleteJobAction job={job} disabled={refreshing || jobQuery.isFetching || preparationMutation.isPending || downloadMutation.isPending || cancelMutation.isPending} />
+          </div>
         </div>
 
         <section className="mt-8">

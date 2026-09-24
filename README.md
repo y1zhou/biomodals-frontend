@@ -202,7 +202,8 @@ be selected for export.
 and OKT3 pairs plus standalone Ozoralizumab. It preserves Group 2 and waits for
 **Analyze sequences**. Sequences are kept exactly as supplied; OKT3's light-chain
 partial-domain diagnostic remains visible. Editing the input cancels any pending
-automatic analysis of transferred chains. After an explicit analysis succeeds,
+automatic analysis of transferred chains. After analysis succeeds, including
+automatic analysis transferred from paired or nanobody humanization results,
 the results heading receives focus and scrolls into view, respecting reduced
 motion. Sorting, paging and sequence inspection do not repeat this navigation;
 request errors remain at the form.
@@ -396,7 +397,10 @@ continuations can themselves be continued, and a source can have multiple
 children.
 **Check submission** reuses an unconfirmed request's key and exact settings;
 opening the form never submits work. Continuation recovery is isolated from
-fresh GROMACS submissions. Availability and scientific behavior follow the
+fresh GROMACS submissions. A saved, unconfirmed continuation can still be
+checked when its source is unavailable: this replays the existing intent and
+does not authorize a new continuation from that source.
+Availability and scientific behavior follow the
 [continuation specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-continuation.md).
 
 **Cluster trajectory** on a completed GROMACS simulation opens a separate
@@ -420,6 +424,19 @@ Clustering requires coordinated frontend/API rollout and an updated GROMACS
 deployment with its exact version pinned. Job operation/source metadata is
 backend-owned; historical simulation Jobs default to `run`. See the
 [clustering specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-trajectory-clustering.md).
+
+Owners can **Delete** a completed, partially completed, failed or cancelled
+Job from its detail page beside Refresh. Confirmation explains the permanent
+loss of website access: there is no Trash or Restore. Accepted deletion returns
+to My Jobs and clears that Job's cached browser queries. Local cached results
+and retained inputs are cleaned up asynchronously; existing downloads may
+finish. Remote outputs, execution records, logs and billing remain unchanged.
+Existing linked continuation/clustering Jobs remain usable, but deleted
+sources cannot admit new work. Replaying a deleted submission returns
+`job_deleted`; the browser does not rotate its key or automatically create a
+replacement. Already-open tabs update on their next request or navigation,
+not through live cross-tab synchronization. See the
+[deletion specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/job-deletion.md).
 
 Administrators can manage Users, active-Job admission limits, the effective
 Modal Environment, exact Tool deployment versions, Job-log access, unknown
