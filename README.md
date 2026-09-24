@@ -396,7 +396,10 @@ continuations can themselves be continued, and a source can have multiple
 children.
 **Check submission** reuses an unconfirmed request's key and exact settings;
 opening the form never submits work. Continuation recovery is isolated from
-fresh GROMACS submissions. Availability and scientific behavior follow the
+fresh GROMACS submissions. A saved, unconfirmed continuation can still be
+checked when its source is unavailable: this replays the existing intent and
+does not authorize a new continuation from that source.
+Availability and scientific behavior follow the
 [continuation specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/gromacs-continuation.md).
 
 **Cluster trajectory** on a completed GROMACS simulation opens a separate
