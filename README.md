@@ -202,7 +202,8 @@ be selected for export.
 and OKT3 pairs plus standalone Ozoralizumab. It preserves Group 2 and waits for
 **Analyze sequences**. Sequences are kept exactly as supplied; OKT3's light-chain
 partial-domain diagnostic remains visible. Editing the input cancels any pending
-automatic analysis of transferred chains. After an explicit analysis succeeds,
+automatic analysis of transferred chains. After analysis succeeds, including
+automatic analysis transferred from paired or nanobody humanization results,
 the results heading receives focus and scrolls into view, respecting reduced
 motion. Sorting, paging and sequence inspection do not repeat this navigation;
 request errors remain at the form.
