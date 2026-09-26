@@ -105,6 +105,19 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
+An unlisted, authenticated input-review page is available at
+`/tools/protein-optimization/new`. Upload `mutations,label` CSV (optional `id`),
+discover case-sensitive chain IDs, then supply their full parental FASTA.
+Review retains raw rows and reports invalid labels or reference mismatches;
+corrections and mode/settings edits invalidate the previous review. Combination
+uses measured substitutions; Exploration exposes per-position replacements and
+uses the API's separate evaluation budget. Input limits and complete mode
+defaults come from the API. Drafts remain in memory, and no model fitting,
+scientific submission, or catalog entry is enabled in this review milestone.
+The [protein optimization specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/protein-sequence-optimization.md)
+owns the scientific contract and later rollout. Generic full-chain previews
+do not invoke antibody numbering or germline analysis.
+
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
 prediction`, `Antibody humanization`, and `Antibody sequence analysis`.
 AlphaFold3 accepts a guided protein, DNA, RNA, and

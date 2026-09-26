@@ -5,7 +5,7 @@ export type HumanizationPair = components["schemas"]["PairInput"]
 export type HumanizationSettings = components["schemas"]["HumanizationSettings"]
 export type HumanizationOptions = components["schemas"]["HumanizationOptions"]
 export type HumanizationSubmission = components["schemas"]["HumanizationSubmission"]
-export type HumanizationInputError = components["schemas"]["InputIssue"]
+export type HumanizationInputError = components["schemas"]["InputErrors"]["errors"][number]
 export type HumanizationSelection = components["schemas"]["SelectionPage"]
 
 export function settingMetadata(options: { readonly settings_schema?: Record<string, unknown> } | undefined, name: string) {

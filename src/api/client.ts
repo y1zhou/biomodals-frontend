@@ -2,6 +2,19 @@ import type { components } from "@/api/schema"
 import type { HumanizationOptions, HumanizationSubmission, HumanizationSelection, SelectionQuery } from "@/humanization"
 import type { AnalysisOptions, AnalysisRequest, AnalysisResponse, SequenceDetail, SequenceRequest } from "@/antibody-analysis"
 import type { NanobodyInputs, NanobodyOptions, NanobodyPreparation, NanobodyPreparationRequest, NanobodySelection, NanobodySubmission } from "@/nanobody-humanization"
+import type { OptimizationOptions, OptimizationReview, OptimizationReviewRequest } from "@/protein-optimization"
+
+export function proteinOptimizationOptions(signal?: AbortSignal) {
+  return requestJson<OptimizationOptions>("/api/v1/protein-optimization/options", { signal, cache: "no-store" })
+}
+
+export function reviewProteinOptimization(input: OptimizationReviewRequest, signal?: AbortSignal) {
+  return requestJson<OptimizationReview>("/api/v1/protein-optimization/review", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
 
 export function nanobodyOptions(signal?: AbortSignal) {
   return requestJson<NanobodyOptions>("/api/v1/nanobody-humanization/options", { signal, cache: "no-store" })

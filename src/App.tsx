@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { proteinOptimizationPath } from "@/protein-optimization"
 import {
   alphafold3Paths,
   antibodyAnalysisPath,
@@ -37,6 +38,7 @@ const HumanizationSubmissionPage = lazy(() => import("@/pages/HumanizationSubmis
 const NanobodySubmissionPage = lazy(() => import("@/pages/NanobodySubmissionPage"))
 const NanobodyOverviewPage = lazy(() => import("@/pages/NanobodyOverviewPage"))
 const AntibodyAnalysisPage = lazy(() => import("@/pages/AntibodyAnalysisPage"))
+const ProteinOptimizationPage = lazy(() => import("@/pages/ProteinOptimizationPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
 const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
@@ -183,6 +185,7 @@ export default function App() {
       "/admin/users": "Manage users",
       "/admin/modal": "Runtime settings",
       "/admin/storage": "Result storage",
+      [proteinOptimizationPath]: "Review protein sequence optimization",
     }
     for (const tool of toolCatalog) {
       if (tool.status !== "available") continue
@@ -214,6 +217,7 @@ export default function App() {
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
+            <Route element={<ProteinOptimizationPage />} path={proteinOptimizationPath} />
             <Route element={<AntibodyAnalysisPage />} path={antibodyAnalysisPath} />
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />

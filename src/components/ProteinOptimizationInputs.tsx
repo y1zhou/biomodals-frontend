@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import FileDropZone from "@/components/FileDropZone"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -57,15 +57,15 @@ function InputText({ id, label, accept, help, value, maxBytes, disabled, onChang
     <FileDropZone id={`${id}-file`} label={label} accept={accept} help={help} fileName={fileName} disabled={disabled} onSelect={(file) => void load(file)} />
     {reading ? <p role="status">Reading {label.toLowerCase()}…</p> : null}
     {error ? <p role="alert" className="text-destructive">{error}</p> : null}
-    <label className="block space-y-2" htmlFor={id}>
-      <span className="font-medium">{label} text</span>
+    <div className="space-y-2">
+      <label className="block font-medium" htmlFor={id}>{label} text</label>
       <textarea id={id} className={textareaClass} value={value} disabled={disabled} onChange={(event) => edit(event.target.value)} spellCheck={false} autoCapitalize="off" aria-describedby={`${id}-help`} />
-    </label>
+    </div>
     <p id={`${id}-help`} className="text-muted-foreground">Edit the text to correct or remove invalid records. Selecting a file replaces this text.</p>
   </div>
 }
 
-export default function ProteinOptimizationInputs({ measurements, parentalFasta, requiredChains, maxMeasurementBytes, maxFastaBytes, disabled = false, onMeasurementsChange, onParentalFastaChange, onReadingChange }: {
+export default function ProteinOptimizationInputs({ measurements, parentalFasta, requiredChains, maxMeasurementBytes, maxFastaBytes, disabled = false, discoveryAction, onMeasurementsChange, onParentalFastaChange, onReadingChange }: {
   measurements: string
   parentalFasta: string
   // Undefined means chain discovery is pending; an empty list is a valid result.
@@ -73,6 +73,7 @@ export default function ProteinOptimizationInputs({ measurements, parentalFasta,
   maxMeasurementBytes: number
   maxFastaBytes: number
   disabled?: boolean
+  discoveryAction?: ReactNode
   onMeasurementsChange: (text: string) => void
   onParentalFastaChange: (text: string) => void
   onReadingChange: (field: "measurements" | "parents", reading: boolean) => void
@@ -85,6 +86,7 @@ export default function ProteinOptimizationInputs({ measurements, parentalFasta,
         <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-sm">{'id,mutations,label\nparent,,1.2\nvariant_1,A:Y52F,1.8\nvariant_2,"A:Y52F,B:S30A",2.4'}</pre>
         <p className="text-muted-foreground">Mutations use a case-sensitive chain ID and a one-based position in the supplied sequence. Quote comma-separated mutations in one cell. An empty mutation cell means the unchanged parent; a parental measurement is optional. Repeated variants are experimental replicates.</p>
         <InputText id="optimization-measurements" label="Measurements CSV" accept=".csv,text/csv" help="Upload measurements first to discover the required parental chains." value={measurements} maxBytes={maxMeasurementBytes} disabled={disabled} onChange={onMeasurementsChange} onReadingChange={(reading) => onReadingChange("measurements", reading)} />
+        {discoveryAction}
       </CardContent>
     </Card>
     <Card>

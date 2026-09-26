@@ -898,6 +898,40 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/protein-optimization/options": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Options */
+        readonly get: operations["options_api_v1_protein_optimization_options_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/protein-optimization/review": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Review */
+        readonly post: operations["review_api_v1_protein_optimization_review_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/ready": {
         readonly parameters: {
             readonly query?: never;
@@ -1377,6 +1411,34 @@ export interface components {
             readonly code: "authentication_busy";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * InputIssue
+         * @description A safe diagnostic; row indices exclude the CSV header and start at zero.
+         */
+        readonly biomodals__app__design__mutation_ridge__inputs__InputIssue: {
+            /** Code */
+            readonly code: string;
+            /** Field */
+            readonly field: string;
+            /** Message */
+            readonly message: string;
+            /** Row Index */
+            readonly row_index: number | null;
+        };
+        /**
+         * InputIssue
+         * @description Address one invalid field without echoing antibody sequence contents.
+         */
+        readonly biomodals__service__humanization__contracts__InputIssue: {
+            /** Code */
+            readonly code: string;
+            /** Field */
+            readonly field: string;
+            /** Message */
+            readonly message: string;
+            /** Row Index */
+            readonly row_index: number | null;
         };
         /** Body_submit_job_api_v1_gromacs_jobs_post */
         readonly Body_submit_job_api_v1_gromacs_jobs_post: {
@@ -1953,21 +2015,7 @@ export interface components {
              */
             readonly detail: string;
             /** Errors */
-            readonly errors: readonly components["schemas"]["InputIssue"][];
-        };
-        /**
-         * InputIssue
-         * @description Address one invalid field without echoing antibody sequence contents.
-         */
-        readonly InputIssue: {
-            /** Code */
-            readonly code: string;
-            /** Field */
-            readonly field: string;
-            /** Message */
-            readonly message: string;
-            /** Row Index */
-            readonly row_index: number | null;
+            readonly errors: readonly components["schemas"]["biomodals__service__humanization__contracts__InputIssue"][];
         };
         /**
          * IntegerSettingView
@@ -2154,6 +2202,22 @@ export interface components {
             readonly email: string;
             /** Password */
             readonly password: string;
+        };
+        /**
+         * MeasurementPreview
+         * @description Every uploaded row, including invalid labels and mutation expressions.
+         */
+        readonly MeasurementPreview: {
+            /** Canonical Mutations */
+            readonly canonical_mutations: string | null;
+            /** Id */
+            readonly id: string;
+            /** Label */
+            readonly label: string;
+            /** Mutations */
+            readonly mutations: string;
+            /** Row Index */
+            readonly row_index: number;
         };
         /**
          * MutationForbiddenResponse
@@ -2361,6 +2425,90 @@ export interface components {
             readonly region: string;
         };
         /**
+         * OptimizationReview
+         * @description Local non-model review; only a valid complete request receives a digest.
+         */
+        readonly OptimizationReview: {
+            /** Candidate Space Size */
+            readonly candidate_space_size?: string | null;
+            /** Chains */
+            readonly chains: readonly components["schemas"]["ParentalChain"][];
+            /** Errors */
+            readonly errors: readonly components["schemas"]["biomodals__app__design__mutation_ridge__inputs__InputIssue"][];
+            /** Evaluation Count */
+            readonly evaluation_count?: number | null;
+            /** Positions */
+            readonly positions?: readonly components["schemas"]["PositionChoices"][];
+            /** Replicate Rows */
+            readonly replicate_rows?: number | null;
+            /** Required Chain Ids */
+            readonly required_chain_ids: readonly string[];
+            /** Review Digest */
+            readonly review_digest?: string | null;
+            /**
+             * Review Version
+             * @default 1
+             */
+            readonly review_version: string;
+            /** Rows */
+            readonly rows: readonly components["schemas"]["MeasurementPreview"][];
+            /** Unique Variant Count */
+            readonly unique_variant_count?: number | null;
+            /** Warnings */
+            readonly warnings?: readonly string[];
+        };
+        /**
+         * OptimizationReviewRequest
+         * @description Original editable inputs; FASTA may be absent during chain discovery.
+         */
+        readonly OptimizationReviewRequest: {
+            /** Measurements Csv */
+            readonly measurements_csv: string;
+            /** Parental Fasta */
+            readonly parental_fasta?: string | null;
+            readonly settings?: components["schemas"]["OptimizationSettings"];
+        };
+        /**
+         * OptimizationSettings
+         * @description One selected scoring mode; absent site policy defaults to measured sites.
+         */
+        readonly OptimizationSettings: {
+            /**
+             * Candidate Budget
+             * @default 1000000
+             */
+            readonly candidate_budget: number;
+            /**
+             * Direction
+             * @default maximize
+             * @enum {string}
+             */
+            readonly direction: "maximize" | "minimize";
+            /**
+             * Max Mutations
+             * @default 2
+             */
+            readonly max_mutations: number;
+            /**
+             * Max New Mutations
+             * @default 1
+             */
+            readonly max_new_mutations: number;
+            /**
+             * Mode
+             * @default combination
+             * @enum {string}
+             */
+            readonly mode: "combination" | "exploration";
+            /** Positions */
+            readonly positions?: readonly components["schemas"]["PositionChoices"][] | null;
+            /**
+             * Seed
+             * @default 0
+             */
+            readonly seed: number;
+        };
+        /**
          * OriginErrorResponse
          * @description Browser origin rejected before an unsafe request.
          */
@@ -2407,6 +2555,16 @@ export interface components {
             readonly vl: string;
         };
         /**
+         * ParentalChain
+         * @description A complete, normalized user-supplied chain with no inferred role.
+         */
+        readonly ParentalChain: {
+            /** Chain Id */
+            readonly chain_id: string;
+            /** Sequence */
+            readonly sequence: string;
+        };
+        /**
          * PasswordErrorResponse
          * @description Password Setup errors with distinct recovery behavior.
          */
@@ -2444,6 +2602,21 @@ export interface components {
             readonly code: "payload_too_large";
             /** Detail */
             readonly detail: string;
+        };
+        /**
+         * PositionChoices
+         * @description One raw parent-relative site; an empty residue set freezes this site.
+         */
+        readonly PositionChoices: {
+            /**
+             * Amino Acids
+             * @default ADEFGHIKLNPQRSTVWY
+             */
+            readonly amino_acids: string;
+            /** Chain Id */
+            readonly chain_id: string;
+            /** Position */
+            readonly position: number;
         };
         /**
          * PredictionSummary
@@ -2534,6 +2707,90 @@ export interface components {
             readonly molecular_weight_kda: number;
             /** Pi */
             readonly pi: number;
+        };
+        /**
+         * ProteinOptimizationOptions
+         * @description Server limits and complete per-mode settings, not frontend-owned ceilings.
+         */
+        readonly ProteinOptimizationOptions: {
+            /** Defaults */
+            readonly defaults?: {
+                readonly [key: string]: components["schemas"]["OptimizationSettings"];
+            };
+            /**
+             * Max Chains
+             * @default 16
+             */
+            readonly max_chains: number;
+            /**
+             * Max Combination Candidates
+             * @default 1000000
+             */
+            readonly max_combination_candidates: number;
+            /**
+             * Max Design Positions
+             * @default 1024
+             */
+            readonly max_design_positions: number;
+            /**
+             * Max Exploration Candidates
+             * @default 20000
+             */
+            readonly max_exploration_candidates: number;
+            /**
+             * Max Exploration Chain Length
+             * @default 2046
+             */
+            readonly max_exploration_chain_length: number;
+            /**
+             * Max Exploration Mutations
+             * @default 10
+             */
+            readonly max_exploration_mutations: number;
+            /**
+             * Max Measured Substitutions
+             * @default 4096
+             */
+            readonly max_measured_substitutions: number;
+            /**
+             * Max Measurement Rows
+             * @default 10000
+             */
+            readonly max_measurement_rows: number;
+            /**
+             * Max Measurements Csv Bytes
+             * @default 10485760
+             */
+            readonly max_measurements_csv_bytes: number;
+            /**
+             * Max Mutation Tokens
+             * @default 100000
+             */
+            readonly max_mutation_tokens: number;
+            /**
+             * Max Parental Fasta Bytes
+             * @default 10485760
+             */
+            readonly max_parental_fasta_bytes: number;
+            /**
+             * Max Result Bytes
+             * @default 2147483648
+             */
+            readonly max_result_bytes: number;
+            /**
+             * Max Total Residues
+             * @default 16384
+             */
+            readonly max_total_residues: number;
+            /**
+             * Review Version
+             * @default 1
+             */
+            readonly review_version: string;
+            /** Settings Schema */
+            readonly settings_schema?: {
+                readonly [key: string]: unknown;
+            };
         };
         /**
          * ReferenceInfo
@@ -7061,6 +7318,112 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly options_api_v1_protein_optimization_options_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ProteinOptimizationOptions"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly review_api_v1_protein_optimization_review_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["OptimizationReviewRequest"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["OptimizationReview"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
