@@ -29,6 +29,7 @@ test("review uses mode-specific service bounds and rejects incomplete options", 
   expect(optimizationNumericBounds(optimizationOptions, "exploration", "candidate_budget")).toEqual({ minimum: 1, maximum: 20000 })
   expect(optimizationNumericBounds(optimizationOptions, "exploration", "max_mutations")).toEqual({ minimum: 1, maximum: 10 })
   expect(optimizationOptionsReady({ ...optimizationOptions, defaults: {} })).toBe(false)
+  expect(optimizationOptionsReady({ ...optimizationOptions, review_version: "1" })).toBe(false)
   expect(optimizationOptionsReady({ ...optimizationOptions, settings_schema: {} })).toBe(false)
   expect(defaultReplacementResidues(optimizationOptions)).toBe("ADEFGHIKLNPQRSTVWY")
 })
@@ -90,7 +91,7 @@ test("submission binds original review and UUID while retained input reads never
   Object.defineProperty(globalThis, "document", { configurable: true, value: { cookie: "biomodals-csrf=offline" } })
   const calls: { path: string; init?: RequestInit }[] = []
   globalThis.fetch = (async (path, init) => { calls.push({ path: String(path), init }); return Response.json({}) }) as typeof fetch
-  const input = { measurements_csv: "mutations,label\nA:A1V,2", parental_fasta: ">A\nACDE", settings: optimizationOptions.defaults!.combination, review_digest: "a".repeat(64), display_name: "" }
+  const input = { measurements_csv: "mutations,label\nA:A1V,2", parental_fasta: null, settings: optimizationOptions.defaults!.combination, review_digest: "a".repeat(64), display_name: "" }
   await submitProteinOptimization(input, "exact-key")
   await submitProteinOptimization(input, "exact-key")
   expect(calls[0]).toEqual(calls[1])

@@ -53,7 +53,7 @@ export function optimizationNumericBounds(options: OptimizationOptions, mode: Op
 }
 
 export function optimizationOptionsReady(options: OptimizationOptions): boolean {
-  return options.review_version === "1"
+  return options.review_version === "2"
     && defaultReplacementResidues(options) !== undefined
     && [options.max_measurements_csv_bytes, options.max_parental_fasta_bytes, options.max_design_positions].every((value) => typeof value === "number" && Number.isSafeInteger(value) && value > 0)
     && (["combination", "exploration"] as const).every((mode) => {

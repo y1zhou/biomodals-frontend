@@ -65,39 +65,42 @@ function InputText({ id, label, accept, help, value, maxBytes, disabled, onChang
   </div>
 }
 
-export default function ProteinOptimizationInputs({ measurements, parentalFasta, requiredChains, maxMeasurementBytes, maxFastaBytes, disabled = false, discoveryAction, onMeasurementsChange, onParentalFastaChange, onReadingChange }: {
+export default function ProteinOptimizationInputs({ measurements, maxMeasurementBytes, disabled = false, onMeasurementsChange, onReadingChange }: {
   measurements: string
+  maxMeasurementBytes: number
+  disabled?: boolean
+  onMeasurementsChange: (text: string) => void
+  onReadingChange: (reading: boolean) => void
+}) {
+  return <Card>
+      <CardHeader><CardTitle><h2>1. Experimental measurements</h2></CardTitle></CardHeader>
+      <CardContent className="space-y-4 text-base">
+        <p className="text-muted-foreground">Upload CSV with <code>mutations,label</code> columns and an optional <code>id</code>. Supply already-normalized labels on a consistent numerical scale; you are responsible for correcting plate or batch effects before uploading.</p>
+        <p className="text-muted-foreground">For example, normalize each plate with <code>log10(mutant KD) - log10(parent KD)</code> and select “Lower label is better”.</p>
+        <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-sm">{'id,mutations,label\nvariant_1,A:Y52F,-0.3\nvariant_2,"A:Y52F,B:S30A",-0.6'}</pre>
+        <p className="text-muted-foreground">Mutations use a case-sensitive chain ID and one-based position. Quote comma-separated mutations in one cell. Repeated variants are experimental replicates. If your data genuinely includes an unchanged-parent observation, its mutation cell may be empty.</p>
+        <InputText id="optimization-measurements" label="Measurements CSV" accept=".csv,text/csv" help="Upload measured substitutions and already-normalized labels." value={measurements} maxBytes={maxMeasurementBytes} disabled={disabled} onChange={onMeasurementsChange} onReadingChange={onReadingChange} />
+      </CardContent>
+    </Card>
+}
+
+export function ProteinOptimizationParents({ parentalFasta, requiredChains, maxFastaBytes, disabled = false, discoveryAction, onParentalFastaChange, onReadingChange }: {
   parentalFasta: string
   // Undefined means chain discovery is pending; an empty list is a valid result.
   requiredChains: readonly string[] | undefined
-  maxMeasurementBytes: number
   maxFastaBytes: number
   disabled?: boolean
   discoveryAction?: ReactNode
-  onMeasurementsChange: (text: string) => void
   onParentalFastaChange: (text: string) => void
-  onReadingChange: (field: "measurements" | "parents", reading: boolean) => void
+  onReadingChange: (reading: boolean) => void
 }) {
-  return <div className="space-y-6">
-    <Card>
-      <CardHeader><CardTitle><h2>1. Experimental measurements</h2></CardTitle></CardHeader>
-      <CardContent className="space-y-4 text-base">
-        <p className="text-muted-foreground">Upload CSV with <code>mutations,label</code> columns and an optional <code>id</code>. Labels stay on your supplied numerical scale.</p>
-        <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-sm">{'id,mutations,label\nparent,,1.2\nvariant_1,A:Y52F,1.8\nvariant_2,"A:Y52F,B:S30A",2.4'}</pre>
-        <p className="text-muted-foreground">Mutations use a case-sensitive chain ID and a one-based position in the supplied sequence. Quote comma-separated mutations in one cell. An empty mutation cell means the unchanged parent; a parental measurement is optional. Repeated variants are experimental replicates.</p>
-        <InputText id="optimization-measurements" label="Measurements CSV" accept=".csv,text/csv" help="Upload measurements first to discover the required parental chains." value={measurements} maxBytes={maxMeasurementBytes} disabled={disabled} onChange={onMeasurementsChange} onReadingChange={(reading) => onReadingChange("measurements", reading)} />
-        {discoveryAction}
-      </CardContent>
-    </Card>
-    <Card>
-      <CardHeader><CardTitle><h2>2. Parental chains</h2></CardTitle></CardHeader>
-      <CardContent className="space-y-4 text-base">
+  return <section aria-labelledby="optimization-parents-heading" className="space-y-4 rounded-lg border p-4">
+        <h3 id="optimization-parents-heading" className="text-xl font-medium">Parental chains</h3>
         <p role="status" className="text-muted-foreground">{requiredChains === undefined ? "Review the measurements to discover required chain IDs before adding parental sequences." : requiredChains.length ? <>Required chain IDs: {requiredChains.map((chain, index) => <span key={chain}>{index ? ", " : ""}<code>{chain}</code></span>)}.</> : "No mutated chains were found. Supply explicitly named parental chains to define the optimization parent."}</p>
-        <p className="text-muted-foreground">Use one FASTA record per chain, with its exact chain ID as the header. Include every referenced chain. Additional chains may be supplied for Exploration; unchanged partners are optional. Sequences are not trimmed, imputed, or assigned antibody roles.</p>
-        <InputText id="optimization-parents" label="Parental FASTA" accept=".fasta,.fa,.faa,text/plain" help="Each header must match a chain ID, for example >A. Sequence coordinates refer to these full inputs." value={parentalFasta} maxBytes={maxFastaBytes} disabled={disabled || requiredChains === undefined} onChange={onParentalFastaChange} onReadingChange={(reading) => onReadingChange("parents", reading)} />
-      </CardContent>
-    </Card>
-  </div>
+        <p className="text-muted-foreground">Exploration requires full parental sequences to validate mutations and score complete variants. Use one FASTA record per chain, with its exact chain ID as the header. Include every referenced chain; unchanged partners are optional. Sequences are not trimmed, imputed, or assigned antibody roles.</p>
+        {discoveryAction}
+        <InputText id="optimization-parents" label="Parental FASTA" accept=".fasta,.fa,.faa,text/plain" help="Each header must match a chain ID, for example >A. Sequence coordinates refer to these full inputs." value={parentalFasta} maxBytes={maxFastaBytes} disabled={disabled || requiredChains === undefined} onChange={onParentalFastaChange} onReadingChange={onReadingChange} />
+  </section>
 }
 
 export function ProteinOptimizationMode({ exploration, disabled = false, onChange }: {
@@ -109,7 +112,7 @@ export function ProteinOptimizationMode({ exploration, disabled = false, onChang
     <legend className="mb-3 text-xl font-medium">Optimization mode</legend>
     <label className="flex items-start gap-3 rounded-lg border p-4">
       <input className="mt-1" type="radio" name="optimization-mode" checked={!exploration} onChange={() => onChange(false)} />
-      <span><span className="font-medium">Combination</span><span className="mt-1 block text-muted-foreground">Recombine experimentally supported substitutions using additive ridge. All compatible novel combinations within your mutation limit are scored; oversized requests are rejected rather than sampled. Additive predictions do not estimate interactions between mutations.</span></span>
+      <span><span className="font-medium">Combination</span><span className="mt-1 block text-muted-foreground">Table-only additive ridge at observed mutated sites; no parental sequences are needed. All compatible novel combinations of measured substitutions within your mutation limit are scored; oversized requests are rejected rather than sampled. Results contain mutations and predicted labels, not reconstructed sequences. Additive predictions do not estimate interactions between mutations.</span></span>
     </label>
     <label className="flex items-start gap-3 rounded-lg border p-4">
       <input className="mt-1" type="radio" name="optimization-mode" checked={exploration} onChange={() => onChange(true)} />

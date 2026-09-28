@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useBeforeUnload, useBlocker, useNavigate, useSearchParams } from "react-router"
 import { ApiError, apiErrorCode, apiRequestId, proteinOptimizationInputs, proteinOptimizationOptions, reviewProteinOptimization, submitProteinOptimization } from "@/api/client"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
-import ProteinOptimizationInputs, { ProteinOptimizationMode } from "@/components/ProteinOptimizationInputs"
+import ProteinOptimizationInputs, { ProteinOptimizationMode, ProteinOptimizationParents } from "@/components/ProteinOptimizationInputs"
 import ProteinSequenceValue from "@/components/ProteinSequenceValue"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -61,7 +61,7 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
     const input = retained.data
     if (!input.settings) return
     setMeasurements(input.measurements_csv)
-    setParentalFasta(input.parental_fasta)
+    setParentalFasta(input.parental_fasta ?? "")
     setDisplayName(input.display_name)
     setMode(input.settings.mode)
     setDirection(input.settings.direction)
@@ -136,16 +136,16 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
   }
   const settings: OptimizationSettings | undefined = defaults ? { ...defaults, ...numericSettings, mode, direction: direction ?? defaults.direction, positions: mode === "exploration" ? positions : null } : undefined
   const sameMeasurements = mutation.variables?.input.measurements_csv === measurements
-  const sameInputs = sameMeasurements && (mutation.variables?.input.parental_fasta ?? "") === parentalFasta
+  const sameInputs = sameMeasurements && (mode === "combination" || (mutation.variables?.input.parental_fasta ?? "") === parentalFasta)
   const data = mutation.data
   const requiredChains = sameMeasurements ? data?.required_chain_ids : undefined
-  const chains = sameInputs ? data?.chains ?? [] : []
+  const chains = mode === "exploration" && sameInputs ? data?.chains ?? [] : []
   const effectivePositions = positions ?? (sameInputs ? data?.positions ?? [] : [])
   const current = mutation.variables?.revision === revision
   const reviewed = current && data?.review_digest && data.errors.length === 0 && data.review_version === options.data?.review_version
   const pending = current && mutation.isPending
-  const readPending = reading.measurements || reading.parents
-  const canSubmit = !!principal && inputsLoaded && reviewed && !readPending && !pending && !submission.isPending && !ambiguous && !invalidSettings.length && [...displayName].length <= 200 && typeof options.data?.max_selected_candidates === "number"
+  const readPending = reading.measurements || mode === "exploration" && reading.parents
+  const canSubmit = !!principal && inputsLoaded && reviewed && (mode === "combination" || !!parentalFasta.trim()) && !readPending && !pending && !submission.isPending && !ambiguous && !invalidSettings.length && [...displayName].length <= 200 && typeof options.data?.max_selected_candidates === "number"
   const rows = sameMeasurements ? data?.rows ?? [] : []
   const pages = Math.max(1, Math.ceil(rows.length / 50))
   const page = Math.min(rowPage, pages - 1)
@@ -157,10 +157,10 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
     if (!measurements.trim()) { setError("Upload or enter measurements before reviewing."); return }
     if (invalidSettings.length) { setError(`Check ${invalidSettings.join(", ")}. Use whole numbers within the displayed limits.`); return }
     const encoder = new TextEncoder()
-    if (encoder.encode(measurements).byteLength > options.data.max_measurements_csv_bytes! || encoder.encode(parentalFasta).byteLength > options.data.max_parental_fasta_bytes!) {
+    if (encoder.encode(measurements).byteLength > options.data.max_measurements_csv_bytes! || mode === "exploration" && encoder.encode(parentalFasta).byteLength > options.data.max_parental_fasta_bytes!) {
       setError("An input exceeds its file byte limit. Reduce the input before reviewing."); return
     }
-    const input: OptimizationReviewRequest = { measurements_csv: measurements, parental_fasta: requiredChains === undefined ? null : parentalFasta || null, settings }
+    const input: OptimizationReviewRequest = { measurements_csv: measurements, parental_fasta: mode === "exploration" && requiredChains !== undefined ? parentalFasta || null : null, settings }
     controller.current?.abort()
     controller.current = new AbortController()
     setRowPage(0)
@@ -170,9 +170,9 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
   function submit(replay = false) {
     if (!principal || submitting.current || (replay ? !intent.current : !canSubmit)) return
     const input = mutation.variables?.input
-    if (!intent.current && (!input?.parental_fasta || !data?.review_digest)) return
+    if (!intent.current && (!input || !data?.review_digest || mode === "exploration" && !input.parental_fasta)) return
     const request = intent.current ?? { key: randomUUID(), input: {
-      measurements_csv: input!.measurements_csv, parental_fasta: input!.parental_fasta!, settings: input!.settings,
+      measurements_csv: input!.measurements_csv, parental_fasta: input!.parental_fasta ?? null, settings: input!.settings,
       review_digest: data!.review_digest!, display_name: displayName,
     } }
     intent.current = request
@@ -192,7 +192,7 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
   return <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
     <header className="space-y-3">
       <h1 className="text-3xl font-semibold">Protein sequence optimization</h1>
-      <p className="text-muted-foreground">Review measurements and parental chains before submitting an optimization Job. Review itself does not fit a model or start scientific computation.</p>
+      <p className="text-muted-foreground">Review normalized measurements and design settings before submitting an optimization Job. Only Exploration requires parental chains. Review itself does not fit a model or start scientific computation.</p>
       {sourceJob ? <p className="rounded-lg border bg-muted/30 p-3">Inputs copied from a previous Job. Review the retained measurements and settings before submitting a new Job; the original remains unchanged.</p> : null}
     </header>
     {options.isPending ? <p role="status"><LoaderCircle aria-hidden="true" className="mr-2 inline size-4 animate-spin motion-reduce:animate-none" />Loading optimization options…</p> : null}
@@ -201,17 +201,20 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
     {sourceJob && !inputsLoaded ? retained.error || retained.data && !retained.data.settings ? <div role="alert" className="space-y-3 rounded-xl border p-6"><h2 className="text-xl font-medium">Retained inputs could not be loaded</h2><p>{retained.error?.message ?? "The API did not return the original settings."}</p><Button type="button" variant="outline" onClick={() => void retained.refetch()}>Try again</Button><Link className="ml-4 underline" to={proteinOptimizationPaths.submission}>Start with new inputs</Link></div> : <p role="status">Loading retained inputs…</p> : null}
     {compatible && options.data && inputsLoaded ? <fieldset disabled={submission.isPending} className="space-y-6">
       <label className="block max-w-xl space-y-2"><span className="font-medium">Job name</span><Input value={displayName} placeholder="Protein optimization" maxLength={200} onChange={(event) => { editIntent(); setDisplayName(event.target.value) }} /></label>
-      <ProteinOptimizationInputs measurements={measurements} parentalFasta={parentalFasta} requiredChains={requiredChains} maxMeasurementBytes={options.data.max_measurements_csv_bytes!} maxFastaBytes={options.data.max_parental_fasta_bytes!}
-        disabled={submission.isPending} discoveryAction={requiredChains === undefined ? <Button type="button" disabled={!principal || readPending || pending || ambiguous} onClick={review}>{pending ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{pending ? "Discovering chains…" : "Discover chains"}</Button> : null}
-        onMeasurementsChange={(text) => { invalidate(); setMeasurements(text) }} onParentalFastaChange={(text) => { invalidate(); setParentalFasta(text) }}
-        onReadingChange={(field, active) => { if (active) invalidate(); setReading((current) => ({ ...current, [field]: active })) }} />
-      <Card><CardHeader><CardTitle><h2>3. Design settings</h2></CardTitle></CardHeader><CardContent className="space-y-6 text-base">
-        <ProteinOptimizationMode exploration={mode === "exploration"} onChange={(exploration) => { invalidate(); setMode(exploration ? "exploration" : "combination"); setPositionError("") }} />
+      <ProteinOptimizationInputs measurements={measurements} maxMeasurementBytes={options.data.max_measurements_csv_bytes!}
+        disabled={submission.isPending} onMeasurementsChange={(text) => { invalidate(); setMeasurements(text) }}
+        onReadingChange={(active) => { if (active) invalidate(); setReading((current) => ({ ...current, measurements: active })) }} />
+      <Card><CardHeader><CardTitle><h2>2. Design settings</h2></CardTitle></CardHeader><CardContent className="space-y-6 text-base">
+        <ProteinOptimizationMode exploration={mode === "exploration"} onChange={(exploration) => { invalidate(); setMode(exploration ? "exploration" : "combination"); setReading((current) => ({ ...current, parents: false })); setPositionError("") }} />
+        {mode === "exploration" ? <ProteinOptimizationParents parentalFasta={parentalFasta} requiredChains={requiredChains} maxFastaBytes={options.data.max_parental_fasta_bytes!}
+          disabled={submission.isPending} discoveryAction={requiredChains === undefined ? <Button type="button" disabled={!principal || readPending || pending || ambiguous} onClick={review}>{pending ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{pending ? "Discovering chains…" : "Discover chains"}</Button> : null}
+          onParentalFastaChange={(text) => { invalidate(); setParentalFasta(text) }}
+          onReadingChange={(active) => { if (active) invalidate(); setReading((current) => ({ ...current, parents: active })) }} /> : null}
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2"><label htmlFor="optimization-direction" className="block font-medium">Improvement direction</label><select id="optimization-direction" className="h-9 w-full rounded-lg border bg-background px-2" value={settings?.direction} onChange={(event) => { invalidate(); setDirection(event.target.value === "minimize" ? "minimize" : "maximize") }}><option value="maximize">Higher label is better</option><option value="minimize">Lower label is better</option></select></div>
           {numberInput("max_mutations")}{numberInput("candidate_budget")}
         </div>
-        <p className="text-muted-foreground">Maximum mutations is the total number of substitutions across all parental chains. {mode === "combination" ? "Combination uses only observed substitutions, including measured C/M replacements. It can score many additive combinations cheaply, but enumeration and CSV size still impose limits." : "The evaluation budget limits sampled Exploration candidates. It is not a runtime or cost estimate."}</p>
+        <p className="text-muted-foreground">Maximum mutations is the total number of substitutions across all chain IDs. {mode === "combination" ? "Combination uses only observed substitutions, including measured C/M replacements. It can score many additive combinations cheaply, but enumeration and CSV size still impose limits." : "The evaluation budget limits sampled Exploration candidates. It is not a runtime or cost estimate."}</p>
         {mode === "exploration" ? <details className="rounded-lg border p-4"><summary className="cursor-pointer font-medium">Advanced Exploration settings</summary><div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">{numberInput("max_new_mutations")}{numberInput("seed")}</div>
           <h3 className="text-lg font-medium">Per-position replacements</h3>
@@ -235,7 +238,7 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
         </div></details> : null}
       </CardContent></Card>
       <div className="space-y-3">
-        {requiredChains !== undefined ? <Button type="button" disabled={!principal || readPending || pending || ambiguous} onClick={review}>{pending ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{pending ? "Reviewing inputs…" : "Review inputs"}</Button> : null}
+        {mode === "combination" || requiredChains !== undefined ? <Button type="button" disabled={!principal || readPending || pending || ambiguous} onClick={review}>{pending ? <LoaderCircle aria-hidden="true" className="animate-spin motion-reduce:animate-none" /> : null}{pending ? "Reviewing inputs…" : "Review inputs"}</Button> : null}
         {error ? <p role="alert" className="text-destructive">{error}</p> : null}
         {current && mutation.error ? <p role="alert" className="text-destructive">Review failed. {mutation.error.message} Your inputs are unchanged; retry explicitly.{apiRequestId(mutation.error) ? ` Support ID: ${apiRequestId(mutation.error)}.` : ""}</p> : null}
         {data && !current ? <p role="status">Inputs or settings changed. Review again before submission.</p> : null}

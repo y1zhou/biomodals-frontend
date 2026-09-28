@@ -106,8 +106,13 @@ bun run preview  # preview dist/ locally
 ## Current state
 
 Protein sequence optimization is available at `/tools/protein-optimization`.
-Upload `mutations,label` CSV (optional `id`),
-discover case-sensitive chain IDs, then supply their full parental FASTA.
+Upload `mutations,label` CSV (optional `id`) with already-normalized labels.
+Correct plate/batch effects yourself, for example with
+`log10(mutant KD) - log10(parent KD)` on each plate (lower is better).
+Combination fits table-only additive ridge at observed mutated sites; it
+does not require parental FASTA or reconstruct complete sequences.
+Only Exploration shows parental chains under Design settings: discover
+case-sensitive chain IDs, then supply their full parental FASTA.
 Review retains raw rows and reports invalid labels or reference mismatches;
 corrections and mode/settings edits invalidate the previous review. Combination
 uses measured substitutions; Exploration exposes per-position replacements and
@@ -124,6 +129,10 @@ the shared download; selected CSV uses a short-lived owner-scoped ticket and
 native browser download in scientific order, without buffering CSV in JavaScript.
 The [protein optimization specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/protein-sequence-optimization.md)
 owns the scientific contract and coordinated workflow/API/frontend rollout.
+The form requires review version 2 so table-only Combination cannot be sent
+to an older API. Mode switches retain Exploration's parental draft locally
+but send no parental FASTA in Combination; historical result columns stay
+as published.
 Generic full-chain previews do not invoke antibody numbering or germline analysis.
 
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure

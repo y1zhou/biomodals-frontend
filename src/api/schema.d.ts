@@ -2587,7 +2587,7 @@ export interface components {
             readonly review_digest?: string | null;
             /**
              * Review Version
-             * @default 1
+             * @default 2
              */
             readonly review_version: string;
             /** Rows */
@@ -2599,7 +2599,7 @@ export interface components {
         };
         /**
          * OptimizationReviewRequest
-         * @description Original editable inputs; FASTA may be absent during chain discovery.
+         * @description Original inputs; only Exploration needs FASTA after chain discovery.
          */
         readonly OptimizationReviewRequest: {
             /** Measurements Csv */
@@ -2669,7 +2669,7 @@ export interface components {
             /** Measurements Csv */
             readonly measurements_csv: string;
             /** Parental Fasta */
-            readonly parental_fasta: string;
+            readonly parental_fasta?: string | null;
             /** Review Digest */
             readonly review_digest: string;
             readonly settings?: components["schemas"]["OptimizationSettings"];
@@ -2960,7 +2960,7 @@ export interface components {
             readonly max_total_residues: number;
             /**
              * Review Version
-             * @default 1
+             * @default 2
              */
             readonly review_version: string;
             /** Settings Schema */
@@ -3037,7 +3037,7 @@ export interface components {
             /** Measurements Csv */
             readonly measurements_csv: string;
             /** Parental Fasta */
-            readonly parental_fasta: string;
+            readonly parental_fasta?: string | null;
             readonly settings?: components["schemas"]["OptimizationSettings"];
         };
         /**

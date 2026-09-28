@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { renderToStaticMarkup } from "react-dom/server"
-import ProteinOptimizationInputs, { ProteinOptimizationMode } from "../src/components/ProteinOptimizationInputs"
+import ProteinOptimizationInputs, { ProteinOptimizationMode, ProteinOptimizationParents } from "../src/components/ProteinOptimizationInputs"
 import ProteinSequenceValue from "../src/components/ProteinSequenceValue"
 
 const input = {
@@ -13,13 +13,22 @@ const input = {
   onReadingChange() {},
 }
 
-test("parent entry waits for chain discovery while all original text stays editable", () => {
-  const pending = renderToStaticMarkup(<ProteinOptimizationInputs {...input} requiredChains={undefined} />)
+test("measurement guidance uses normalized mutant labels and keeps original rows editable", () => {
+  const markup = renderToStaticMarkup(<ProteinOptimizationInputs {...input} />)
+  expect(markup).toContain("already-normalized labels")
+  expect(markup).toContain("plate or batch effects")
+  expect(markup).toContain("log10(mutant KD) - log10(parent KD)")
+  expect(markup).toContain("Lower label is better")
+  expect(markup).toContain("variant_1,A:Y52F,-0.3")
+  expect(markup).toContain("&gt;1000")
+  expect(markup).toContain("A:Y52F,B:S30A")
+})
+
+test("Exploration parent entry waits for discovery and preserves full supplied chains", () => {
+  const pending = renderToStaticMarkup(<ProteinOptimizationParents {...input} requiredChains={undefined} />)
   expect(pending).toMatch(/id="optimization-parents"[^>]*disabled=""/)
-  expect(pending).toContain("&gt;1000")
-  expect(pending).toContain("A:Y52F,B:S30A")
   expect(pending).toContain("ACDM")
-  const ready = renderToStaticMarkup(<ProteinOptimizationInputs {...input} requiredChains={["A", "B"]} />)
+  const ready = renderToStaticMarkup(<ProteinOptimizationParents {...input} requiredChains={["A", "B"]} />)
   expect(ready).toContain("Required chain IDs:")
   expect(ready).toContain("<code>A</code>")
   expect(ready).toContain("<code>B</code>")
@@ -28,7 +37,7 @@ test("parent entry waits for chain discovery while all original text stays edita
 })
 
 test("parent-only observations can proceed to explicitly named parental chains", () => {
-  const markup = renderToStaticMarkup(<ProteinOptimizationInputs {...input} requiredChains={[]} />)
+  const markup = renderToStaticMarkup(<ProteinOptimizationParents {...input} requiredChains={[]} />)
   expect(markup).toContain("No mutated chains were found")
   expect(markup.match(/<textarea[^>]*disabled/g) ?? []).toHaveLength(0)
 })
@@ -40,6 +49,7 @@ test("mode chooser checks exactly one mode and explains distinct sampling polici
     expect(markup).toContain("oversized requests are rejected rather than sampled")
     expect(markup).toContain("reproducibly sampled within the evaluation budget")
     expect(markup).toContain("Neither prediction is experimental confirmation")
+    expect(markup).toContain("Table-only additive ridge at observed mutated sites")
   }
 })
 
