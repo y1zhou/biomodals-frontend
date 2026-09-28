@@ -136,6 +136,17 @@ to an older API. Mode switches retain Exploration's parental draft locally
 but send no parental FASTA in Combination; historical result columns stay
 as published.
 Generic full-chain previews do not invoke antibody numbering or germline analysis.
+Held-out validation includes a Canvas scatter of measured labels (X) versus
+held-out predictions (Y), with equal axis scales and a y=x reference line.
+Hover or focus the plot and use arrow keys to inspect mutation identities,
+values and prediction counts, including overlapping points. Measured labels
+are replicate means; repeated held-out predictions are averaged per variant.
+The plot uses retained validation evidence only, never novel candidate scores.
+Up to 10,000 points stay in one Canvas without per-point DOM elements or
+per-hover requests. Historical aggregate-only summaries remain readable with
+an unavailable-plot explanation. Publishing point evidence requires the
+matching protein optimization workflow deployment/pin and API update;
+historical results are not recomputed.
 
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
 prediction`, `Antibody humanization`, `Nanobody humanization`,

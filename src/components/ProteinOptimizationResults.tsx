@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { prepareOptimizationSelectedDownload, proteinOptimizationCandidates, proteinOptimizationOptions } from "@/api/client"
 import { authenticatedPrincipal, useCurrentUser, useExpireSession } from "@/auth-state"
 import ProteinSequenceValue from "@/components/ProteinSequenceValue"
+import ProteinValidationPlot from "@/components/ProteinValidationPlot"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -75,6 +76,7 @@ export default function ProteinOptimizationResults({ jobId }: { jobId: string })
         <dl className="grid gap-3 sm:grid-cols-3">
           {[['Training variants', validation.training_variants], ['Evaluated variants', validation.evaluated_variants], ['Validation folds', validation.folds], ['Mean absolute error', validation.mae], ['Root mean squared error', validation.rmse], ['Spearman correlation', validation.spearman]].map(([label, value]) => <div key={String(label)}><dt className="text-muted-foreground">{label}</dt><dd title={typeof value === "number" ? String(value) : undefined}>{typeof value === "number" ? numberFormat(value) : "Not available"}</dd></div>)}
         </dl>
+        <ProteinValidationPlot points={validation.points ?? []} evaluatedVariants={validation.evaluated_variants} />
         <p>Evaluated mutation counts: {validation.evaluated_mutation_counts.length ? validation.evaluated_mutation_counts.join(", ") : "Not available"}.</p>
         {validation.warnings.map((warning) => <p key={warning} className="rounded bg-muted p-3">{warning}</p>)}
         <p className="text-muted-foreground">Final predictions refit on all usable measured variants after replicate averaging. Validation coverage does not establish higher-order or experimental accuracy.</p>

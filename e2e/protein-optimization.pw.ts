@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { optimizationOptions, optimizationReview } from "../tests/fixtures/protein-optimization"
 import type { OptimizationReviewRequest } from "../src/protein-optimization"
+import type { ValidationPoint } from "../src/protein-validation"
 
 const url = "/tools/protein-optimization/new"
 const csv = "mutations,label\nA:A1V,2"
@@ -269,6 +270,63 @@ for (const direction of ["maximize", "minimize"] as const) test(`default predict
   await expect(header).toHaveAttribute("aria-sort", initial)
 })
 
+test("held-out Canvas uses real evidence coordinates and supports pointer and keyboard inspection at capacity", async ({ page }) => {
+  const { unexpected } = await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  let points: ValidationPoint[] | undefined = [
+    { mutations: "A:A1V,A:C2S", measured_label: -2, predicted_label: -1, prediction_count: 3 },
+    { mutations: "B:D3N", measured_label: -1, predicted_label: -2, prediction_count: 1 },
+  ]
+  let reads = 0
+  await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Held-out evidence", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
+  await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
+    reads++
+    return route.fulfill({ json: { summary: { mode: "combination", direction: "maximize", candidate_count: 1, chain_columns: {}, validation: { regime: "supported_combinations", training_variants: 4, evaluated_variants: points?.length ?? 2, folds: 3, mae: 1, rmse: 1, spearman: null, evaluated_mutation_counts: [1, 2], warnings: [], points } }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }], rows: [{ id: "novel-not-held-out", predicted_label: 100000 }], offset: 0, limit: 50, total_rows: 1 } })
+  })
+  await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
+  const plot = page.getByRole("img", { name: "Held-out validation scatter plot", exact: true })
+  await expect(plot).toBeVisible()
+  // -2 measured / -1 predicted is upper-left, independent of novel candidate scores.
+  const x = 80 + (0.05 / 1.1) * 490, y = 30 + (0.05 / 1.1) * 490
+  await expect.poll(() => plot.evaluate((canvas: HTMLCanvasElement, { x, y }) => {
+    const pixel = canvas.getContext("2d")!.getImageData(Math.round(x * 2), Math.round(y * 2), 1, 1).data
+    return pixel[2]! > pixel[0]! && pixel[2]! > pixel[1]!
+  }, { x, y })).toBe(true)
+  await plot.scrollIntoViewIfNeeded()
+  const bounds = (await plot.boundingBox())!
+  await page.mouse.move(bounds.x + x / 600 * bounds.width, bounds.y + y / 600 * bounds.height)
+  await expect(page.getByText("Variant 1 of 2: A:A1V,A:C2S", { exact: true })).toBeVisible()
+  await expect(page.getByText("Held-out prediction count: 3", { exact: true })).toBeVisible()
+  await plot.focus()
+  await plot.press("End")
+  await expect(page.getByText("Variant 2 of 2: B:D3N", { exact: true })).toBeVisible()
+  await plot.press("Home")
+  await expect(page.getByText("Variant 1 of 2: A:A1V,A:C2S", { exact: true })).toBeVisible()
+  await plot.press("Escape")
+  await expect(page.getByText("Hover or use the keyboard to inspect a held-out variant.", { exact: true })).toBeVisible()
+  expect(reads).toBe(1)
+  for (const count of [1, 10000]) {
+    points = Array.from({ length: count }, (_, index) => ({ mutations: `A:A${index + 1}V`, measured_label: -3, predicted_label: -3, prediction_count: 2 }))
+    await page.reload()
+    await expect(plot).toBeVisible()
+    await plot.focus()
+    await plot.press("End")
+    await expect(page.getByText(`Variant ${count} of ${count}: A:A${count}V`, { exact: true })).toBeVisible()
+    const box = (await plot.boundingBox())!
+    await page.mouse.move(0, 0)
+    await page.mouse.move(box.x + 325 / 600 * box.width, box.y + 275 / 600 * box.height)
+    await expect(page.getByText(`Variant 1 of ${count}: A:A1V`, { exact: true })).toBeVisible()
+    await expect(page.locator("canvas")).toHaveCount(1)
+    await expect(page.locator("tbody tr")).toHaveCount(1)
+  }
+  points = undefined // Historical summary with evaluated variants but no saved pairs.
+  await page.reload()
+  await expect(page.getByText(/Per-variant held-out predictions were not retained/)).toBeVisible()
+  await expect(page.getByText("Mean absolute error", { exact: true })).toBeVisible()
+  expect(reads).toBe(4)
+  expect(unexpected).toEqual([])
+})
+
 test("bounded results retain selection through failed paging, download rejection and reauthentication", async ({ page }) => {
   const { unexpected } = await mockApi(page)
   const jobId = "11111111-1111-4111-8111-111111111111"
@@ -494,20 +552,28 @@ test("native both-mode Jobs retain inputs and deliver bounded candidates and nat
   await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeDisabled()
   expect(submissions).toHaveLength(1)
   await page.getByRole("radio", { name: /^Combination/ }).check()
+  const combinationMeasurements = `${valid}\npair,"A:A1V,A:C2S",-0.55`
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(combinationMeasurements)
   await page.getByRole("button", { name: "Review inputs", exact: true }).click()
   await finish()
-  await expect(page.getByText("1–3 of 3 matching candidates · 3 total.", { exact: true })).toBeVisible()
+  await expect(page.getByText("1–2 of 2 matching candidates · 2 total.", { exact: true })).toBeVisible()
+  const plot = page.getByRole("img", { name: "Held-out validation scatter plot", exact: true })
+  await expect(plot).toBeVisible()
+  await plot.focus()
+  await expect(page.getByText("Variant 1 of 1: A:A1V,A:C2S", { exact: true })).toBeVisible()
+  await expect(page.getByText("Held-out prediction count: 1", { exact: true })).toBeVisible()
+  await expect(page.locator('span[title="-0.55"]')).toHaveText("-0.55")
   await expect(page.getByRole("columnheader", { name: "Predicted label", exact: true })).toBeVisible()
   const scalarColumns = ["id", "mutations", "predicted_label", "n_mutations", "n_new_mutations", "warnings"]
   const comboDownload = page.waitForEvent("download")
   await page.getByRole("button", { name: "Download all candidates", exact: true }).click()
   const comboText = await readFile((await (await comboDownload).path())!, "utf8")
-  expect(comboText.trim().split("\n")).toHaveLength(4)
+  expect(comboText.trim().split("\n")).toHaveLength(3)
   expect(comboText.split("\n")[0]!.trim().split(",")).toEqual(scalarColumns)
-  expect(submissions[1]).toMatchObject({ parental_fasta: null, measurements_csv: valid, settings: { mode: "combination", direction: "minimize" } })
+  expect(submissions[1]).toMatchObject({ parental_fasta: null, measurements_csv: combinationMeasurements, settings: { mode: "combination", direction: "minimize" } })
   expect(submissions).toHaveLength(2)
   await page.getByRole("link", { name: "Rerun with same inputs", exact: true }).click()
-  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(valid)
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(combinationMeasurements)
   await expect(page.getByRole("radio", { name: /^Combination/ })).toBeChecked()
   await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeDisabled()
   expect(submissions).toHaveLength(2)

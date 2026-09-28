@@ -3308,6 +3308,20 @@ export interface components {
             readonly type: string;
         };
         /**
+         * ValidationPoint
+         * @description One unique variant, using only predictions made while it was held out.
+         */
+        readonly ValidationPoint: {
+            /** Measured Label */
+            readonly measured_label: number;
+            /** Mutations */
+            readonly mutations: string;
+            /** Predicted Label */
+            readonly predicted_label: number;
+            /** Prediction Count */
+            readonly prediction_count: number;
+        };
+        /**
          * ValidationSummary
          * @description Compact held-out evidence, never training-fit performance.
          */
@@ -3323,6 +3337,11 @@ export interface components {
             readonly folds: number;
             /** Mae */
             readonly mae?: number | null;
+            /**
+             * Points
+             * @default []
+             */
+            readonly points: readonly components["schemas"]["ValidationPoint"][];
             /** Regime */
             readonly regime: string;
             /** Rmse */
