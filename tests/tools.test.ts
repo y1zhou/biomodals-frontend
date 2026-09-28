@@ -19,7 +19,7 @@ describe("filterToolCatalog", () => {
     expect(
       filterToolCatalog(toolCatalog, "molecular").map((tool) => tool.slug)
     ).toEqual(["gromacs", "alphafold3"])
-    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization", "nanobody-humanization", "antibody-sequence-analysis"])
+    expect(filterToolCatalog(toolCatalog, "sequence").map((tool) => tool.slug)).toEqual(["humanization", "nanobody-humanization", "antibody-sequence-analysis", "protein-optimization"])
   })
 
   test("returns all tools for blank input", () => {
@@ -46,11 +46,12 @@ describe("filterToolCatalog", () => {
       "humanization",
       "nanobody-humanization",
       "antibody-sequence-analysis",
+      "protein-optimization",
     ])
   })
 
   test("keeps immediate analysis out of Job filters", () => {
-    expect(jobTools.map(toolKey)).toEqual(["gromacs", "alphafold3", "humanization", "nanobody_humanization"])
+    expect(jobTools.map(toolKey)).toEqual(["gromacs", "alphafold3", "humanization", "nanobody_humanization", "protein_optimization"])
     expect(toolName("antibody-sequence-analysis")).toBe("Antibody sequence analysis")
   })
 
@@ -62,5 +63,11 @@ describe("filterToolCatalog", () => {
 
   test("keeps catalog tags specific to each tool", () => {
     expect(toolCatalog.flatMap((tool) => tool.tags)).not.toContain("Remote compute")
+  })
+
+  test("maps optimization billing, history and submission through the Tool catalog", () => {
+    expect(toolName("protein_optimization")).toBe("Protein sequence optimization")
+    expect(toolJobPath("protein_optimization", "job-id")).toBe("/tools/protein-optimization/jobs/job-id")
+    expect(toolSubmissionPath("protein_optimization")).toBe("/tools/protein-optimization/new")
   })
 })

@@ -2,6 +2,56 @@ import type { components } from "@/api/schema"
 import type { HumanizationOptions, HumanizationSubmission, HumanizationSelection, SelectionQuery } from "@/humanization"
 import type { AnalysisOptions, AnalysisRequest, AnalysisResponse, SequenceDetail, SequenceRequest } from "@/antibody-analysis"
 import type { NanobodyInputs, NanobodyOptions, NanobodyPreparation, NanobodyPreparationRequest, NanobodySelection, NanobodySubmission } from "@/nanobody-humanization"
+import type { OptimizationOptions, OptimizationReview, OptimizationReviewRequest, OptimizationSubmission, RetainedOptimizationInputs, OptimizationCandidatePage, OptimizationCandidateQuery } from "@/protein-optimization"
+
+export function proteinOptimizationInputs(jobId: string, signal?: AbortSignal) {
+  return requestJson<RetainedOptimizationInputs>(`/api/v1/protein-optimization/jobs/${encodeURIComponent(jobId)}/inputs`, { signal, cache: "no-store" })
+}
+
+export function submitProteinOptimization(input: OptimizationSubmission, key: string) {
+  return requestJson<Job>("/api/v1/protein-optimization/jobs", {
+    method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken(), "Idempotency-Key": key }, body: JSON.stringify(input),
+  })
+}
+
+export async function prepareOptimizationSelectedDownload(jobId: string, ids: readonly string[]) {
+  const path = `/api/v1/protein-optimization/jobs/${encodeURIComponent(jobId)}/prepare-selected-download`
+  const init = { method: "POST", cache: "no-store" as const, headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() }, body: JSON.stringify({ ids }) }
+  try {
+    return await requestJson<components["schemas"]["OptimizationDownloadTicket"]>(path, init)
+  } catch (error) {
+    if (apiErrorCode(error) !== "result_not_cached") throw error
+    await prepareJobDownload(jobId)
+    return requestJson<components["schemas"]["OptimizationDownloadTicket"]>(path, init)
+  }
+}
+
+export async function proteinOptimizationCandidates(jobId: string, query: OptimizationCandidateQuery, signal?: AbortSignal) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== null && value !== "") params.set(key, String(value))
+  const path = `/api/v1/protein-optimization/jobs/${encodeURIComponent(jobId)}/candidates?${params}`
+  try {
+    return await requestJson<OptimizationCandidatePage>(path, { signal, cache: "no-store" })
+  } catch (error) {
+    if (apiErrorCode(error) !== "result_not_cached") throw error
+    signal?.throwIfAborted()
+    await prepareJobDownload(jobId)
+    signal?.throwIfAborted()
+    return requestJson<OptimizationCandidatePage>(path, { signal, cache: "no-store" })
+  }
+}
+
+export function proteinOptimizationOptions(signal?: AbortSignal) {
+  return requestJson<OptimizationOptions>("/api/v1/protein-optimization/options", { signal, cache: "no-store" })
+}
+
+export function reviewProteinOptimization(input: OptimizationReviewRequest, signal?: AbortSignal) {
+  return requestJson<OptimizationReview>("/api/v1/protein-optimization/review", {
+    method: "POST", signal, cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+    body: JSON.stringify(input),
+  })
+}
 
 export function nanobodyOptions(signal?: AbortSignal) {
   return requestJson<NanobodyOptions>("/api/v1/nanobody-humanization/options", { signal, cache: "no-store" })

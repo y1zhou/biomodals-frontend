@@ -1,0 +1,580 @@
+import { expect, test, type Page } from "@playwright/test"
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+import { optimizationOptions, optimizationReview } from "../tests/fixtures/protein-optimization"
+import type { OptimizationReviewRequest } from "../src/protein-optimization"
+import type { ValidationPoint } from "../src/protein-validation"
+
+const url = "/tools/protein-optimization/new"
+const csv = "mutations,label\nA:A1V,2"
+const fasta = ">A\nACDE"
+
+async function mockApi(page: Page) {
+  await page.context().addCookies([{ name: "biomodals-csrf", value: "offline", url: process.env.BIOMODALS_BROWSER_ORIGIN! }])
+  const requests: OptimizationReviewRequest[] = []
+  const unexpected: string[] = []
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path === "/api/v1/auth/me" || path === "/api/v1/auth/login") return route.fulfill({ json: { user_id: "reviewer", display_name: "Researcher", email: "reviewer@example.test", is_admin: false } })
+    if (path === "/api/v1/protein-optimization/options") return route.fulfill({ json: optimizationOptions })
+    if (path === "/api/v1/protein-optimization/review") {
+      const input: OptimizationReviewRequest = route.request().postDataJSON()
+      requests.push(input)
+      expect(route.request().headers()["x-csrf-token"]).toBe("offline")
+      if (input.settings?.mode === "combination") return route.fulfill({ json: { ...optimizationReview, chains: [], positions: [] } })
+      return route.fulfill({ json: input.parental_fasta ? optimizationReview : { ...optimizationReview, chains: [], positions: [], unique_variant_count: null, replicate_rows: null, candidate_space_size: null, evaluation_count: null, warnings: [], review_digest: null } })
+    }
+    unexpected.push(`${route.request().method()} ${path}`)
+    return route.fulfill({ status: 404, json: { detail: "Not found" } })
+  })
+  return { requests, unexpected }
+}
+
+async function discover(page: Page) {
+  await page.goto(url)
+  await page.getByRole("radio", { name: /^Exploration/ }).check()
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(csv)
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeDisabled()
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeEnabled()
+}
+
+test("table-only Combination requires the current review policy and submits only normalized measurements", async ({ page }) => {
+  const { requests, unexpected } = await mockApi(page)
+  let version = "1"
+  await page.route("**/protein-optimization/options", (route) => route.fulfill({ json: { ...optimizationOptions, review_version: version } }))
+  await page.goto(url)
+  await expect(page.getByRole("alert")).toContainText("Update the API before reviewing inputs")
+  version = "2"
+  await page.reload()
+  await expect(page.getByRole("radio", { name: /^Combination/ })).toBeChecked()
+  await expect(page.getByRole("region", { name: "Parental chains", exact: true })).toHaveCount(0)
+  await expect(page.getByText(/Supply already-normalized labels/)).toBeVisible()
+  await expect(page.locator("pre")).toHaveText('id,mutations,label\nvariant_1,A:Y52F,-0.3\nvariant_2,"A:Y52F,B:S30A",-0.6')
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(csv)
+  await page.getByLabel("Improvement direction", { exact: true }).selectOption("minimize")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeEnabled()
+  expect(requests).toEqual([{ measurements_csv: csv, parental_fasta: null, settings: { ...optimizationOptions.defaults!.combination, direction: "minimize" } }])
+  const submissions: unknown[] = []
+  await page.route("**/protein-optimization/jobs", (route) => { submissions.push(route.request().postDataJSON()); return route.fulfill({ status: 409, json: { code: "deployment_incompatible", detail: "Offline deployment guard" } }) })
+  await page.getByRole("button", { name: "Submit optimization", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Offline deployment guard")
+  expect(submissions).toEqual([{ ...requests[0], display_name: "", review_digest: optimizationReview.review_digest }])
+  expect(unexpected).toEqual([])
+})
+
+test("switching to Combination cancels a pending parental file read and preserves the Exploration draft", async ({ page }) => {
+  const { requests } = await mockApi(page)
+  await page.addInitScript(() => {
+    const read = File.prototype.arrayBuffer
+    File.prototype.arrayBuffer = function () {
+      if (this.name !== "delayed.fasta") return read.call(this)
+      return new Promise((resolve) => window.addEventListener("finish-parents", () => resolve(new TextEncoder().encode(">A\nVVVV").buffer), { once: true }))
+    }
+  })
+  await discover(page)
+  const designSettings = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "2. Design settings", exact: true }) })
+  await expect(designSettings.getByRole("region", { name: "Parental chains", exact: true })).toBeVisible()
+  await page.getByLabel("Parental FASTA text", { exact: true }).fill(fasta)
+  await page.getByLabel("Parental FASTA", { exact: true }).setInputFiles({ name: "delayed.fasta", mimeType: "text/plain", buffer: Buffer.from("ignored") })
+  await expect(page.getByText("Reading parental fasta…", { exact: true })).toBeVisible()
+  await page.getByRole("radio", { name: /^Combination/ }).check()
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeEnabled()
+  expect(requests.at(-1)?.parental_fasta).toBeNull()
+  await page.evaluate(async () => { window.dispatchEvent(new Event("finish-parents")); await new Promise(requestAnimationFrame) })
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeEnabled()
+  await page.getByRole("radio", { name: /^Exploration/ }).check()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(fasta)
+})
+
+test("CSV-first review is explicit, lossless and mode-specific", async ({ page }) => {
+  const { requests, unexpected } = await mockApi(page)
+  await page.goto("/")
+  await expect(page.getByRole("link", { name: "Protein sequence optimization", exact: true })).toBeVisible()
+  await discover(page)
+  expect(requests).toHaveLength(1)
+  expect(requests[0]).toEqual({ measurements_csv: csv, parental_fasta: null, settings: optimizationOptions.defaults!.exploration })
+  await page.getByLabel("Parental FASTA text", { exact: true }).fill(fasta)
+  await page.getByRole("radio", { name: /^Exploration/ }).check()
+  await expect(page.getByLabel("Candidate budget", { exact: false })).toHaveValue("5000")
+  await page.getByLabel("Improvement direction", { exact: true }).selectOption("minimize")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
+  await expect(page.getByText("9,007,199,254,740,993", { exact: true })).toBeVisible()
+  await page.getByText("Advanced Exploration settings", { exact: true }).click()
+  await expect(page.getByLabel("Allowed replacements A:1", { exact: true })).toHaveValue("ADEFGHIKLNPQRSTVWY")
+  await page.getByLabel("Allowed replacements A:1", { exact: true }).fill("CM")
+  await expect(page.getByText("Inputs or settings changed. Review again before submission.", { exact: true })).toBeVisible()
+  await page.getByLabel("Chain to extend", { exact: true }).selectOption("A")
+  await page.getByLabel("Position or range", { exact: true }).fill("2-3")
+  await page.getByRole("button", { name: "Add positions", exact: true }).click()
+  await page.getByLabel("Allowed replacements A:2", { exact: true }).fill("")
+  await page.getByRole("button", { name: "Remove position A:3", exact: true }).click()
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect.poll(() => requests.at(-1)?.settings).toMatchObject({ direction: "minimize", positions: [{ chain_id: "A", position: 1, amino_acids: "CM" }, { chain_id: "A", position: 2, amino_acids: "" }] })
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
+  await page.getByRole("radio", { name: /^Combination/ }).check()
+  await expect(page.getByLabel("Candidate budget", { exact: false })).toHaveValue("1000000")
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(csv)
+  await expect(page.getByRole("region", { name: "Parental chains", exact: true })).toHaveCount(0)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect.poll(() => requests.at(-1)?.settings).toMatchObject({ mode: "combination", positions: null, direction: "minimize" })
+  expect(requests.at(-1)?.parental_fasta).toBeNull()
+  await page.getByRole("radio", { name: /^Exploration/ }).check()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(fasta)
+  await page.getByText("Advanced Exploration settings", { exact: true }).click()
+  await expect(page.getByLabel("Allowed replacements A:1", { exact: true })).toHaveValue("CM")
+  expect(unexpected).toEqual([])
+})
+
+test("edits cancel late review and file reads, and failed review only retries explicitly", async ({ page }) => {
+  const { requests, unexpected } = await mockApi(page)
+  await page.addInitScript(() => {
+    const read = File.prototype.arrayBuffer
+    File.prototype.arrayBuffer = function () {
+      if (this.name !== "delayed.csv") return read.call(this)
+      return new Promise((resolve) => window.addEventListener("finish-csv", () => resolve(new TextEncoder().encode("mutations,label\nB:M1A,9").buffer), { once: true }))
+    }
+  })
+  await discover(page)
+  await page.getByLabel("Measurements CSV", { exact: true }).setInputFiles({ name: "delayed.csv", mimeType: "text/csv", buffer: Buffer.from("ignored") })
+  await expect(page.getByText("Reading measurements csv…", { exact: true })).toBeVisible()
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(`${csv}\nA:C2S,3`)
+  await page.evaluate(async () => { window.dispatchEvent(new Event("finish-csv")); await new Promise(requestAnimationFrame) })
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(`${csv}\nA:C2S,3`)
+  let release!: () => void
+  const held = new Promise<void>((resolve) => { release = resolve })
+  await page.route("**/protein-optimization/review", async (route) => {
+    await held
+    await route.fulfill({ json: optimizationReview }).catch(() => {})
+  }, { times: 1 })
+  const sent = page.waitForRequest("**/protein-optimization/review")
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await sent
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill("mutations,label\nC:D1S,4")
+  release()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeDisabled()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toHaveCount(0)
+  let failed = 0
+  await page.route("**/protein-optimization/review", (route) => { failed++; return route.fulfill({ status: 503, json: { detail: "Service unavailable" } }) })
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Your inputs are unchanged; retry explicitly")
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue("mutations,label\nC:D1S,4")
+  expect(failed).toBe(1)
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await expect.poll(() => failed).toBe(2)
+  expect(requests).toHaveLength(1)
+  expect(unexpected).toEqual([])
+})
+
+test("row diagnostics retain raw invalid labels and pagination; byte and numeric limits stop review", async ({ page }) => {
+  const { requests } = await mockApi(page)
+  await page.route("**/protein-optimization/options", (route) => route.fulfill({ json: { ...optimizationOptions, max_measurements_csv_bytes: 100, max_parental_fasta_bytes: 50 } }))
+  await page.route("**/protein-optimization/review", (route) => route.fulfill({ json: { ...optimizationReview, review_digest: null, rows: Array.from({ length: 51 }, (_, row_index) => ({ row_index, id: `row_${row_index + 1}`, mutations: "A:A1V", label: row_index === 50 ? ">1000" : "2", canonical_mutations: "A:A1V" })), errors: [{ row_index: 50, field: "label", code: "invalid_label", message: "Use a finite numeric label, not a bound." }] } }))
+  await discover(page)
+  await page.getByRole("button", { name: "Next measurement page", exact: true }).click()
+  await expect(page.getByRole("row").filter({ hasText: "row_51" })).toContainText(">1000")
+  await expect(page.getByRole("row").filter({ hasText: "row_51" })).toContainText("Use a finite numeric label, not a bound.")
+  await page.getByLabel("Candidate budget", { exact: false }).fill("1.5")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Use whole numbers")
+  await page.getByLabel("Candidate budget", { exact: false }).fill("100")
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill("A".repeat(101))
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("file byte limit")
+  expect(requests).toEqual([])
+})
+
+test("admission rejection preserves review; ambiguous submission replays unchanged and edits make a new intent", async ({ page }) => {
+  await mockApi(page)
+  const submits: { key: string; body: unknown }[] = []
+  let response = { status: 409, json: { code: "deployment_incompatible", detail: "Update the deployment" } }
+  await page.route("**/protein-optimization/jobs", (route) => {
+    submits.push({ key: route.request().headers()["idempotency-key"]!, body: route.request().postDataJSON() })
+    return route.fulfill(response)
+  })
+  await discover(page)
+  await page.getByLabel("Parental FASTA text", { exact: true }).fill(fasta)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  const submit = page.getByRole("button", { name: "Submit optimization", exact: true })
+  await submit.click()
+  await expect(page.getByRole("alert")).toContainText("Update the deployment")
+  await expect(submit).toBeEnabled()
+  expect(submits).toHaveLength(1)
+  response = { status: 503, json: { code: "unavailable", detail: "Unknown server failure" } }
+  await submit.click()
+  await expect(page.getByRole("button", { name: "Check submission", exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Check submission", exact: true }).click()
+  await expect.poll(() => submits.length).toBe(3)
+  expect(submits[1]).toEqual(submits[0])
+  expect(submits[2]).toEqual(submits[0])
+  await page.getByLabel("Job name", { exact: true }).fill("New intent")
+  await expect(page.getByText(/An earlier submission was not confirmed/)).toBeVisible()
+  response = { status: 409, json: { code: "review_changed", detail: "Review again" } }
+  await submit.click()
+  await expect(submit).toBeDisabled()
+  expect(submits[3]!.key).not.toBe(submits[0]!.key)
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(csv)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(submit).toBeEnabled()
+  response = { status: 422, json: { code: "invalid_design", detail: "Design rejected before admission" } }
+  await submit.click()
+  await expect(page.getByText(/Design rejected before admission/)).toBeVisible()
+  await expect(submit).toBeEnabled()
+  expect(submits).toHaveLength(5)
+  response = { status: 409, json: { code: "job_deleted", detail: "The original Job was deleted" } }
+  await submit.click()
+  await expect(page.getByText(/The original Job was deleted/)).toBeVisible()
+  expect(submits[5]).toEqual(submits[4])
+})
+
+for (const direction of ["maximize", "minimize"] as const) test(`default predicted-label sort follows ${direction} without another initial request`, async ({ page }) => {
+  await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  const queries: URLSearchParams[] = []
+  await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Default ordering", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
+  await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
+    const params = new URL(route.request().url()).searchParams
+    queries.push(params)
+    const offset = Number(params.get("offset"))
+    const limit = Number(params.get("limit"))
+    return route.fulfill({ json: { summary: { mode: "combination", direction, candidate_count: 51, chain_columns: {}, validation: null }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }], rows: [{ id: `server_order_${offset}`, predicted_label: 1 }], offset, limit, total_rows: 51 } })
+  })
+  await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
+  const header = page.getByRole("columnheader", { name: "Predicted label", exact: true })
+  const initial = direction === "maximize" ? "descending" : "ascending"
+  const flipped = direction === "maximize" ? "ascending" : "descending"
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  await expect(header.locator(direction === "maximize" ? ".lucide-arrow-down" : ".lucide-arrow-up")).toBeVisible()
+  await expect(page.getByText("server_order_0", { exact: true })).toBeVisible()
+  expect(queries.map((params) => Object.fromEntries(params))).toEqual([{ offset: "0", limit: "50" }])
+  await page.getByRole("button", { name: "Next candidate page", exact: true }).click()
+  await expect(page.getByText("server_order_50", { exact: true })).toBeVisible()
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  expect(Object.fromEntries(queries.at(-1)!)).toEqual({ offset: "50", limit: "50" })
+  await header.getByRole("button").click()
+  await expect(page.getByText(`Sorted by Predicted label (${flipped}).`, { exact: true })).toBeVisible()
+  await expect(header).toHaveAttribute("aria-sort", flipped)
+  expect(Object.fromEntries(queries.at(-1)!)).toEqual({ offset: "0", limit: "50", sort_by: "predicted_label", descending: String(direction !== "maximize") })
+  await header.getByRole("button").click()
+  await expect(page.getByText(`Sorted by Predicted label (${initial}).`, { exact: true })).toBeVisible()
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  await page.getByRole("button", { name: "Candidate ID", exact: true }).click()
+  await expect(page.getByRole("columnheader", { name: "Candidate ID", exact: true })).toHaveAttribute("aria-sort", "ascending")
+  await page.getByRole("button", { name: "Restore default order", exact: true }).click()
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  await page.getByLabel("Rows per page", { exact: true }).selectOption("25")
+  await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ offset: "0", limit: "25" })
+  await expect(header).toHaveAttribute("aria-sort", initial)
+})
+
+test("held-out Canvas uses real evidence coordinates and supports pointer and keyboard inspection at capacity", async ({ page }) => {
+  const { unexpected } = await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  let points: ValidationPoint[] | undefined = [
+    { mutations: "A:A1V,A:C2S", measured_label: -2, predicted_label: -1, prediction_count: 3 },
+    { mutations: "B:D3N", measured_label: -1, predicted_label: -2, prediction_count: 1 },
+  ]
+  let reads = 0
+  await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Held-out evidence", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
+  await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
+    reads++
+    return route.fulfill({ json: { summary: { mode: "combination", direction: "maximize", candidate_count: 1, chain_columns: {}, validation: { regime: "supported_combinations", training_variants: 4, evaluated_variants: points?.length ?? 2, folds: 3, mae: 1, rmse: 1, spearman: null, evaluated_mutation_counts: [1, 2], warnings: [], points } }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }], rows: [{ id: "novel-not-held-out", predicted_label: 100000 }], offset: 0, limit: 50, total_rows: 1 } })
+  })
+  await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
+  const plot = page.getByRole("img", { name: "Held-out validation scatter plot", exact: true })
+  await expect(plot).toBeVisible()
+  // -2 measured / -1 predicted is upper-left, independent of novel candidate scores.
+  const x = 80 + (0.05 / 1.1) * 490, y = 30 + (0.05 / 1.1) * 490
+  await expect.poll(() => plot.evaluate((canvas: HTMLCanvasElement, { x, y }) => {
+    const pixel = canvas.getContext("2d")!.getImageData(Math.round(x * 2), Math.round(y * 2), 1, 1).data
+    return pixel[2]! > pixel[0]! && pixel[2]! > pixel[1]!
+  }, { x, y })).toBe(true)
+  await plot.scrollIntoViewIfNeeded()
+  const bounds = (await plot.boundingBox())!
+  await page.mouse.move(bounds.x + x / 600 * bounds.width, bounds.y + y / 600 * bounds.height)
+  await expect(page.getByText("Variant 1 of 2: A:A1V,A:C2S", { exact: true })).toBeVisible()
+  await expect(page.getByText("Held-out prediction count: 3", { exact: true })).toBeVisible()
+  await plot.focus()
+  await plot.press("End")
+  await expect(page.getByText("Variant 2 of 2: B:D3N", { exact: true })).toBeVisible()
+  await plot.press("Home")
+  await expect(page.getByText("Variant 1 of 2: A:A1V,A:C2S", { exact: true })).toBeVisible()
+  await plot.press("Escape")
+  await expect(page.getByText("Hover or use the keyboard to inspect a held-out variant.", { exact: true })).toBeVisible()
+  expect(reads).toBe(1)
+  for (const count of [1, 10000]) {
+    points = Array.from({ length: count }, (_, index) => ({ mutations: `A:A${index + 1}V`, measured_label: -3, predicted_label: -3, prediction_count: 2 }))
+    await page.reload()
+    await expect(plot).toBeVisible()
+    await plot.focus()
+    await plot.press("End")
+    await expect(page.getByText(`Variant ${count} of ${count}: A:A${count}V`, { exact: true })).toBeVisible()
+    const box = (await plot.boundingBox())!
+    await page.mouse.move(0, 0)
+    await page.mouse.move(box.x + 325 / 600 * box.width, box.y + 275 / 600 * box.height)
+    await expect(page.getByText(`Variant 1 of ${count}: A:A1V`, { exact: true })).toBeVisible()
+    await expect(page.locator("canvas")).toHaveCount(1)
+    await expect(page.locator("tbody tr")).toHaveCount(1)
+  }
+  points = undefined // Historical summary with evaluated variants but no saved pairs.
+  await page.reload()
+  await expect(page.getByText(/Per-variant held-out predictions were not retained/)).toBeVisible()
+  await expect(page.getByText("Mean absolute error", { exact: true })).toBeVisible()
+  expect(reads).toBe(4)
+  expect(unexpected).toEqual([])
+})
+
+test("bounded results retain selection through failed paging, download rejection and reauthentication", async ({ page }) => {
+  const { unexpected } = await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  let reads = 0, restores = 0, tickets = 0
+  let pageFailure = false
+  let ticketStatus: "invalid" | "expired" | "ready" = "invalid"
+  const selected: unknown[] = []
+  await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Bounded result", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
+  await page.route(`**/api/v1/jobs/${jobId}/prepare-download`, (route) => { restores++; return route.fulfill({ status: 204, body: "" }) })
+  await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
+    reads++
+    if (pageFailure) return route.fulfill({ status: 503, json: { detail: "Candidate page temporarily unavailable" } })
+    if (reads === 1) return route.fulfill({ status: 409, json: { code: "result_not_cached", detail: "Restore result" } })
+    expect(new URL(route.request().url()).searchParams.get("limit")).toBe("50")
+    return route.fulfill({ json: { summary: { mode: "combination", direction: "minimize", candidate_count: 1, chain_columns: { A: "sequence_A" }, validation: { regime: "supported_combinations", training_variants: 3, evaluated_variants: 0, folds: 0, mae: null, rmse: null, spearman: null, evaluated_mutation_counts: [], warnings: ["Insufficient held-out support"] } }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }, { name: "sequence_A", type: "string" }], rows: [{ id: "candidate_000000001", predicted_label: -0.000000123456, sequence_A: "VCDE" }], offset: 0, limit: 50, total_rows: 1 } })
+  })
+  await page.route(`**/protein-optimization/jobs/${jobId}/prepare-selected-download`, (route) => {
+    tickets++; selected.push(route.request().postDataJSON())
+    if (ticketStatus === "expired") return route.fulfill({ status: 401, json: { detail: "Session expired" } })
+    if (ticketStatus === "ready") return route.fulfill({ json: { download_url: `/api/v1/protein-optimization/jobs/${jobId}/candidates.csv?ticket=offline`, expires_at: "2026-09-28T01:00:00Z" } })
+    return route.fulfill({ status: 422, json: { code: "selection_invalid", detail: "Selection cannot be prepared" } })
+  })
+  await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
+  await expect(page.getByText("-1.235e-7", { exact: true })).toBeVisible()
+  await expect(page.getByText("Original scientific order: predicted label, lower first.", { exact: true })).toBeVisible()
+  await expect(page.getByText("Insufficient held-out support", { exact: true })).toBeVisible()
+  expect(restores).toBe(1)
+  expect(reads).toBe(2)
+  await page.getByRole("checkbox", { name: "Select candidate_000000001", exact: true }).check()
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Your selection is unchanged")
+  expect(tickets).toBe(1)
+  await expect(page.getByRole("checkbox", { name: "Select candidate_000000001", exact: true })).toBeChecked()
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  await expect.poll(() => tickets).toBe(2)
+  expect(selected).toEqual([{ ids: ["candidate_000000001"] }, { ids: ["candidate_000000001"] }])
+  pageFailure = true
+  await page.getByRole("button", { name: "Predicted label", exact: true }).click()
+  await expect(page.getByText(/Candidates could not be loaded/)).toContainText("Candidate page temporarily unavailable")
+  ticketStatus = "expired"
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Sign in again", exact: true })
+  await expect(dialog).toBeVisible()
+  pageFailure = false
+  ticketStatus = "ready"
+  await dialog.getByLabel("Email", { exact: true }).fill("reviewer@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("offline-password")
+  await dialog.getByRole("button", { name: "Sign in and return", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByText("1 candidates selected across pages and filters.", { exact: true })).toBeVisible()
+  await expect(page.getByRole("checkbox", { name: "Select candidate_000000001", exact: true })).toBeChecked()
+  expect(tickets).toBe(3)
+  const download = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  const requested = await download
+  expect(requested.url()).toBe(`${process.env.BIOMODALS_BROWSER_ORIGIN}/api/v1/protein-optimization/jobs/${jobId}/candidates.csv?ticket=offline`)
+  await requested.cancel() // Byte delivery is covered by the real-API test below.
+  expect(selected).toEqual(Array.from({ length: 4 }, () => ({ ids: ["candidate_000000001"] })))
+  expect(unexpected).toEqual([])
+})
+
+test("an options failure cannot mask expired retained-input authentication and reauth preserves edits", async ({ page }) => {
+  const { requests, unexpected } = await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  let optionsReads = 0
+  await page.route("**/protein-optimization/options", (route) => {
+    optionsReads++
+    return optionsReads === 1 ? route.fulfill({ status: 503, json: { detail: "Options temporarily unavailable" } }) : route.fulfill({ json: optimizationOptions })
+  })
+  let release!: () => void
+  const held = new Promise<void>((resolve) => { release = resolve })
+  let retainedReads = 0
+  await page.route(`**/protein-optimization/jobs/${jobId}/inputs`, async (route) => {
+    retainedReads++
+    if (retainedReads === 1) { await held; return route.fulfill({ status: 401, json: { detail: "Session expired" } }) }
+    return route.fulfill({ json: { display_name: "Retained", measurements_csv: csv, parental_fasta: fasta, settings: optimizationOptions.defaults!.exploration } })
+  })
+  let reviews = 0
+  await page.route("**/protein-optimization/review", (route) => {
+    reviews++
+    if (reviews === 1) return route.fulfill({ status: 401, json: { detail: "Session expired" } })
+    return route.fallback()
+  })
+  await page.goto(`${url}?source_job=${jobId}`)
+  await expect(page.getByRole("alert")).toContainText("Options temporarily unavailable")
+  release()
+  const dialog = page.getByRole("dialog", { name: "Sign in again", exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel("Email", { exact: true }).fill("reviewer@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("offline-password")
+  await dialog.getByRole("button", { name: "Sign in and return", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(csv)
+  expect(reviews).toBe(0)
+  const edited = `${csv}\nA:C2S,3`
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(edited)
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await dialog.getByLabel("Email", { exact: true }).fill("reviewer@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("offline-password")
+  await dialog.getByRole("button", { name: "Sign in and return", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(edited)
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(fasta)
+  expect(reviews).toBe(1)
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeEnabled()
+  expect(requests.at(-1)?.measurements_csv).toBe(edited)
+  expect(unexpected).toEqual([])
+})
+
+test("native both-mode Jobs retain inputs and deliver bounded candidates and native selected CSV", async ({ page, context }) => {
+  test.setTimeout(90_000)
+  const statsPath = path.join(process.env.BIOMODALS_BROWSER_ROOT!, "stats.json")
+  const before = JSON.parse(await readFile(statsPath, "utf8"))
+  await page.goto(before.protein_optimization_password_link)
+  await page.getByLabel("New password", { exact: true }).fill("correct horse battery staple")
+  await page.getByLabel("Confirm password", { exact: true }).fill("correct horse battery staple")
+  await page.getByRole("button", { name: "Set password", exact: true }).click()
+  await expect(page).toHaveURL(process.env.BIOMODALS_BROWSER_ORIGIN + "/")
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  const reviews: OptimizationReviewRequest[] = []
+  page.on("request", (request) => { if (request.url().endsWith("/protein-optimization/review")) reviews.push(request.postDataJSON()) })
+  const valid = "id,mutations,label\none,A:A1V,-0.2\none_repeat,A:A1V,-0.22\ntwo,A:C2S,-0.3\nthree,A:D3N,-0.4"
+  await page.goto(url)
+  await page.getByLabel("Measurements CSV", { exact: true }).setInputFiles({ name: "measurements.csv", mimeType: "text/csv", buffer: Buffer.from(valid.replace("-0.22", ">1000")) })
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(valid.replace("-0.22", ">1000"))
+  expect(reviews).toHaveLength(0)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Correct 1 input issue")
+  await expect(page.getByRole("row").filter({ hasText: "one_repeat" })).toContainText(">1000")
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(valid)
+  await page.getByLabel("Improvement direction", { exact: true }).selectOption("minimize")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
+  const summary = page.getByRole("region", { name: "Input review", exact: true })
+  await expect(summary.locator("dl")).toContainText("Unique measured variants3")
+  await expect(summary.locator("dl")).toContainText("Additional replicate rows1")
+  await expect(summary.locator("dl")).toContainText("Novel candidate space3")
+  await expect(page.getByRole("region", { name: "Parental chains", exact: true })).toHaveCount(0)
+  expect(reviews.at(-1)?.parental_fasta).toBeNull()
+  await page.getByRole("radio", { name: /^Exploration/ }).check()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeEnabled()
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeDisabled()
+  await page.getByLabel("Parental FASTA", { exact: true }).setInputFiles({ name: "parents.fasta", mimeType: "text/plain", buffer: Buffer.from(">A\nac de\n>B\nMKTV") })
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(">A\nac de\n>B\nMKTV")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
+  await page.getByLabel("Show full sequence for chain B", { exact: true }).click()
+  await page.getByRole("button", { name: "Copy sequence for chain B", exact: true }).click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("MKTV")
+  await page.getByText("Advanced Exploration settings", { exact: true }).click()
+  await expect(page.getByLabel("Allowed replacements A:1", { exact: true })).toHaveValue("ADEFGHIKLNPQRSTVWY")
+  await page.getByLabel("Allowed replacements A:1", { exact: true }).fill("CM")
+  await page.getByLabel("Chain to extend", { exact: true }).selectOption("B")
+  await page.getByLabel("Position or range", { exact: true }).fill("1-2")
+  await page.getByRole("button", { name: "Add positions", exact: true }).click()
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
+  expect(reviews.at(-1)?.settings).toMatchObject({ mode: "exploration", candidate_budget: 5000, positions: [
+    { chain_id: "A", position: 1, amino_acids: "CM" },
+    { chain_id: "A", position: 2, amino_acids: "ADEFGHIKLNPQRSTVWY" },
+    { chain_id: "A", position: 3, amino_acids: "ADEFGHIKLNPQRSTVWY" },
+    { chain_id: "B", position: 1, amino_acids: "ADEFGHIKLNPQRSTVWY" },
+    { chain_id: "B", position: 2, amino_acids: "ADEFGHIKLNPQRSTVWY" },
+  ] })
+  const after = JSON.parse(await readFile(statsPath, "utf8"))
+  expect(after.submit_calls).toBe(before.submit_calls)
+  expect(after.provider_calls).toBe(before.provider_calls)
+  const submissions: unknown[] = []
+  const queries: URL[] = []
+  const tickets: { ids: string[] }[] = []
+  page.on("request", (request) => {
+    const target = new URL(request.url())
+    if (target.pathname === "/api/v1/protein-optimization/jobs" && request.method() === "POST") submissions.push(request.postDataJSON())
+    if (target.pathname.endsWith("/candidates")) queries.push(target)
+    if (target.pathname.endsWith("/prepare-selected-download")) tickets.push(request.postDataJSON())
+  })
+  async function finish() {
+    await page.getByRole("button", { name: "Submit optimization", exact: true }).click()
+    await expect(page).toHaveURL(/\/tools\/protein-optimization\/jobs\//)
+    await expect(async () => {
+      if (await page.getByRole("heading", { name: "Protein optimization candidates", exact: true }).isVisible()) return
+      await page.getByRole("button", { name: "Refresh", exact: true }).click()
+      await expect(page.getByRole("heading", { name: "Protein optimization candidates", exact: true })).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 20_000, intervals: [1000] })
+  }
+  await page.getByLabel("Candidate budget", { exact: false }).fill("61")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await finish()
+  await expect(page.getByText("Offline fixture has no native neural validation", { exact: true })).toBeVisible()
+  expect(queries[0]!.searchParams.get("limit")).toBe("50")
+  const first = page.getByRole("checkbox", { name: /^Select candidate_/ }).first()
+  const firstId = (await first.getAttribute("aria-label"))!.replace("Select ", "")
+  await first.check()
+  await page.getByRole("button", { name: "Next candidate page", exact: true }).click()
+  await expect(page.getByLabel("Candidate page", { exact: true })).toHaveValue("2")
+  const second = page.getByRole("checkbox", { name: /^Select candidate_/ }).first()
+  const secondId = (await second.getAttribute("aria-label"))!.replace("Select ", "")
+  await second.check()
+  await page.getByRole("button", { name: "Predicted label", exact: true }).click()
+  await expect(page.getByText("Sorted by Predicted label (descending).", { exact: true })).toBeVisible()
+  await expect(page.getByText("2 candidates selected across pages and filters.", { exact: true })).toBeVisible()
+  await page.getByLabel("Exact new-substitution count", { exact: true }).fill("0")
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click()
+  await expect.poll(() => queries.at(-1)!.searchParams.get("n_new_mutations")).toBe("0")
+  const selectedDownload = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  const selectedText = await readFile((await (await selectedDownload).path())!, "utf8")
+  expect(tickets).toEqual([{ ids: [firstId, secondId] }])
+  expect(selectedText).toContain(firstId)
+  expect(selectedText).toContain(secondId)
+  expect(selectedText.trim().split("\n")).toHaveLength(3)
+  const fullDownload = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download all candidates", exact: true }).click()
+  const fullText = await readFile((await (await fullDownload).path())!, "utf8")
+  expect(fullText.trim().split("\n")).toHaveLength(62)
+  expect(fullText.indexOf(firstId)).toBeLessThan(fullText.indexOf(secondId))
+  expect(selectedText.indexOf(firstId)).toBeLessThan(selectedText.indexOf(secondId))
+  await page.getByRole("link", { name: "Rerun with same inputs", exact: true }).click()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(valid)
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(">A\nac de\n>B\nMKTV")
+  await expect(page.getByLabel("Candidate budget", { exact: false })).toHaveValue("61")
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeDisabled()
+  expect(submissions).toHaveLength(1)
+  await page.getByRole("radio", { name: /^Combination/ }).check()
+  const combinationMeasurements = `${valid}\npair,"A:A1V,A:C2S",-0.55`
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(combinationMeasurements)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await finish()
+  await expect(page.getByText("1–2 of 2 matching candidates · 2 total.", { exact: true })).toBeVisible()
+  const plot = page.getByRole("img", { name: "Held-out validation scatter plot", exact: true })
+  await expect(plot).toBeVisible()
+  await plot.focus()
+  await expect(page.getByText("Variant 1 of 1: A:A1V,A:C2S", { exact: true })).toBeVisible()
+  await expect(page.getByText("Held-out prediction count: 1", { exact: true })).toBeVisible()
+  await expect(page.locator('span[title="-0.55"]')).toHaveText("-0.55")
+  await expect(page.getByRole("columnheader", { name: "Predicted label", exact: true })).toBeVisible()
+  const scalarColumns = ["id", "mutations", "predicted_label", "n_mutations", "n_new_mutations", "warnings"]
+  const comboDownload = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download all candidates", exact: true }).click()
+  const comboText = await readFile((await (await comboDownload).path())!, "utf8")
+  expect(comboText.trim().split("\n")).toHaveLength(3)
+  expect(comboText.split("\n")[0]!.trim().split(",")).toEqual(scalarColumns)
+  expect(submissions[1]).toMatchObject({ parental_fasta: null, measurements_csv: combinationMeasurements, settings: { mode: "combination", direction: "minimize" } })
+  expect(submissions).toHaveLength(2)
+  await page.getByRole("link", { name: "Rerun with same inputs", exact: true }).click()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(combinationMeasurements)
+  await expect(page.getByRole("radio", { name: /^Combination/ })).toBeChecked()
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeDisabled()
+  expect(submissions).toHaveLength(2)
+})

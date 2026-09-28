@@ -21,6 +21,7 @@ import {
   gromacsPaths,
   humanizationPaths,
   nanobodyPaths,
+  proteinOptimizationPaths,
   toolCatalog,
   toolOverviewPath,
 } from "@/tools"
@@ -37,6 +38,8 @@ const HumanizationSubmissionPage = lazy(() => import("@/pages/HumanizationSubmis
 const NanobodySubmissionPage = lazy(() => import("@/pages/NanobodySubmissionPage"))
 const NanobodyOverviewPage = lazy(() => import("@/pages/NanobodyOverviewPage"))
 const AntibodyAnalysisPage = lazy(() => import("@/pages/AntibodyAnalysisPage"))
+const ProteinOptimizationPage = lazy(() => import("@/pages/ProteinOptimizationPage"))
+const ProteinOptimizationOverviewPage = lazy(() => import("@/pages/ProteinOptimizationOverviewPage"))
 const JobsPage = lazy(() => import("@/pages/JobsPage"))
 const AdminLayout = lazy(() => import("@/pages/admin/AdminLayout"))
 const ModalAdminPage = lazy(() => import("@/pages/admin/ModalAdminPage"))
@@ -211,9 +214,12 @@ export default function App() {
           <Route element={<AlphaFold3OverviewPage />} path={alphafold3Paths.overview} />
           <Route element={<HumanizationOverviewPage />} path={humanizationPaths.overview} />
           <Route element={<NanobodyOverviewPage />} path={nanobodyPaths.overview} />
+          <Route element={<ProteinOptimizationOverviewPage />} path={proteinOptimizationPaths.overview} />
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
+            <Route element={<ProteinOptimizationPage />} path={proteinOptimizationPaths.submission} />
+            <Route element={<JobDetailPage tool="protein_optimization" />} path={proteinOptimizationPaths.jobRoute} />
             <Route element={<AntibodyAnalysisPage />} path={antibodyAnalysisPath} />
             <Route element={<JobsPage />} path="/jobs" />
             <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />

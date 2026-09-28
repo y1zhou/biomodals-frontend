@@ -1,4 +1,4 @@
-import { Atom, Dna, ScanText, UserRoundArrowLeft, type LucideIcon } from "lucide-react"
+import { Atom, Dna, FlaskConical, ScanText, UserRoundArrowLeft, type LucideIcon } from "lucide-react"
 
 interface ToolCatalogEntryBase {
   slug: string
@@ -84,6 +84,23 @@ export const nanobodyPaths = {
 
 export const toolKey = (tool: AvailableTool) => tool.apiKey ?? tool.slug
 
+export const proteinOptimizationTool = {
+  slug: "protein-optimization", apiKey: "protein_optimization",
+  name: "Protein sequence optimization",
+  description: "Use experimental measurements to predict novel mutation combinations or explore new protein substitutions.",
+  tags: ["Protein", "Sequence", "Experimental measurements"], icon: FlaskConical,
+  status: "available", createsJobs: true,
+} satisfies AvailableTool
+
+const proteinOptimizationOverview = toolOverviewPath(proteinOptimizationTool)
+export const proteinOptimizationPaths = {
+  overview: proteinOptimizationOverview,
+  submission: `${proteinOptimizationOverview}/new`,
+  rerun: (jobId: string) => `${proteinOptimizationOverview}/new?source_job=${encodeURIComponent(jobId)}`,
+  jobRoute: `${proteinOptimizationOverview}/jobs/:jobId`,
+  job: (jobId: string) => `${proteinOptimizationOverview}/jobs/${encodeURIComponent(jobId)}`,
+}
+
 const humanizationOverviewPath = toolOverviewPath(humanizationTool)
 export const humanizationPaths = {
   rerun: (jobId: string) => `/tools/humanization/new?source_job=${encodeURIComponent(jobId)}`,
@@ -118,6 +135,7 @@ export const alphafold3Paths = {
 }
 
 export function toolJobPath(tool: string, jobId: string) {
+  if (tool === "protein_optimization") return proteinOptimizationPaths.job(jobId)
   if (tool === "nanobody_humanization") return nanobodyPaths.job(jobId)
   if (tool === "humanization") return humanizationPaths.job(jobId)
   if (tool === "gromacs") return gromacsPaths.job(jobId)
@@ -126,6 +144,7 @@ export function toolJobPath(tool: string, jobId: string) {
 }
 
 export function toolSubmissionPath(tool: string) {
+  if (tool === "protein_optimization") return proteinOptimizationPaths.submission
   if (tool === "nanobody_humanization") return nanobodyPaths.submission
   if (tool === "humanization") return humanizationPaths.submission
   if (tool === "gromacs") return gromacsPaths.submission
@@ -133,7 +152,7 @@ export function toolSubmissionPath(tool: string) {
   return "/"
 }
 
-export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool, humanizationTool, nanobodyTool, antibodyAnalysisTool]
+export const toolCatalog: ToolCatalogEntry[] = [gromacsTool, alphafold3Tool, humanizationTool, nanobodyTool, antibodyAnalysisTool, proteinOptimizationTool]
 
 export const availableTools = toolCatalog.filter(
   (entry): entry is AvailableTool => entry.status === "available"

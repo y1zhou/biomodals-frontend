@@ -105,8 +105,52 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
+Protein sequence optimization is available at `/tools/protein-optimization`.
+Upload `mutations,label` CSV (optional `id`) with already-normalized labels.
+Correct plate/batch effects yourself, for example with
+`log10(mutant KD) - log10(parent KD)` on each plate (lower is better).
+Combination fits table-only additive ridge at observed mutated sites; it
+does not require parental FASTA or reconstruct complete sequences.
+Only Exploration shows parental chains under Design settings: discover
+case-sensitive chain IDs, then supply their full parental FASTA.
+Review retains raw rows and reports invalid labels or reference mismatches;
+corrections and mode/settings edits invalidate the previous review. Combination
+uses measured substitutions; Exploration exposes per-position replacements and
+uses the API's separate evaluation budget. Input limits and complete mode
+defaults come from the API. Drafts remain in memory; review does not fit a
+model. Explicit submission creates a shared Job. An unconfirmed submission
+offers Check submission with the original key and unchanged request; reruns
+copy retained inputs/settings into an editable form requiring a fresh review.
+Session expiry keeps inputs and candidate selections in place while signing
+back in; review, submission and selected download are retried explicitly.
+Results show novel candidates, held-out validation and bounded server-side
+sorting/filtering/paging. The default Predicted label order is higher first
+for maximize and lower first for minimize; the header reflects that order.
+Selections survive pages and filters. Full CSV uses
+the shared download; selected CSV uses a short-lived owner-scoped ticket and
+native browser download in scientific order, without buffering CSV in JavaScript.
+The [protein optimization specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/protein-sequence-optimization.md)
+owns the scientific contract and coordinated workflow/API/frontend rollout.
+The form requires review version 2 so table-only Combination cannot be sent
+to an older API. Mode switches retain Exploration's parental draft locally
+but send no parental FASTA in Combination; historical result columns stay
+as published.
+Generic full-chain previews do not invoke antibody numbering or germline analysis.
+Held-out validation includes a Canvas scatter of measured labels (X) versus
+held-out predictions (Y), with equal axis scales and a y=x reference line.
+Hover or focus the plot and use arrow keys to inspect mutation identities,
+values and prediction counts, including overlapping points. Measured labels
+are replicate means; repeated held-out predictions are averaged per variant.
+The plot uses retained validation evidence only, never novel candidate scores.
+Up to 10,000 points stay in one Canvas without per-point DOM elements or
+per-hover requests. Historical aggregate-only summaries remain readable with
+an unavailable-plot explanation. Publishing point evidence requires the
+matching protein optimization workflow deployment/pin and API update;
+historical results are not recomputed.
+
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
-prediction`, `Antibody humanization`, and `Antibody sequence analysis`.
+prediction`, `Antibody humanization`, `Nanobody humanization`,
+`Antibody sequence analysis`, and `Protein sequence optimization`.
 AlphaFold3 accepts a guided protein, DNA, RNA, and
 small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating

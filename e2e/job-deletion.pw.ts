@@ -33,7 +33,7 @@ test("only eligible terminal details offer Delete beside Refresh for every Tool"
     await expect(page.getByRole("heading", { name: "Disposable job", exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: "Delete", exact: true })).toHaveCount(["succeeded", "partial", "failed", "cancelled"].includes(status) ? 1 : 0)
   }
-  for (const tool of ["gromacs", "alphafold3", "humanization", "nanobody_humanization"]) {
+  for (const tool of ["gromacs", "alphafold3", "humanization", "nanobody_humanization", "protein_optimization"]) {
     state.job = job(jobId, "failed", tool)
     await page.goto(`/tools/${tool.replaceAll("_", "-")}/jobs/${jobId}`)
     const remove = page.getByRole("button", { name: "Delete", exact: true })
