@@ -40,7 +40,9 @@ export default function ProteinOptimizationResults({ jobId }: { jobId: string })
     enabled: !!principal, placeholderData: keepPreviousData, retry: false, gcTime: 0,
     staleTime: Infinity, refetchOnWindowFocus: false, refetchOnReconnect: false,
   })
-  useExpireSession(options.error ?? query.error ?? download.error)
+  useExpireSession(options.error)
+  useExpireSession(query.error)
+  useExpireSession(download.error)
   const data = query.data
   const pending = query.isFetching || query.isPlaceholderData
   const validation = data?.summary.validation

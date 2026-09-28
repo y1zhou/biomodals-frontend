@@ -116,6 +116,8 @@ defaults come from the API. Drafts remain in memory; review does not fit a
 model. Explicit submission creates a shared Job. An unconfirmed submission
 offers Check submission with the original key and unchanged request; reruns
 copy retained inputs/settings into an editable form requiring a fresh review.
+Session expiry keeps inputs and candidate selections in place while signing
+back in; review, submission and selected download are retried explicitly.
 Results show novel candidates, held-out validation and bounded server-side
 sorting/filtering/paging. Selections survive pages and filters. Full CSV uses
 the shared download; selected CSV uses a short-lived owner-scoped ticket and

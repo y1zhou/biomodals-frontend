@@ -12,6 +12,17 @@ export type OptimizationCandidateQuery = NonNullable<operations["candidates_api_
 export type OptimizationMode = NonNullable<OptimizationSettings["mode"]>
 export type OptimizationNumericSetting = "max_mutations" | "candidate_budget" | "max_new_mutations" | "seed"
 
+export function optimizationRowErrors(errors: OptimizationReview["errors"]) {
+  const result = new Map<number, string[]>()
+  for (const issue of errors) {
+    if (issue.row_index === null) continue
+    let messages = result.get(issue.row_index)
+    if (!messages) result.set(issue.row_index, messages = [])
+    messages.push(`${issue.field}: ${issue.message}`)
+  }
+  return result
+}
+
 export function optimizationDownloadPath(jobId: string, downloadUrl: string) {
   const origin = "https://biomodals.invalid"
   const url = new URL(downloadUrl, origin)

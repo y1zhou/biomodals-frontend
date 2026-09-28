@@ -14,7 +14,7 @@ async function mockApi(page: Page) {
   const unexpected: string[] = []
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname
-    if (path === "/api/v1/auth/me") return route.fulfill({ json: { user_id: "reviewer", display_name: "Researcher", email: "reviewer@example.test", is_admin: false } })
+    if (path === "/api/v1/auth/me" || path === "/api/v1/auth/login") return route.fulfill({ json: { user_id: "reviewer", display_name: "Researcher", email: "reviewer@example.test", is_admin: false } })
     if (path === "/api/v1/protein-optimization/options") return route.fulfill({ json: optimizationOptions })
     if (path === "/api/v1/protein-optimization/review") {
       const input: OptimizationReviewRequest = route.request().postDataJSON()
@@ -172,20 +172,28 @@ test("admission rejection preserves review; ambiguous submission replays unchang
   expect(submits[5]).toEqual(submits[4])
 })
 
-test("bounded result restoration and failed selected downloads preserve candidate identity", async ({ page }) => {
+test("bounded results retain selection through failed paging, download rejection and reauthentication", async ({ page }) => {
   const { unexpected } = await mockApi(page)
   const jobId = "11111111-1111-4111-8111-111111111111"
   let reads = 0, restores = 0, tickets = 0
+  let pageFailure = false
+  let ticketStatus: "invalid" | "expired" | "ready" = "invalid"
   const selected: unknown[] = []
   await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Bounded result", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
   await page.route(`**/api/v1/jobs/${jobId}/prepare-download`, (route) => { restores++; return route.fulfill({ status: 204, body: "" }) })
   await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
     reads++
+    if (pageFailure) return route.fulfill({ status: 503, json: { detail: "Candidate page temporarily unavailable" } })
     if (reads === 1) return route.fulfill({ status: 409, json: { code: "result_not_cached", detail: "Restore result" } })
     expect(new URL(route.request().url()).searchParams.get("limit")).toBe("50")
     return route.fulfill({ json: { summary: { mode: "combination", direction: "minimize", candidate_count: 1, chain_columns: { A: "sequence_A" }, validation: { regime: "supported_combinations", training_variants: 3, evaluated_variants: 0, folds: 0, mae: null, rmse: null, spearman: null, evaluated_mutation_counts: [], warnings: ["Insufficient held-out support"] } }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }, { name: "sequence_A", type: "string" }], rows: [{ id: "candidate_000000001", predicted_label: -0.000000123456, sequence_A: "VCDE" }], offset: 0, limit: 50, total_rows: 1 } })
   })
-  await page.route(`**/protein-optimization/jobs/${jobId}/prepare-selected-download`, (route) => { tickets++; selected.push(route.request().postDataJSON()); return route.fulfill({ status: 422, json: { code: "selection_invalid", detail: "Selection cannot be prepared" } }) })
+  await page.route(`**/protein-optimization/jobs/${jobId}/prepare-selected-download`, (route) => {
+    tickets++; selected.push(route.request().postDataJSON())
+    if (ticketStatus === "expired") return route.fulfill({ status: 401, json: { detail: "Session expired" } })
+    if (ticketStatus === "ready") return route.fulfill({ json: { download_url: `/api/v1/protein-optimization/jobs/${jobId}/candidates.csv?ticket=offline`, expires_at: "2026-09-28T01:00:00Z" } })
+    return route.fulfill({ status: 422, json: { code: "selection_invalid", detail: "Selection cannot be prepared" } })
+  })
   await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
   await expect(page.getByText("-1.235e-7", { exact: true })).toBeVisible()
   await expect(page.getByText("Original scientific order: predicted label, lower first.", { exact: true })).toBeVisible()
@@ -200,6 +208,77 @@ test("bounded result restoration and failed selected downloads preserve candidat
   await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
   await expect.poll(() => tickets).toBe(2)
   expect(selected).toEqual([{ ids: ["candidate_000000001"] }, { ids: ["candidate_000000001"] }])
+  pageFailure = true
+  await page.getByRole("button", { name: "Predicted label", exact: true }).click()
+  await expect(page.getByText(/Candidates could not be loaded/)).toContainText("Candidate page temporarily unavailable")
+  ticketStatus = "expired"
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  const dialog = page.getByRole("dialog", { name: "Sign in again", exact: true })
+  await expect(dialog).toBeVisible()
+  pageFailure = false
+  ticketStatus = "ready"
+  await dialog.getByLabel("Email", { exact: true }).fill("reviewer@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("offline-password")
+  await dialog.getByRole("button", { name: "Sign in and return", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByText("1 candidates selected across pages and filters.", { exact: true })).toBeVisible()
+  await expect(page.getByRole("checkbox", { name: "Select candidate_000000001", exact: true })).toBeChecked()
+  expect(tickets).toBe(3)
+  const download = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  const requested = await download
+  expect(requested.url()).toBe(`${process.env.BIOMODALS_BROWSER_ORIGIN}/api/v1/protein-optimization/jobs/${jobId}/candidates.csv?ticket=offline`)
+  await requested.cancel() // Byte delivery is covered by the real-API test below.
+  expect(selected).toEqual(Array.from({ length: 4 }, () => ({ ids: ["candidate_000000001"] })))
+  expect(unexpected).toEqual([])
+})
+
+test("an options failure cannot mask expired retained-input authentication and reauth preserves edits", async ({ page }) => {
+  const { requests, unexpected } = await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  let optionsReads = 0
+  await page.route("**/protein-optimization/options", (route) => {
+    optionsReads++
+    return optionsReads === 1 ? route.fulfill({ status: 503, json: { detail: "Options temporarily unavailable" } }) : route.fulfill({ json: optimizationOptions })
+  })
+  let release!: () => void
+  const held = new Promise<void>((resolve) => { release = resolve })
+  let retainedReads = 0
+  await page.route(`**/protein-optimization/jobs/${jobId}/inputs`, async (route) => {
+    retainedReads++
+    if (retainedReads === 1) { await held; return route.fulfill({ status: 401, json: { detail: "Session expired" } }) }
+    return route.fulfill({ json: { display_name: "Retained", measurements_csv: csv, parental_fasta: fasta, settings: optimizationOptions.defaults!.combination } })
+  })
+  let reviews = 0
+  await page.route("**/protein-optimization/review", (route) => {
+    reviews++
+    if (reviews === 1) return route.fulfill({ status: 401, json: { detail: "Session expired" } })
+    return route.fallback()
+  })
+  await page.goto(`${url}?source_job=${jobId}`)
+  await expect(page.getByRole("alert")).toContainText("Options temporarily unavailable")
+  release()
+  const dialog = page.getByRole("dialog", { name: "Sign in again", exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel("Email", { exact: true }).fill("reviewer@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("offline-password")
+  await dialog.getByRole("button", { name: "Sign in and return", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(csv)
+  expect(reviews).toBe(0)
+  const edited = `${csv}\nA:C2S,3`
+  await page.getByLabel("Measurements CSV text", { exact: true }).fill(edited)
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await dialog.getByLabel("Email", { exact: true }).fill("reviewer@example.test")
+  await dialog.getByLabel("Password", { exact: true }).fill("offline-password")
+  await dialog.getByRole("button", { name: "Sign in and return", exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(edited)
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(fasta)
+  expect(reviews).toBe(1)
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeEnabled()
+  expect(requests.at(-1)?.measurements_csv).toBe(edited)
   expect(unexpected).toEqual([])
 })
 

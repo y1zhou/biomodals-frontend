@@ -1,11 +1,27 @@
 import { afterEach, expect, test } from "bun:test"
 import { prepareOptimizationSelectedDownload, proteinOptimizationCandidates, proteinOptimizationInputs, proteinOptimizationOptions, reviewProteinOptimization, submitProteinOptimization } from "../src/api/client"
-import { addOptimizationPositions, defaultReplacementResidues, formatCandidateSpace, optimizationDownloadPath, optimizationNumericBounds, optimizationOptionsReady } from "../src/protein-optimization"
+import { addOptimizationPositions, defaultReplacementResidues, formatCandidateSpace, optimizationDownloadPath, optimizationNumericBounds, optimizationOptionsReady, optimizationRowErrors } from "../src/protein-optimization"
 import { optimizationOptions } from "./fixtures/protein-optimization"
 
 test("candidate-space strings retain digits beyond safe JavaScript integers", () => {
   expect(formatCandidateSpace("9007199254740993").replace(/[^\d]/g, "")).toBe("9007199254740993")
   expect(formatCandidateSpace("0")).toBe("0")
+})
+
+test("dense diagnostics keep every message in row order without changing raw issues", () => {
+  const errors = Object.freeze([
+    { row_index: null, field: "parental_fasta", code: "invalid_parents", message: "Check the FASTA" },
+    ...Array.from({ length: 100_000 }, (_, index) => ({ row_index: 0, field: "mutations", code: "position_out_of_range", message: `Position ${index + 2} exceeds chain length` })),
+    { row_index: 1, field: "label", code: "invalid_label", message: "Provide a finite label" },
+  ])
+  const grouped = optimizationRowErrors(errors)
+  expect(grouped.size).toBe(2)
+  expect(grouped.get(0)).toHaveLength(100_000)
+  expect(grouped.get(0)?.[0]).toBe("mutations: Position 2 exceeds chain length")
+  expect(grouped.get(0)?.at(-1)).toBe("mutations: Position 100001 exceeds chain length")
+  expect(grouped.get(1)).toEqual(["label: Provide a finite label"])
+  expect(errors[1]?.message).toBe("Position 2 exceeds chain length")
+  expect(errors).toHaveLength(100_002)
 })
 
 test("review uses mode-specific service bounds and rejects incomplete options", () => {

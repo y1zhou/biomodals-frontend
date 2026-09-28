@@ -9,7 +9,7 @@ import ProteinSequenceValue from "@/components/ProteinSequenceValue"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { addOptimizationPositions, defaultReplacementResidues, formatCandidateSpace, optimizationNumericBounds, optimizationOptionsReady, type OptimizationMode, type OptimizationNumericSetting, type OptimizationPosition, type OptimizationReviewRequest, type OptimizationSettings, type OptimizationSubmission } from "@/protein-optimization"
+import { addOptimizationPositions, defaultReplacementResidues, formatCandidateSpace, optimizationNumericBounds, optimizationOptionsReady, optimizationRowErrors, type OptimizationMode, type OptimizationNumericSetting, type OptimizationPosition, type OptimizationReviewRequest, type OptimizationSettings, type OptimizationSubmission } from "@/protein-optimization"
 import { randomUUID } from "@/lib/uuid"
 import { jobKey, jobListKey } from "@/jobs"
 import { proteinOptimizationPaths } from "@/tools"
@@ -89,7 +89,10 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
     mounted.current = true
     return () => { mounted.current = false; controller.current?.abort() }
   }, [])
-  useExpireSession(options.error ?? mutation.error ?? submission.error ?? retained.error)
+  useExpireSession(options.error)
+  useExpireSession(mutation.error)
+  useExpireSession(submission.error)
+  useExpireSession(retained.error)
 
   const dirty = !!(measurements || parentalFasta || displayName)
   const blocker = useBlocker(() => !allowNavigation.current && (dirty || reading.measurements || reading.parents || submitting.current))
@@ -146,13 +149,7 @@ function ProteinOptimizationForm({ sourceJob }: { sourceJob: string }) {
   const rows = sameMeasurements ? data?.rows ?? [] : []
   const pages = Math.max(1, Math.ceil(rows.length / 50))
   const page = Math.min(rowPage, pages - 1)
-  const rowErrors = useMemo(() => {
-    const result = new Map<number, string[]>()
-    for (const issue of data?.errors ?? []) {
-      if (issue.row_index !== null) result.set(issue.row_index, [...result.get(issue.row_index) ?? [], `${issue.field}: ${issue.message}`])
-    }
-    return result
-  }, [data])
+  const rowErrors = useMemo(() => optimizationRowErrors(data?.errors ?? []), [data])
 
   function review() {
     if (!compatible || !options.data || !settings || !principal || !inputsLoaded || readPending || pending || submitting.current || ambiguous) return
