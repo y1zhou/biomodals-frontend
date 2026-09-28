@@ -44,6 +44,8 @@ export default function ProteinOptimizationResults({ jobId }: { jobId: string })
   useExpireSession(query.error)
   useExpireSession(download.error)
   const data = query.data
+  const sortBy = view.sort_by ?? "predicted_label"
+  const descending = view.sort_by ? !!view.descending : data?.summary.direction === "maximize"
   const pending = query.isFetching || query.isPlaceholderData
   const validation = data?.summary.validation
   const chainByColumn = new Map(Object.entries(data?.summary.chain_columns ?? {}).map(([chain, column]) => [column, chain]))
@@ -108,7 +110,7 @@ export default function ProteinOptimizationResults({ jobId }: { jobId: string })
           <table className="w-full text-left"><thead><tr><th className="p-3"><input type="checkbox" aria-label="Select this page" checked={allPageSelected} disabled={pending || download.isPending || !pageIds.length || !options.data} onChange={(event) => choose(pageIds, event.target.checked)} /></th>{data.columns.map((column) => {
             const label = chainByColumn.has(column.name) ? `Chain ${chainByColumn.get(column.name)}` : labels[column.name] ?? column.name
             const sortable = options.data?.sortable_columns?.includes(column.name)
-            return <th key={column.name} className="p-3" aria-sort={view.sort_by === column.name ? view.descending ? "descending" : "ascending" : undefined}>{sortable ? <button type="button" disabled={pending} className="flex items-center gap-2 whitespace-nowrap font-semibold" onClick={() => setView({ ...view, offset: 0, sort_by: column.name as OptimizationCandidateQuery["sort_by"], descending: view.sort_by === column.name ? !view.descending : false })}>{label}{view.sort_by !== column.name ? <ArrowUpDown aria-hidden="true" className="size-4" /> : view.descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" />}</button> : label}</th>
+            return <th key={column.name} className="p-3" aria-sort={sortBy === column.name ? descending ? "descending" : "ascending" : undefined}>{sortable ? <button type="button" disabled={pending} className="flex items-center gap-2 whitespace-nowrap font-semibold" onClick={() => setView({ ...view, offset: 0, sort_by: column.name as OptimizationCandidateQuery["sort_by"], descending: sortBy === column.name ? !descending : false })}>{label}{sortBy !== column.name ? <ArrowUpDown aria-hidden="true" className="size-4" /> : descending ? <ArrowDown aria-hidden="true" className="size-4" /> : <ArrowUp aria-hidden="true" className="size-4" />}</button> : label}</th>
           })}</tr></thead><tbody aria-hidden={pending || undefined} className={pending ? "invisible" : undefined}>{data.rows.map((row) => <tr key={String(row.id)} className="border-t"><td className="p-3"><input type="checkbox" disabled={pending || download.isPending || typeof row.id !== "string" || !options.data} aria-label={`Select ${row.id}`} checked={typeof row.id === "string" && selected.has(row.id)} onChange={(event) => choose([String(row.id)], event.target.checked)} /></td>{data.columns.map((column) => {
             const value = row[column.name]
             const chain = chainByColumn.get(column.name)

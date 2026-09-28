@@ -229,6 +229,46 @@ test("admission rejection preserves review; ambiguous submission replays unchang
   expect(submits[5]).toEqual(submits[4])
 })
 
+for (const direction of ["maximize", "minimize"] as const) test(`default predicted-label sort follows ${direction} without another initial request`, async ({ page }) => {
+  await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  const queries: URLSearchParams[] = []
+  await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Default ordering", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
+  await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
+    const params = new URL(route.request().url()).searchParams
+    queries.push(params)
+    const offset = Number(params.get("offset"))
+    const limit = Number(params.get("limit"))
+    return route.fulfill({ json: { summary: { mode: "combination", direction, candidate_count: 51, chain_columns: {}, validation: null }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }], rows: [{ id: `server_order_${offset}`, predicted_label: 1 }], offset, limit, total_rows: 51 } })
+  })
+  await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
+  const header = page.getByRole("columnheader", { name: "Predicted label", exact: true })
+  const initial = direction === "maximize" ? "descending" : "ascending"
+  const flipped = direction === "maximize" ? "ascending" : "descending"
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  await expect(header.locator(direction === "maximize" ? ".lucide-arrow-down" : ".lucide-arrow-up")).toBeVisible()
+  await expect(page.getByText("server_order_0", { exact: true })).toBeVisible()
+  expect(queries.map((params) => Object.fromEntries(params))).toEqual([{ offset: "0", limit: "50" }])
+  await page.getByRole("button", { name: "Next candidate page", exact: true }).click()
+  await expect(page.getByText("server_order_50", { exact: true })).toBeVisible()
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  expect(Object.fromEntries(queries.at(-1)!)).toEqual({ offset: "50", limit: "50" })
+  await header.getByRole("button").click()
+  await expect(page.getByText(`Sorted by Predicted label (${flipped}).`, { exact: true })).toBeVisible()
+  await expect(header).toHaveAttribute("aria-sort", flipped)
+  expect(Object.fromEntries(queries.at(-1)!)).toEqual({ offset: "0", limit: "50", sort_by: "predicted_label", descending: String(direction !== "maximize") })
+  await header.getByRole("button").click()
+  await expect(page.getByText(`Sorted by Predicted label (${initial}).`, { exact: true })).toBeVisible()
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  await page.getByRole("button", { name: "Candidate ID", exact: true }).click()
+  await expect(page.getByRole("columnheader", { name: "Candidate ID", exact: true })).toHaveAttribute("aria-sort", "ascending")
+  await page.getByRole("button", { name: "Restore default order", exact: true }).click()
+  await expect(header).toHaveAttribute("aria-sort", initial)
+  await page.getByLabel("Rows per page", { exact: true }).selectOption("25")
+  await expect.poll(() => Object.fromEntries(queries.at(-1)!)).toEqual({ offset: "0", limit: "25" })
+  await expect(header).toHaveAttribute("aria-sort", initial)
+})
+
 test("bounded results retain selection through failed paging, download rejection and reauthentication", async ({ page }) => {
   const { unexpected } = await mockApi(page)
   const jobId = "11111111-1111-4111-8111-111111111111"
@@ -429,7 +469,7 @@ test("native both-mode Jobs retain inputs and deliver bounded candidates and nat
   const secondId = (await second.getAttribute("aria-label"))!.replace("Select ", "")
   await second.check()
   await page.getByRole("button", { name: "Predicted label", exact: true }).click()
-  await expect(page.getByText("Sorted by Predicted label (ascending).", { exact: true })).toBeVisible()
+  await expect(page.getByText("Sorted by Predicted label (descending).", { exact: true })).toBeVisible()
   await expect(page.getByText("2 candidates selected across pages and filters.", { exact: true })).toBeVisible()
   await page.getByLabel("Exact new-substitution count", { exact: true }).fill("0")
   await page.getByRole("button", { name: "Apply filters", exact: true }).click()

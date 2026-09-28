@@ -124,7 +124,9 @@ copy retained inputs/settings into an editable form requiring a fresh review.
 Session expiry keeps inputs and candidate selections in place while signing
 back in; review, submission and selected download are retried explicitly.
 Results show novel candidates, held-out validation and bounded server-side
-sorting/filtering/paging. Selections survive pages and filters. Full CSV uses
+sorting/filtering/paging. The default Predicted label order is higher first
+for maximize and lower first for minimize; the header reflects that order.
+Selections survive pages and filters. Full CSV uses
 the shared download; selected CSV uses a short-lived owner-scoped ticket and
 native browser download in scientific order, without buffering CSV in JavaScript.
 The [protein optimization specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/protein-sequence-optimization.md)
