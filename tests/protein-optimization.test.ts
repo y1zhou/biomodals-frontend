@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test"
-import { proteinOptimizationOptions, reviewProteinOptimization } from "../src/api/client"
-import { addOptimizationPositions, defaultReplacementResidues, formatCandidateSpace, optimizationNumericBounds, optimizationOptionsReady } from "../src/protein-optimization"
+import { prepareOptimizationSelectedDownload, proteinOptimizationCandidates, proteinOptimizationInputs, proteinOptimizationOptions, reviewProteinOptimization, submitProteinOptimization } from "../src/api/client"
+import { addOptimizationPositions, defaultReplacementResidues, formatCandidateSpace, optimizationDownloadPath, optimizationNumericBounds, optimizationOptionsReady } from "../src/protein-optimization"
 import { optimizationOptions } from "./fixtures/protein-optimization"
 
 test("candidate-space strings retain digits beyond safe JavaScript integers", () => {
@@ -46,4 +46,45 @@ test("discovery and review preserve exact input bytes and use the unsafe-session
   expect(calls.map(({ path }) => path)).toEqual(["/api/v1/protein-optimization/options", "/api/v1/protein-optimization/review"])
   expect(calls[0].init).toMatchObject({ credentials: "same-origin", cache: "no-store", signal })
   expect(calls[1].init).toMatchObject({ credentials: "same-origin", cache: "no-store", signal, method: "POST", body: JSON.stringify(input), headers: { "Content-Type": "application/json", "X-CSRF-Token": "offline-csrf" } })
+})
+
+test("candidate paging and selected preparation restore cache once without buffering CSV", async () => {
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { cookie: "biomodals-csrf=offline" } })
+  const calls: { path: string; init?: RequestInit }[] = []
+  globalThis.fetch = (async (path, init) => {
+    calls.push({ path: String(path), init })
+    return calls.length === 1 ? Response.json({ code: "result_not_cached" }, { status: 409 }) : Response.json({})
+  }) as typeof fetch
+  const signal = new AbortController().signal
+  await proteinOptimizationCandidates("job/one", { offset: 50, limit: 50, sort_by: "predicted_label", descending: true, mutations: "A:A1V,B:M2S", n_new_mutations: 0 }, signal)
+  expect(calls.map(({ path }) => path)).toEqual([
+    "/api/v1/protein-optimization/jobs/job%2Fone/candidates?offset=50&limit=50&sort_by=predicted_label&descending=true&mutations=A%3AA1V%2CB%3AM2S&n_new_mutations=0",
+    "/api/v1/jobs/job%2Fone/prepare-download",
+    "/api/v1/protein-optimization/jobs/job%2Fone/candidates?offset=50&limit=50&sort_by=predicted_label&descending=true&mutations=A%3AA1V%2CB%3AM2S&n_new_mutations=0",
+  ])
+  expect(calls[0].init).toMatchObject({ signal, cache: "no-store", credentials: "same-origin" })
+  calls.length = 0
+  await prepareOptimizationSelectedDownload("job", ["candidate_000000009", "candidate_000000001"])
+  expect(calls.map(({ path }) => path)).toEqual(["/api/v1/protein-optimization/jobs/job/prepare-selected-download", "/api/v1/jobs/job/prepare-download", "/api/v1/protein-optimization/jobs/job/prepare-selected-download"])
+  expect(calls[0].init).toMatchObject({ method: "POST", headers: { "X-CSRF-Token": "offline" }, body: JSON.stringify({ ids: ["candidate_000000009", "candidate_000000001"] }) })
+  expect(calls[2].init?.body).toBe(calls[0].init?.body)
+})
+
+test("submission binds original review and UUID while retained input reads never submit", async () => {
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { cookie: "biomodals-csrf=offline" } })
+  const calls: { path: string; init?: RequestInit }[] = []
+  globalThis.fetch = (async (path, init) => { calls.push({ path: String(path), init }); return Response.json({}) }) as typeof fetch
+  const input = { measurements_csv: "mutations,label\nA:A1V,2", parental_fasta: ">A\nACDE", settings: optimizationOptions.defaults!.combination, review_digest: "a".repeat(64), display_name: "" }
+  await submitProteinOptimization(input, "exact-key")
+  await submitProteinOptimization(input, "exact-key")
+  expect(calls[0]).toEqual(calls[1])
+  expect(calls[0].init).toMatchObject({ method: "POST", body: JSON.stringify(input), headers: { "Idempotency-Key": "exact-key", "X-CSRF-Token": "offline" } })
+  await proteinOptimizationInputs("source/job")
+  expect(calls[2]).toMatchObject({ path: "/api/v1/protein-optimization/jobs/source%2Fjob/inputs", init: { cache: "no-store" } })
+})
+
+test("selected-download tickets only navigate to this Job's native CSV", () => {
+  const path = "/api/v1/protein-optimization/jobs/job/candidates.csv?ticket=token"
+  expect(optimizationDownloadPath("job", path)).toBe(path)
+  for (const url of [`https://outside.test${path}`, path.replace("/job/", "/other/"), "javascript:alert(1)", path.split("?")[0]]) expect(() => optimizationDownloadPath("job", url)).toThrow()
 })

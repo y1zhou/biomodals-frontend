@@ -105,21 +105,28 @@ bun run preview  # preview dist/ locally
 
 ## Current state
 
-An unlisted, authenticated input-review page is available at
-`/tools/protein-optimization/new`. Upload `mutations,label` CSV (optional `id`),
+Protein sequence optimization is available at `/tools/protein-optimization`.
+Upload `mutations,label` CSV (optional `id`),
 discover case-sensitive chain IDs, then supply their full parental FASTA.
 Review retains raw rows and reports invalid labels or reference mismatches;
 corrections and mode/settings edits invalidate the previous review. Combination
 uses measured substitutions; Exploration exposes per-position replacements and
 uses the API's separate evaluation budget. Input limits and complete mode
-defaults come from the API. Drafts remain in memory, and no model fitting,
-scientific submission, or catalog entry is enabled in this review milestone.
+defaults come from the API. Drafts remain in memory; review does not fit a
+model. Explicit submission creates a shared Job. An unconfirmed submission
+offers Check submission with the original key and unchanged request; reruns
+copy retained inputs/settings into an editable form requiring a fresh review.
+Results show novel candidates, held-out validation and bounded server-side
+sorting/filtering/paging. Selections survive pages and filters. Full CSV uses
+the shared download; selected CSV uses a short-lived owner-scoped ticket and
+native browser download in scientific order, without buffering CSV in JavaScript.
 The [protein optimization specification](https://github.com/y1zhou/biomodals/blob/main/docs/specs/protein-sequence-optimization.md)
-owns the scientific contract and later rollout. Generic full-chain previews
-do not invoke antibody numbering or germline analysis.
+owns the scientific contract and coordinated workflow/API/frontend rollout.
+Generic full-chain previews do not invoke antibody numbering or germline analysis.
 
 The available Tools are `GROMACS MD simulation`, `AlphaFold3 structure
-prediction`, `Antibody humanization`, and `Antibody sequence analysis`.
+prediction`, `Antibody humanization`, `Nanobody humanization`,
+`Antibody sequence analysis`, and `Protein sequence optimization`.
 AlphaFold3 accepts a guided protein, DNA, RNA, and
 small-molecule entity builder or a native expert JSON document. Both paths
 validate on the server and present the same confirmation view before creating

@@ -1,14 +1,24 @@
-import type { components } from "@/api/schema"
+import type { components, operations } from "@/api/schema"
 
 export type OptimizationOptions = components["schemas"]["ProteinOptimizationOptions"]
 export type OptimizationReviewRequest = components["schemas"]["OptimizationReviewRequest"]
 export type OptimizationReview = components["schemas"]["OptimizationReview"]
 export type OptimizationSettings = components["schemas"]["OptimizationSettings"]
 export type OptimizationPosition = components["schemas"]["PositionChoices"]
+export type OptimizationSubmission = components["schemas"]["OptimizationSubmission"]
+export type RetainedOptimizationInputs = components["schemas"]["RetainedOptimizationInputs"]
+export type OptimizationCandidatePage = components["schemas"]["OptimizationCandidatePage"]
+export type OptimizationCandidateQuery = NonNullable<operations["candidates_api_v1_protein_optimization_jobs__job_id__candidates_get"]["parameters"]["query"]>
 export type OptimizationMode = NonNullable<OptimizationSettings["mode"]>
 export type OptimizationNumericSetting = "max_mutations" | "candidate_budget" | "max_new_mutations" | "seed"
 
-export const proteinOptimizationPath = "/tools/protein-optimization/new"
+export function optimizationDownloadPath(jobId: string, downloadUrl: string) {
+  const origin = "https://biomodals.invalid"
+  const url = new URL(downloadUrl, origin)
+  if (url.origin !== origin || url.pathname !== `/api/v1/protein-optimization/jobs/${encodeURIComponent(jobId)}/candidates.csv` || !url.searchParams.get("ticket")) throw new Error("The API returned an invalid selected-download URL.")
+  return url.pathname + url.search
+}
+
 export function defaultReplacementResidues(options: OptimizationOptions) {
   const definitions = options.settings_schema?.$defs
   const value = definitions && typeof definitions === "object" ? Reflect.get(definitions, "PositionChoices")?.properties?.amino_acids?.default : undefined

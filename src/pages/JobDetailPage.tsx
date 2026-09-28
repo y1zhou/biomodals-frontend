@@ -64,12 +64,14 @@ import {
   alphafold3Paths,
   gromacsPaths,
   nanobodyPaths,
+  proteinOptimizationPaths,
   toolKey,
 } from "@/tools"
 
 const HumanizationResults = lazy(() => import("@/components/HumanizationResults"))
 const AlphaFold3Results = lazy(() => import("@/components/AlphaFold3Results"))
 const GromacsResults = lazy(() => import("@/components/GromacsResults"))
+const ProteinOptimizationResults = lazy(() => import("@/components/ProteinOptimizationResults"))
 
 function RelativeTimestamp({ value }: { value: number }) {
   const [now, setNow] = useState(() => Date.now())
@@ -348,7 +350,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
               <p className="max-w-2xl leading-7">
                 {stateDescription}
                 {canDownload && job.result_size_bytes ? (
-                  <> The downloadable result archive is {formatBytes(job.result_size_bytes)}.</>
+                  <> The downloadable {job.tool === "protein_optimization" ? "candidate CSV" : "result archive"} is {formatBytes(job.result_size_bytes)}.</>
                 ) : null}
               </p>
               <p className="mt-2 text-xs opacity-80">
@@ -399,7 +401,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                     )}
                     {downloadMutation.isPending
                       ? "Preparing download…"
-                      : job.tool === "alphafold3" ? "Download all results" : "Download result"}
+                      : job.tool === "protein_optimization" ? "Download all candidates" : job.tool === "alphafold3" ? "Download all results" : "Download result"}
                   </Button>
                 ) : null}
                 {job.tool === "gromacs" && (job.operation ?? "run") === "run" && job.state === "succeeded" ? <><Link className={buttonVariants({ variant: "outline" })} to={gromacsPaths.continuation(job.job_id)}>
@@ -412,7 +414,8 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
                   <RotateCcw aria-hidden="true" /> Rerun with same inputs
                 </Link> : null}
                 {job.tool === "nanobody_humanization" ? <Link className={buttonVariants({ variant: "outline" })} to={nanobodyPaths.rerun(job.job_id)}><RotateCcw aria-hidden="true" />Rerun with same inputs</Link> : null}
-                {canStartAgain && (job.operation ?? "run") === "run" && job.tool !== "humanization" && job.tool !== "alphafold3" && job.tool !== "nanobody_humanization" ? (
+                {job.tool === "protein_optimization" ? <Link className={buttonVariants({ variant: "outline" })} to={proteinOptimizationPaths.rerun(job.job_id)}><RotateCcw aria-hidden="true" />Rerun with same inputs</Link> : null}
+                {canStartAgain && (job.operation ?? "run") === "run" && job.tool !== "humanization" && job.tool !== "alphafold3" && job.tool !== "nanobody_humanization" && job.tool !== "protein_optimization" ? (
                   <Link className={buttonVariants()} to={toolSubmissionPath(job.tool)}>
                     <RotateCcw aria-hidden="true" data-icon="inline-start" />
                     Start a new job
@@ -443,6 +446,7 @@ export default function JobDetailPage({ tool: expectedTool }: { tool: string }) 
           {job.tool === "humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
           {job.tool === "nanobody_humanization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading candidates…</p>}><HumanizationResults key={job.job_id} jobId={job.job_id} nanobody /></Suspense> : null}
           {job.tool === "gromacs" && (job.operation ?? "run") === "run" && job.state === "succeeded" ? <Suspense fallback={<p className="mt-6" role="status">Loading trajectory overview…</p>}><GromacsResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
+          {job.tool === "protein_optimization" && canDownload ? <Suspense fallback={<p className="mt-6" role="status">Loading protein candidates…</p>}><ProteinOptimizationResults key={job.job_id} jobId={job.job_id} /></Suspense> : null}
 
           <Card className="mt-6">
             <CardHeader>

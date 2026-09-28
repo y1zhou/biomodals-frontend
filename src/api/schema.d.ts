@@ -898,6 +898,91 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/protein-optimization/jobs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Submit */
+        readonly post: operations["submit_api_v1_protein_optimization_jobs_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/protein-optimization/jobs/{job_id}/candidates": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Candidates */
+        readonly get: operations["candidates_api_v1_protein_optimization_jobs__job_id__candidates_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/protein-optimization/jobs/{job_id}/candidates.csv": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Download Selected */
+        readonly get: operations["download_selected_api_v1_protein_optimization_jobs__job_id__candidates_csv_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/protein-optimization/jobs/{job_id}/inputs": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Inputs */
+        readonly get: operations["inputs_api_v1_protein_optimization_jobs__job_id__inputs_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/api/v1/protein-optimization/jobs/{job_id}/prepare-selected-download": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /** Prepare Selected Download */
+        readonly post: operations["prepare_selected_download_api_v1_protein_optimization_jobs__job_id__prepare_selected_download_post"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/protein-optimization/options": {
         readonly parameters: {
             readonly query?: never;
@@ -2425,6 +2510,61 @@ export interface components {
             readonly region: string;
         };
         /**
+         * OptimizationCandidatePage
+         * @description Bounded raw scalar rows in original scientific or explicit stable sort order.
+         */
+        readonly OptimizationCandidatePage: {
+            /** Columns */
+            readonly columns: readonly components["schemas"]["SelectionColumn"][];
+            /** Limit */
+            readonly limit: number;
+            /** Offset */
+            readonly offset: number;
+            /** Rows */
+            readonly rows: readonly {
+                readonly [key: string]: string | number | null;
+            }[];
+            readonly summary: components["schemas"]["OptimizationResultSummary"];
+            /** Total Rows */
+            readonly total_rows: number;
+        };
+        /**
+         * OptimizationDownloadTicket
+         * @description Same-origin native download URL; authentication still required on GET.
+         */
+        readonly OptimizationDownloadTicket: {
+            /** Download Url */
+            readonly download_url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            readonly expires_at: string;
+        };
+        /**
+         * OptimizationResultSummary
+         * @description Whole-result scientific context, independent of filters and pagination.
+         */
+        readonly OptimizationResultSummary: {
+            /** Candidate Count */
+            readonly candidate_count: number;
+            /** Chain Columns */
+            readonly chain_columns: {
+                readonly [key: string]: string;
+            };
+            /**
+             * Direction
+             * @enum {string}
+             */
+            readonly direction: "maximize" | "minimize";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            readonly mode: "combination" | "exploration";
+            readonly validation: components["schemas"]["ValidationSummary"];
+        };
+        /**
          * OptimizationReview
          * @description Local non-model review; only a valid complete request receives a digest.
          */
@@ -2469,6 +2609,14 @@ export interface components {
             readonly settings?: components["schemas"]["OptimizationSettings"];
         };
         /**
+         * OptimizationSelectedCandidates
+         * @description Exact IDs from this Job, not row offsets or client-supplied sequences.
+         */
+        readonly OptimizationSelectedCandidates: {
+            /** Ids */
+            readonly ids: readonly string[];
+        };
+        /**
          * OptimizationSettings
          * @description One selected scoring mode; absent site policy defaults to measured sites.
          */
@@ -2507,6 +2655,24 @@ export interface components {
              * @default 0
              */
             readonly seed: number;
+        };
+        /**
+         * OptimizationSubmission
+         * @description An explicit reviewed intent; replay binds the complete body and key.
+         */
+        readonly OptimizationSubmission: {
+            /**
+             * Display Name
+             * @default Protein optimization
+             */
+            readonly display_name: string;
+            /** Measurements Csv */
+            readonly measurements_csv: string;
+            /** Parental Fasta */
+            readonly parental_fasta: string;
+            /** Review Digest */
+            readonly review_digest: string;
+            readonly settings?: components["schemas"]["OptimizationSettings"];
         };
         /**
          * OriginErrorResponse
@@ -2768,6 +2934,11 @@ export interface components {
              */
             readonly max_mutation_tokens: number;
             /**
+             * Max Page Size
+             * @default 200
+             */
+            readonly max_page_size: number;
+            /**
              * Max Parental Fasta Bytes
              * @default 10485760
              */
@@ -2777,6 +2948,11 @@ export interface components {
              * @default 2147483648
              */
             readonly max_result_bytes: number;
+            /**
+             * Max Selected Candidates
+             * @default 1000000
+             */
+            readonly max_selected_candidates: number;
             /**
              * Max Total Residues
              * @default 16384
@@ -2791,6 +2967,8 @@ export interface components {
             readonly settings_schema?: {
                 readonly [key: string]: unknown;
             };
+            /** Sortable Columns */
+            readonly sortable_columns?: readonly string[];
         };
         /**
          * ReferenceInfo
@@ -2848,6 +3026,19 @@ export interface components {
             /** Prepared Parents */
             readonly prepared_parents: readonly components["schemas"]["PreparedVHPreview"][];
             readonly settings: components["schemas"]["NanobodySettings"];
+        };
+        /**
+         * RetainedOptimizationInputs
+         * @description Editable original inputs; rerun requires fresh review and explicit submit.
+         */
+        readonly RetainedOptimizationInputs: {
+            /** Display Name */
+            readonly display_name: string;
+            /** Measurements Csv */
+            readonly measurements_csv: string;
+            /** Parental Fasta */
+            readonly parental_fasta: string;
+            readonly settings?: components["schemas"]["OptimizationSettings"];
         };
         /**
          * SelectionColumn
@@ -3115,6 +3306,36 @@ export interface components {
             readonly msg: string;
             /** Error Type */
             readonly type: string;
+        };
+        /**
+         * ValidationSummary
+         * @description Compact held-out evidence, never training-fit performance.
+         */
+        readonly ValidationSummary: {
+            /**
+             * Evaluated Mutation Counts
+             * @default []
+             */
+            readonly evaluated_mutation_counts: readonly number[];
+            /** Evaluated Variants */
+            readonly evaluated_variants: number;
+            /** Folds */
+            readonly folds: number;
+            /** Mae */
+            readonly mae?: number | null;
+            /** Regime */
+            readonly regime: string;
+            /** Rmse */
+            readonly rmse?: number | null;
+            /** Spearman */
+            readonly spearman?: number | null;
+            /** Training Variants */
+            readonly training_variants: number;
+            /**
+             * Warnings
+             * @default []
+             */
+            readonly warnings: readonly string[];
         };
         /**
          * ValidationView
@@ -7318,6 +7539,380 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly submit_api_v1_protein_optimization_jobs_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                readonly "Idempotency-Key": string;
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["OptimizationSubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 202: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["JobView"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly candidates_api_v1_protein_optimization_jobs__job_id__candidates_get: {
+        readonly parameters: {
+            readonly query?: {
+                readonly descending?: boolean;
+                readonly limit?: number;
+                readonly mutations?: string | null;
+                readonly n_mutations?: number | null;
+                readonly n_new_mutations?: number | null;
+                readonly offset?: number;
+                readonly sort_by?: ("id" | "mutations" | "predicted_label" | "n_mutations" | "n_new_mutations") | null;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["OptimizationCandidatePage"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly download_selected_api_v1_protein_optimization_jobs__job_id__candidates_csv_get: {
+        readonly parameters: {
+            readonly query: {
+                readonly ticket: string;
+            };
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "text/csv": string;
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Gone */
+            readonly 410: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly inputs_api_v1_protein_optimization_jobs__job_id__inputs_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["RetainedOptimizationInputs"];
+                };
+            };
+            /** @description Not Found */
+            readonly 404: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readonly prepare_selected_download_api_v1_protein_optimization_jobs__job_id__prepare_selected_download_post: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header: {
+                /** @description Required for authenticated mutations. Copy the value of the `biomodals-csrf` cookie set by a successful login or Password Setup. */
+                readonly "X-CSRF-Token": string;
+            };
+            readonly path: {
+                readonly job_id: string;
+            };
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["OptimizationSelectedCandidates"];
+            };
+        };
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["OptimizationDownloadTicket"];
+                };
+            };
+            /** @description Conflict */
+            readonly 409: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            readonly 422: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

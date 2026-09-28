@@ -36,10 +36,10 @@ async function discover(page: Page) {
   await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeEnabled()
 }
 
-test("CSV-first review is unlisted, explicit, lossless and mode-specific", async ({ page }) => {
+test("CSV-first review is explicit, lossless and mode-specific", async ({ page }) => {
   const { requests, unexpected } = await mockApi(page)
   await page.goto("/")
-  await expect(page.getByRole("link", { name: "Protein sequence optimization", exact: true })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: "Protein sequence optimization", exact: true })).toBeVisible()
   await discover(page)
   expect(requests).toHaveLength(1)
   expect(requests[0]).toEqual({ measurements_csv: csv, parental_fasta: null, settings: optimizationOptions.defaults!.combination })
@@ -48,7 +48,7 @@ test("CSV-first review is unlisted, explicit, lossless and mode-specific", async
   await expect(page.getByLabel("Candidate budget", { exact: false })).toHaveValue("5000")
   await page.getByLabel("Improvement direction", { exact: true }).selectOption("minimize")
   await page.getByRole("button", { name: "Review inputs", exact: true }).click()
-  await expect(page.getByText("Inputs reviewed. Scientific submission is not yet available.", { exact: true })).toBeVisible()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
   await expect(page.getByText("9,007,199,254,740,993", { exact: true })).toBeVisible()
   await page.getByText("Advanced Exploration settings", { exact: true }).click()
   await expect(page.getByLabel("Allowed replacements A:1", { exact: true })).toHaveValue("ADEFGHIKLNPQRSTVWY")
@@ -61,7 +61,7 @@ test("CSV-first review is unlisted, explicit, lossless and mode-specific", async
   await page.getByRole("button", { name: "Remove position A:3", exact: true }).click()
   await page.getByRole("button", { name: "Review inputs", exact: true }).click()
   await expect.poll(() => requests.at(-1)?.settings).toMatchObject({ direction: "minimize", positions: [{ chain_id: "A", position: 1, amino_acids: "CM" }, { chain_id: "A", position: 2, amino_acids: "" }] })
-  await expect(page.getByText("Inputs reviewed. Scientific submission is not yet available.", { exact: true })).toBeVisible()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
   await page.getByRole("radio", { name: /^Combination/ }).check()
   await expect(page.getByLabel("Candidate budget", { exact: false })).toHaveValue("1000000")
   await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(csv)
@@ -98,9 +98,9 @@ test("edits cancel late review and file reads, and failed review only retries ex
   await page.getByLabel("Measurements CSV text", { exact: true }).fill("mutations,label\nC:D1S,4")
   release()
   await expect(page.getByLabel("Parental FASTA text", { exact: true })).toBeDisabled()
-  await expect(page.getByText("Inputs reviewed. Scientific submission is not yet available.", { exact: true })).toHaveCount(0)
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toHaveCount(0)
   let failed = 0
-  await page.route("**/protein-optimization/review", (route) => { failed++; return route.fulfill({ status: 503, json: { code: "local_analysis_busy", detail: "Review capacity is busy" } }) })
+  await page.route("**/protein-optimization/review", (route) => { failed++; return route.fulfill({ status: 503, json: { detail: "Service unavailable" } }) })
   await page.getByRole("button", { name: "Discover chains", exact: true }).click()
   await expect(page.getByRole("alert")).toContainText("Your inputs are unchanged; retry explicitly")
   await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue("mutations,label\nC:D1S,4")
@@ -129,7 +129,82 @@ test("row diagnostics retain raw invalid labels and pagination; byte and numeric
   expect(requests).toEqual([])
 })
 
-test("native review discovers arbitrary chains, diagnoses labels and resolves per-site exploration without a Job", async ({ page, context }) => {
+test("admission rejection preserves review; ambiguous submission replays unchanged and edits make a new intent", async ({ page }) => {
+  await mockApi(page)
+  const submits: { key: string; body: unknown }[] = []
+  let response = { status: 409, json: { code: "deployment_incompatible", detail: "Update the deployment" } }
+  await page.route("**/protein-optimization/jobs", (route) => {
+    submits.push({ key: route.request().headers()["idempotency-key"]!, body: route.request().postDataJSON() })
+    return route.fulfill(response)
+  })
+  await discover(page)
+  await page.getByLabel("Parental FASTA text", { exact: true }).fill(fasta)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  const submit = page.getByRole("button", { name: "Submit optimization", exact: true })
+  await submit.click()
+  await expect(page.getByRole("alert")).toContainText("Update the deployment")
+  await expect(submit).toBeEnabled()
+  expect(submits).toHaveLength(1)
+  response = { status: 503, json: { code: "unavailable", detail: "Unknown server failure" } }
+  await submit.click()
+  await expect(page.getByRole("button", { name: "Check submission", exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Check submission", exact: true }).click()
+  await expect.poll(() => submits.length).toBe(3)
+  expect(submits[1]).toEqual(submits[0])
+  expect(submits[2]).toEqual(submits[0])
+  await page.getByLabel("Job name", { exact: true }).fill("New intent")
+  await expect(page.getByText(/An earlier submission was not confirmed/)).toBeVisible()
+  response = { status: 409, json: { code: "review_changed", detail: "Review again" } }
+  await submit.click()
+  await expect(submit).toBeDisabled()
+  expect(submits[3]!.key).not.toBe(submits[0]!.key)
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(csv)
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await expect(submit).toBeEnabled()
+  response = { status: 422, json: { code: "invalid_design", detail: "Design rejected before admission" } }
+  await submit.click()
+  await expect(page.getByText(/Design rejected before admission/)).toBeVisible()
+  await expect(submit).toBeEnabled()
+  expect(submits).toHaveLength(5)
+  response = { status: 409, json: { code: "job_deleted", detail: "The original Job was deleted" } }
+  await submit.click()
+  await expect(page.getByText(/The original Job was deleted/)).toBeVisible()
+  expect(submits[5]).toEqual(submits[4])
+})
+
+test("bounded result restoration and failed selected downloads preserve candidate identity", async ({ page }) => {
+  const { unexpected } = await mockApi(page)
+  const jobId = "11111111-1111-4111-8111-111111111111"
+  let reads = 0, restores = 0, tickets = 0
+  const selected: unknown[] = []
+  await page.route(`**/api/v1/jobs/${jobId}`, (route) => route.fulfill({ json: { job_id: jobId, tool: "protein_optimization", operation: "run", source_job_id: null, display_name: "Bounded result", state: "succeeded", stages: [], warnings: [], can_retry_result_preparation: false, can_view_logs: false, created_at: "2026-09-28T00:00:00Z", updated_at: "2026-09-28T00:00:00Z" } }))
+  await page.route(`**/api/v1/jobs/${jobId}/prepare-download`, (route) => { restores++; return route.fulfill({ status: 204, body: "" }) })
+  await page.route(`**/protein-optimization/jobs/${jobId}/candidates?*`, (route) => {
+    reads++
+    if (reads === 1) return route.fulfill({ status: 409, json: { code: "result_not_cached", detail: "Restore result" } })
+    expect(new URL(route.request().url()).searchParams.get("limit")).toBe("50")
+    return route.fulfill({ json: { summary: { mode: "combination", direction: "minimize", candidate_count: 1, chain_columns: { A: "sequence_A" }, validation: { regime: "supported_combinations", training_variants: 3, evaluated_variants: 0, folds: 0, mae: null, rmse: null, spearman: null, evaluated_mutation_counts: [], warnings: ["Insufficient held-out support"] } }, columns: [{ name: "id", type: "string" }, { name: "predicted_label", type: "number" }, { name: "sequence_A", type: "string" }], rows: [{ id: "candidate_000000001", predicted_label: -0.000000123456, sequence_A: "VCDE" }], offset: 0, limit: 50, total_rows: 1 } })
+  })
+  await page.route(`**/protein-optimization/jobs/${jobId}/prepare-selected-download`, (route) => { tickets++; selected.push(route.request().postDataJSON()); return route.fulfill({ status: 422, json: { code: "selection_invalid", detail: "Selection cannot be prepared" } }) })
+  await page.goto(`/tools/protein-optimization/jobs/${jobId}`)
+  await expect(page.getByText("-1.235e-7", { exact: true })).toBeVisible()
+  await expect(page.getByText("Original scientific order: predicted label, lower first.", { exact: true })).toBeVisible()
+  await expect(page.getByText("Insufficient held-out support", { exact: true })).toBeVisible()
+  expect(restores).toBe(1)
+  expect(reads).toBe(2)
+  await page.getByRole("checkbox", { name: "Select candidate_000000001", exact: true }).check()
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("Your selection is unchanged")
+  expect(tickets).toBe(1)
+  await expect(page.getByRole("checkbox", { name: "Select candidate_000000001", exact: true })).toBeChecked()
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  await expect.poll(() => tickets).toBe(2)
+  expect(selected).toEqual([{ ids: ["candidate_000000001"] }, { ids: ["candidate_000000001"] }])
+  expect(unexpected).toEqual([])
+})
+
+test("native both-mode Jobs retain inputs and deliver bounded candidates and native selected CSV", async ({ page, context }) => {
+  test.setTimeout(90_000)
   const statsPath = path.join(process.env.BIOMODALS_BROWSER_ROOT!, "stats.json")
   const before = JSON.parse(await readFile(statsPath, "utf8"))
   await page.goto(before.protein_optimization_password_link)
@@ -154,7 +229,7 @@ test("native review discovers arbitrary chains, diagnoses labels and resolves pe
   await page.getByLabel("Parental FASTA", { exact: true }).setInputFiles({ name: "parents.fasta", mimeType: "text/plain", buffer: Buffer.from(">A\nac de\n>B\nMKTV") })
   await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(">A\nac de\n>B\nMKTV")
   await page.getByRole("button", { name: "Review inputs", exact: true }).click()
-  await expect(page.getByText("Inputs reviewed. Scientific submission is not yet available.", { exact: true })).toBeVisible()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
   const summary = page.getByRole("region", { name: "Input review", exact: true })
   await expect(summary.locator("dl")).toContainText("Unique measured variants4")
   await expect(summary.locator("dl")).toContainText("Additional replicate rows1")
@@ -170,7 +245,7 @@ test("native review discovers arbitrary chains, diagnoses labels and resolves pe
   await page.getByLabel("Position or range", { exact: true }).fill("1-2")
   await page.getByRole("button", { name: "Add positions", exact: true }).click()
   await page.getByRole("button", { name: "Review inputs", exact: true }).click()
-  await expect(page.getByText("Inputs reviewed. Scientific submission is not yet available.", { exact: true })).toBeVisible()
+  await expect(page.getByText("Inputs reviewed. Submit explicitly to start scientific computation.", { exact: true })).toBeVisible()
   expect(reviews.at(-1)?.settings).toMatchObject({ mode: "exploration", candidate_budget: 5000, positions: [
     { chain_id: "A", position: 1, amino_acids: "CM" },
     { chain_id: "A", position: 2, amino_acids: "ADEFGHIKLNPQRSTVWY" },
@@ -181,4 +256,67 @@ test("native review discovers arbitrary chains, diagnoses labels and resolves pe
   const after = JSON.parse(await readFile(statsPath, "utf8"))
   expect(after.submit_calls).toBe(before.submit_calls)
   expect(after.provider_calls).toBe(before.provider_calls)
+  const submissions: unknown[] = []
+  const queries: URL[] = []
+  const tickets: { ids: string[] }[] = []
+  page.on("request", (request) => {
+    const target = new URL(request.url())
+    if (target.pathname === "/api/v1/protein-optimization/jobs" && request.method() === "POST") submissions.push(request.postDataJSON())
+    if (target.pathname.endsWith("/candidates")) queries.push(target)
+    if (target.pathname.endsWith("/prepare-selected-download")) tickets.push(request.postDataJSON())
+  })
+  async function finish() {
+    await page.getByRole("button", { name: "Submit optimization", exact: true }).click()
+    await expect(page).toHaveURL(/\/tools\/protein-optimization\/jobs\//)
+    await expect(async () => {
+      if (await page.getByRole("heading", { name: "Protein optimization candidates", exact: true }).isVisible()) return
+      await page.getByRole("button", { name: "Refresh", exact: true }).click()
+      await expect(page.getByRole("heading", { name: "Protein optimization candidates", exact: true })).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 20_000, intervals: [1000] })
+  }
+  await page.getByLabel("Candidate budget", { exact: false }).fill("61")
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await finish()
+  await expect(page.getByText("Offline fixture has no native neural validation", { exact: true })).toBeVisible()
+  expect(queries[0]!.searchParams.get("limit")).toBe("50")
+  const first = page.getByRole("checkbox", { name: /^Select candidate_/ }).first()
+  const firstId = (await first.getAttribute("aria-label"))!.replace("Select ", "")
+  await first.check()
+  await page.getByRole("button", { name: "Next candidate page", exact: true }).click()
+  await expect(page.getByLabel("Candidate page", { exact: true })).toHaveValue("2")
+  const second = page.getByRole("checkbox", { name: /^Select candidate_/ }).first()
+  const secondId = (await second.getAttribute("aria-label"))!.replace("Select ", "")
+  await second.check()
+  await page.getByRole("button", { name: "Predicted label", exact: true }).click()
+  await expect(page.getByText("Sorted by Predicted label (ascending).", { exact: true })).toBeVisible()
+  await expect(page.getByText("2 candidates selected across pages and filters.", { exact: true })).toBeVisible()
+  await page.getByLabel("Exact new-substitution count", { exact: true }).fill("0")
+  await page.getByRole("button", { name: "Apply filters", exact: true }).click()
+  await expect.poll(() => queries.at(-1)!.searchParams.get("n_new_mutations")).toBe("0")
+  const selectedDownload = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download selected candidates", exact: true }).click()
+  const selectedText = await readFile((await (await selectedDownload).path())!, "utf8")
+  expect(tickets).toEqual([{ ids: [firstId, secondId] }])
+  expect(selectedText).toContain(firstId)
+  expect(selectedText).toContain(secondId)
+  expect(selectedText.trim().split("\n")).toHaveLength(3)
+  const fullDownload = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download all candidates", exact: true }).click()
+  const fullText = await readFile((await (await fullDownload).path())!, "utf8")
+  expect(fullText.trim().split("\n")).toHaveLength(62)
+  expect(fullText.indexOf(firstId)).toBeLessThan(fullText.indexOf(secondId))
+  expect(selectedText.indexOf(firstId)).toBeLessThan(selectedText.indexOf(secondId))
+  await page.getByRole("link", { name: "Rerun with same inputs", exact: true }).click()
+  await expect(page.getByLabel("Measurements CSV text", { exact: true })).toHaveValue(valid)
+  await expect(page.getByLabel("Parental FASTA text", { exact: true })).toHaveValue(">A\nac de\n>B\nMKTV")
+  await expect(page.getByLabel("Candidate budget", { exact: false })).toHaveValue("61")
+  await expect(page.getByRole("button", { name: "Submit optimization", exact: true })).toBeDisabled()
+  expect(submissions).toHaveLength(1)
+  await page.getByRole("radio", { name: /^Combination/ }).check()
+  await page.getByRole("button", { name: "Discover chains", exact: true }).click()
+  await page.getByRole("button", { name: "Review inputs", exact: true }).click()
+  await finish()
+  await expect(page.getByText("1–3 of 3 matching candidates · 3 total.", { exact: true })).toBeVisible()
+  await expect(page.getByRole("columnheader", { name: "Chain B", exact: true })).toBeVisible()
+  expect(submissions).toHaveLength(2)
 })
