@@ -327,8 +327,9 @@ from the process environment or configured `.env` file, are never stored in
 SQLite, and both are required for remote execution. Only the token ID appears
 in the Administrator API. An absent, blank or incomplete pair starts the API
 with local Tools, Users and Storage administration available. Existing remote
-Jobs are retained, but reconciliation and remote routes are disabled until
-credentials are restored and the API restarts. Complete credentials retain
+Jobs are retained, but remote reconciliation and routes are disabled until
+credentials are restored and the API restarts. Local deletion cleanup continues
+in both modes. Complete credentials retain
 strict startup preflight, including startup failure on provider errors.
 
 Public `GET /api/v1/capabilities` exposes only `remote_execution_enabled`.

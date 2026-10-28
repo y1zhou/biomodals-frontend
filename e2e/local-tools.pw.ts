@@ -53,8 +53,11 @@ test("credential-free startup, analysis, guards and credentialed restart", async
   await startBackend("absent")
   const status = async () => (await page.request.get(`${backend}/__test/status`)).json()
   const original = await status()
+  await expect.poll(async () => (await status()).deletion).toEqual({
+    completed: true, input_retained: false, result_retained: false,
+  })
   expect(original.provider_calls).toEqual([])
-  expect(original.reconciler_running).toBe(false)
+  expect(original.reconciler_running).toBe(true)
   const schema = await (await page.request.get("/openapi.json")).json()
   expect(schema.paths["/api/v1/capabilities"].get.security).toBeUndefined()
   expect((await page.request.get("/api/v1/antibody-sequence-analysis/options")).status()).toBe(401)
@@ -129,7 +132,7 @@ test("credential-free startup, analysis, guards and credentialed restart", async
   const local = await status()
   expect(local.job).toEqual(original.job)
   expect(local.provider_calls).toEqual([])
-  expect(local.reconciler_running).toBe(false)
+  expect(local.reconciler_running).toBe(true)
 
   for (const mode of ["id-only", "secret-only", "whitespace"]) {
     await startBackend(mode)
