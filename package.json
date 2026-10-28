@@ -12,6 +12,7 @@
     "lint": "oxlint",
     "test": "bun test tests",
     "test:e2e": "playwright test",
+    "test:e2e:local": "BIOMODALS_BROWSER_LOCAL_ONLY=1 playwright test",
     "preview": "vite preview"
   },
   "dependencies": {

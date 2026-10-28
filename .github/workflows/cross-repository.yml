@@ -101,5 +101,7 @@ jobs:
             bun run api:check
         working-directory: biomodals
       - name: Run the browser workflow
-        run: bun run test:e2e
+        run: |
+          bun run test:e2e
+          bun run test:e2e:local
         working-directory: biomodals-frontend

@@ -22,9 +22,12 @@ process.env.BIOMODALS_BROWSER_ORIGIN = browserOrigin
 process.env.BIOMODALS_BROWSER_FRONTEND_PORT = String(frontendPort)
 process.env.BIOMODALS_BROWSER_BACKEND_PORT = String(backendPort)
 
+const localTools = process.env.BIOMODALS_BROWSER_LOCAL_ONLY === "1"
+
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "**/*.pw.ts",
+  testMatch: localTools ? "**/local-tools.pw.ts" : "**/*.pw.ts",
+  testIgnore: localTools ? [] : ["**/local-tools.pw.ts"],
   fullyParallel: false,
   workers: 1,
   outputDir: path.join(browserRoot, "test-results"),
@@ -36,7 +39,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: [
-    {
+    ...(localTools ? [] : [{
       command:
         `uv run uvicorn --app-dir tests browser_server:app --host 127.0.0.1 --port ${backendPort}`,
       cwd: "../biomodals",
@@ -48,7 +51,7 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
       url: `http://127.0.0.1:${backendPort}/api/v1/ready`,
-    },
+    }]),
     {
       command: "bun run e2e:serve",
       env: {
