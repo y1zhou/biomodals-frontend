@@ -31,6 +31,13 @@ backend's `BIOMODALS_SECURE_COOKIES=false` setting. Admin Users displays one Pas
 Link per configured origin; choose the URL the recipient can reach. All choices
 share a single-use token, so consuming one invalidates the others.
 
+Without a complete Modal credential pair, the API supports local Tools and
+the catalog shows Antibody Sequence Analysis only. BioModals login is still
+required. Users and Storage administration remain available; remote Tools,
+Jobs and Modal administration return after credentials are configured and the
+API restarts. Failed capability lookup offers a retry while local Tools stay
+visible.
+
 ## Production deployment
 
 Build the static site reproducibly from the committed lockfile:
@@ -97,6 +104,7 @@ bun dev          # start Vite
 bun run lint     # run Oxlint
 bun run test     # run Bun unit tests
 bun run test:e2e # run the Playwright browser tests
+bun run test:e2e:local # real API startup without Modal credentials; CSV/report artifacts
 bun run build    # typecheck and build dist/
 bun run api:generate # regenerate types from the live local OpenAPI document
 bun run api:check    # fail when generated API types are stale

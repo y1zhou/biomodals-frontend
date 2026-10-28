@@ -324,8 +324,22 @@ configuration file or process environment controls the effective value.
 `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` are exceptions because they are
 secrets/bootstrap credentials rather than Runtime Settings. They must come
 from the process environment or configured `.env` file, are never stored in
-SQLite, and both are required for API startup. Only the token ID appears in the
-Administrator API.
+SQLite, and both are required for remote execution. Only the token ID appears
+in the Administrator API. An absent, blank or incomplete pair starts the API
+with local Tools, Users and Storage administration available. Existing remote
+Jobs are retained, but reconciliation and remote routes are disabled until
+credentials are restored and the API restarts. Complete credentials retain
+strict startup preflight, including startup failure on provider errors.
+
+Public `GET /api/v1/capabilities` exposes only `remote_execution_enabled`.
+The frontend keeps its static catalog and uses `createsJobs` to hide remote
+Tools, My Jobs and Modal administration when this capability is unavailable.
+One shared TanStack Query refreshes on page load, window focus and a coded
+`remote_execution_unavailable` API response. Pending or failed discovery shows
+local Tools; failures offer Retry tool availability. Remote direct links wait
+for confirmation, or show an unavailable view with Back to tools. Login and
+Origin/CSRF requirements remain unchanged. All API routes remain registered
+in both modes, with disabled remote operations returning coded 503 responses.
 
 `BIOMODALS_PUBLIC_URL` is the single static public browser origin. It constructs
 Password Links and defines the accepted browser Origin. The frontend continues
@@ -348,8 +362,8 @@ changing their scientific execution or retained Stage History. An already-open
 HTTP stream may continue until it naturally closes; later target or stream
 requests enforce the current policy.
 
-Backend startup applies the same read-only preflight to effective
-process/file-controlled Modal settings before accepting traffic.
+When remote execution is enabled, backend startup applies the same read-only
+preflight to effective process/file-controlled Modal settings before accepting traffic.
 
 The OpenAPI document includes the Administrator flag, all Admin operations,
 setting provenance and editable state, the per-Tool Job Log policy, the
