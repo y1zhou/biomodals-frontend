@@ -160,6 +160,25 @@ test("credential-free startup, analysis, guards and credentialed restart", async
   await page.getByRole("button", { name: "Retry tool availability", exact: true }).click()
   await expect(page.getByRole("link", { name: "GROMACS MD simulation", exact: true })).toBeVisible()
 
+  // Availability refreshes must preserve an open draft, including its file.
+  await page.goto("/tools/gromacs/new")
+  await page.getByLabel("PDB file", { exact: true }).setInputFiles({
+    name: "draft.pdb", mimeType: "chemical/x-pdb", buffer: Buffer.from("HEADER    DRAFT\nEND\n"),
+  })
+  await page.locator("#display-name").fill("Unsubmitted experiment")
+  await page.locator("#simulation-time").fill("25")
+  await page.route("**/api/v1/capabilities", (route) => route.fulfill({ status: 503, json: { detail: "Fixture lookup failed" } }))
+  await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")))
+  await expect(page.getByRole("button", { name: "Retry tool availability", exact: true })).toBeVisible()
+  await expect(page.locator("#display-name")).toBeHidden()
+  await page.unroute("**/api/v1/capabilities")
+  await page.getByRole("button", { name: "Retry tool availability", exact: true }).click()
+  await expect(page.locator("#display-name")).toHaveValue("Unsubmitted experiment")
+  await expect(page.locator("#simulation-time")).toHaveValue("25")
+  await expect(page.getByRole("definition").filter({ hasText: "draft.pdb" })).toBeVisible()
+  const draftFile = await page.getByLabel("PDB file", { exact: true }).evaluate((input: HTMLInputElement) => input.files?.[0]?.text())
+  expect(draftFile).toBe("HEADER    DRAFT\nEND\n")
+
   // Keep the tab open across the API restart: a real disabled response refreshes it.
   await page.getByRole("link", { name: "My Jobs", exact: true }).click()
   await expect(page.getByText("Retained remote Job", { exact: true })).toBeVisible()
@@ -170,6 +189,6 @@ test("credential-free startup, analysis, guards and credentialed restart", async
   await expect(page.getByRole("heading", { name: "Remote tools are unavailable", exact: true })).toBeVisible()
   expect((await status()).provider_calls).toEqual([])
   const report = testInfo.outputPath("local-tools-report.json")
-  await writeFile(report, JSON.stringify({ gated, local, restored: true, final: await status() }, null, 2))
+  await writeFile(report, JSON.stringify({ gated, local, restored: true, draftPreserved: true, final: await status() }, null, 2))
   await testInfo.attach("local-tools-report.json", { path: report, contentType: "application/json" })
 })

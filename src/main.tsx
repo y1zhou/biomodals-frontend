@@ -3,7 +3,7 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { createBrowserRouter, RouterProvider } from "react-router"
 
-import { apiEvents } from "./api/client"
+import { apiEvents, type serviceCapabilities } from "./api/client"
 import { capabilitiesKey } from "./capabilities"
 import App from "./App.tsx"
 import AppErrorBoundary from "./components/AppErrorBoundary.tsx"
@@ -17,6 +17,8 @@ const queryClient = new QueryClient({
   },
 })
 apiEvents.addEventListener("remote-execution-unavailable", () => {
+  const capabilities = queryClient.getQueryData<Awaited<ReturnType<typeof serviceCapabilities>>>(capabilitiesKey)
+  if (capabilities?.remote_execution_enabled === false) return
   queryClient.setQueryData(capabilitiesKey, { remote_execution_enabled: false })
   void queryClient.invalidateQueries({ queryKey: capabilitiesKey })
 })

@@ -337,7 +337,9 @@ Tools, My Jobs and Modal administration when this capability is unavailable.
 One shared TanStack Query refreshes on page load, window focus and a coded
 `remote_execution_unavailable` API response. Pending or failed discovery shows
 local Tools; failures offer Retry tool availability. Remote direct links wait
-for confirmation, or show an unavailable view with Back to tools. Login and
+for confirmation, or show an unavailable view with Back to tools. Once opened,
+remote pages retain their draft and file inputs across availability failures;
+pages stay mounted but hidden and inert until availability returns. Login and
 Origin/CSRF requirements remain unchanged. All API routes remain registered
 in both modes, with disabled remote operations returning coded 503 responses.
 
