@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test"
 async function api(page: Page, supported = true) {
   await page.context().addCookies([{ name: "biomodals-csrf", value: "fixture", url: process.env.BIOMODALS_BROWSER_ORIGIN! }])
   await page.route("**/api/**", (route) => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith("/auth/me") ? { user_id: "chemistry-owner", display_name: "Researcher", email: "chemistry@example.test", is_admin: false } : { detail: "Unexpected offline request" } }))
+  await page.route("**/api/v1/capabilities", (route) => route.fulfill({ json: { remote_execution_enabled: true } }))
   await page.route("**/alphafold3/capabilities", (route) => route.fulfill({ status: supported ? 200 : 404, json: supported ? { chemistry_preflight: 1 } : { detail: "Not Found" } }))
 }
 

@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useCapabilities } from "@/capabilities"
+import RemoteRoute from "@/components/RemoteRoute"
+import { Button } from "@/components/ui/button"
 import {
   alphafold3Paths,
   antibodyAnalysisPath,
@@ -48,7 +51,11 @@ const UsersAdminPage = lazy(() => import("@/pages/admin/UsersAdminPage"))
 
 function LandingPage() {
   const [query, setQuery] = useState("")
-  const visibleCatalogEntries = filterToolCatalog(toolCatalog, query)
+  const capabilities = useCapabilities()
+  const visibleCatalogEntries = filterToolCatalog(
+    toolCatalog.filter((tool) => capabilities.remoteExecutionEnabled || (tool.status === "available" && !tool.createsJobs)),
+    query,
+  )
 
   return (
     <main className="min-h-[calc(100svh-73px)] bg-[radial-gradient(circle_at_top_left,var(--color-muted),transparent_34rem)]">
@@ -58,7 +65,7 @@ function LandingPage() {
             Useful biology tools, ready in your browser.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-            Search the collection, open a tool, and submit your data. Compute-heavy jobs run remotely while you stay in control here.
+            Search the collection, open a tool, and submit your data.
           </p>
 
           <div className="relative mt-8 max-w-xl">
@@ -78,6 +85,16 @@ function LandingPage() {
         </section>
 
         <section aria-label="Tools" className="mt-8">
+          {capabilities.isError ? (
+            <div className="mb-4 flex flex-wrap items-center gap-3" role="alert">
+              <p className="text-sm text-muted-foreground">Couldn’t check remote tool availability.</p>
+              <Button variant="outline" disabled={capabilities.isFetching} onClick={() => void capabilities.refetch()}>
+                Retry tool availability
+              </Button>
+            </div>
+          ) : capabilities.isPending ? (
+            <p className="mb-4 text-sm text-muted-foreground" role="status">Checking tool availability…</p>
+          ) : null}
           <p aria-live="polite" className="text-sm text-muted-foreground">
             {visibleCatalogEntries.length}{" "}
             {visibleCatalogEntries.length === 1 ? "tool" : "tools"}
@@ -210,39 +227,45 @@ export default function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route element={<LandingPage />} path="/" />
-          <Route element={<GromacsOverviewPage />} path={gromacsPaths.overview} />
-          <Route element={<AlphaFold3OverviewPage />} path={alphafold3Paths.overview} />
-          <Route element={<HumanizationOverviewPage />} path={humanizationPaths.overview} />
-          <Route element={<NanobodyOverviewPage />} path={nanobodyPaths.overview} />
-          <Route element={<ProteinOptimizationOverviewPage />} path={proteinOptimizationPaths.overview} />
+          <Route element={<RemoteRoute />}>
+            <Route element={<GromacsOverviewPage />} path={gromacsPaths.overview} />
+            <Route element={<AlphaFold3OverviewPage />} path={alphafold3Paths.overview} />
+            <Route element={<HumanizationOverviewPage />} path={humanizationPaths.overview} />
+            <Route element={<NanobodyOverviewPage />} path={nanobodyPaths.overview} />
+            <Route element={<ProteinOptimizationOverviewPage />} path={proteinOptimizationPaths.overview} />
+          </Route>
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SetPasswordPage />} path="/set-password" />
           <Route element={<ProtectedRoute />}>
-            <Route element={<ProteinOptimizationPage />} path={proteinOptimizationPaths.submission} />
-            <Route element={<JobDetailPage tool="protein_optimization" />} path={proteinOptimizationPaths.jobRoute} />
             <Route element={<AntibodyAnalysisPage />} path={antibodyAnalysisPath} />
-            <Route element={<JobsPage />} path="/jobs" />
-            <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
-            <Route element={<GromacsContinuationPage />} path={gromacsPaths.continuationRoute} />
-            <Route element={<GromacsClusteringPage />} path={gromacsPaths.clusteringRoute} />
-            <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
-            <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
-            <Route element={<NanobodySubmissionPage />} path={nanobodyPaths.submission} />
-            <Route element={<JobDetailPage tool="nanobody_humanization" />} path={nanobodyPaths.jobRoute} />
-            <Route element={<JobDetailPage tool="humanization" />} path={humanizationPaths.jobRoute} />
-            <Route
-              element={<JobDetailPage tool="gromacs" />}
-              path={gromacsPaths.jobRoute}
-            />
-            <Route
-              element={<JobDetailPage tool="alphafold3" />}
-              path={alphafold3Paths.jobRoute}
-            />
+            <Route element={<RemoteRoute />}>
+              <Route element={<ProteinOptimizationPage />} path={proteinOptimizationPaths.submission} />
+              <Route element={<JobDetailPage tool="protein_optimization" />} path={proteinOptimizationPaths.jobRoute} />
+              <Route element={<JobsPage />} path="/jobs" />
+              <Route element={<GromacsSubmissionPage />} path={gromacsPaths.submission} />
+              <Route element={<GromacsContinuationPage />} path={gromacsPaths.continuationRoute} />
+              <Route element={<GromacsClusteringPage />} path={gromacsPaths.clusteringRoute} />
+              <Route element={<AlphaFold3SubmissionPage />} path={alphafold3Paths.submission} />
+              <Route element={<HumanizationSubmissionPage />} path={humanizationPaths.submission} />
+              <Route element={<NanobodySubmissionPage />} path={nanobodyPaths.submission} />
+              <Route element={<JobDetailPage tool="nanobody_humanization" />} path={nanobodyPaths.jobRoute} />
+              <Route element={<JobDetailPage tool="humanization" />} path={humanizationPaths.jobRoute} />
+              <Route
+                element={<JobDetailPage tool="gromacs" />}
+                path={gromacsPaths.jobRoute}
+              />
+              <Route
+                element={<JobDetailPage tool="alphafold3" />}
+                path={alphafold3Paths.jobRoute}
+              />
+            </Route>
             <Route element={<AdminRoute />}>
               <Route element={<AdminLayout />} path="/admin">
                 <Route element={<Navigate replace to="users" />} index />
                 <Route element={<UsersAdminPage />} path="users" />
-                <Route element={<ModalAdminPage />} path="modal" />
+                <Route element={<RemoteRoute />}>
+                  <Route element={<ModalAdminPage />} path="modal" />
+                </Route>
                 <Route element={<StorageAdminPage />} path="storage" />
               </Route>
             </Route>

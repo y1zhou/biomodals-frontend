@@ -103,6 +103,12 @@ export function antibodySequenceDetail(input: SequenceRequest, signal?: AbortSig
   })
 }
 
+export const apiEvents = new EventTarget()
+
+export function serviceCapabilities(signal?: AbortSignal) {
+  return requestJson<components["schemas"]["CapabilitiesView"]>("/api/v1/capabilities", { signal, cache: "no-store" })
+}
+
 export type Job = components["schemas"]["JobView"]
 export type JobPage = components["schemas"]["JobPageView"]
 export type JobStage = components["schemas"]["JobStageView"]
@@ -243,6 +249,14 @@ async function responseBody(response: Response) {
   return response.json().catch(() => undefined)
 }
 
+function responseError(status: number, body: unknown, requestId: string | null) {
+  const error = new ApiError(status, body, requestId)
+  if (apiErrorCode(error) === "remote_execution_unavailable") {
+    apiEvents.dispatchEvent(new Event("remote-execution-unavailable"))
+  }
+  return error
+}
+
 async function requestResponse(
   path: string,
   init?: RequestInit,
@@ -257,7 +271,7 @@ async function requestResponse(
     },
   })
   if (!response.ok) {
-    throw new ApiError(
+    throw responseError(
       response.status,
       await responseBody(response),
       response.headers.get("X-Request-ID")
@@ -791,7 +805,7 @@ export function submitGromacsJob(
       if (xhr.status >= 200 && xhr.status < 300) resolve(body as Job)
       else {
         reject(
-          new ApiError(
+          responseError(
             xhr.status,
             body,
             xhr.getResponseHeader("X-Request-ID")

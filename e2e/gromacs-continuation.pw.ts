@@ -11,6 +11,7 @@ async function mockApi(page: Page) {
   await page.context().addCookies([{ name: "biomodals-csrf", value: "fixture", url: process.env.BIOMODALS_BROWSER_ORIGIN! }])
   const reads: string[] = []
   await page.route((url) => url.pathname.startsWith("/api/"), (route) => {
+    if (new URL(route.request().url()).pathname === "/api/v1/capabilities") return route.fulfill({ json: { remote_execution_enabled: true } })
     const path = new URL(route.request().url()).pathname
     reads.push(path)
     if (path.endsWith("/auth/me") || path.endsWith("/auth/login")) return route.fulfill({ json: principal })

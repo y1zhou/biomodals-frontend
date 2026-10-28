@@ -29,6 +29,7 @@ import {
   useExpireSession,
   type CurrentUserState,
 } from "@/auth-state"
+import { useCapabilities } from "@/capabilities"
 import { buttonVariants } from "@/components/ui/button"
 import AntibodyTransferProvider from "@/components/AntibodyTransferProvider"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,7 @@ export default function AppShell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useCurrentUser()
+  const { remoteExecutionEnabled } = useCapabilities()
 
   function finishLogout() {
     queryClient.clear()
@@ -111,15 +113,17 @@ export default function AppShell() {
             </Link>
             {currentUser ? (
               <>
-                <Link
-                  aria-label="My Jobs"
-                  className={buttonVariants({ variant: "ghost" })}
-                  title="My Jobs"
-                  to="/jobs"
-                >
-                  <BriefcaseBusiness aria-hidden="true" data-icon="inline-start" />
-                  <span className="hidden sm:inline">My Jobs</span>
-                </Link>
+                {remoteExecutionEnabled ? (
+                  <Link
+                    aria-label="My Jobs"
+                    className={buttonVariants({ variant: "ghost" })}
+                    title="My Jobs"
+                    to="/jobs"
+                  >
+                    <BriefcaseBusiness aria-hidden="true" data-icon="inline-start" />
+                    <span className="hidden sm:inline">My Jobs</span>
+                  </Link>
+                ) : null}
                 <Menu.Root>
                   <Menu.Trigger className="ml-1 flex size-9 cursor-pointer items-center justify-center rounded-full border bg-muted text-sm font-medium outline-none transition-all hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95 active:bg-accent active:brightness-90 motion-reduce:active:scale-100">
                     <span className="sr-only">Open user menu</span>

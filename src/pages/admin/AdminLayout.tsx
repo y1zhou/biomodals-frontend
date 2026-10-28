@@ -1,6 +1,7 @@
 import { CloudCog, HardDrive, ShieldCheck, UsersRound } from "lucide-react"
 import { NavLink, Outlet } from "react-router"
 
+import { useCapabilities } from "@/capabilities"
 import { cn } from "@/lib/utils"
 
 const links = [
@@ -10,6 +11,7 @@ const links = [
 ] as const
 
 export default function AdminLayout() {
+  const { remoteExecutionEnabled } = useCapabilities()
   return (
     <main className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
       <div className="flex items-center gap-3">
@@ -25,7 +27,7 @@ export default function AdminLayout() {
       </div>
 
       <nav aria-label="Admin" className="mt-8 flex gap-1 overflow-x-auto border-b">
-        {links.map(({ to, label, icon: Icon }) => (
+        {links.filter((link) => link.to !== "/admin/modal" || remoteExecutionEnabled).map(({ to, label, icon: Icon }) => (
           <NavLink
             className={({ isActive }) =>
               cn(

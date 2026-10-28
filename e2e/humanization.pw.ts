@@ -169,6 +169,7 @@ async function mockApi(page: Page, { lostResponse = false, expired = false, maxP
   // Fulfil every API request locally. No submission in these tests reaches a
   // server or a scientific provider, even when an unexpected request is made.
   await page.route("**/api/**", async (route) => {
+    if (new URL(route.request().url()).pathname === "/api/v1/capabilities") return route.fulfill({ json: { remote_execution_enabled: true } })
     const request = route.request()
     const url = new URL(request.url())
     requests.push(`${request.method()} ${url.pathname}${url.search}`)

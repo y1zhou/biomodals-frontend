@@ -14,6 +14,7 @@ async function mockApi(page: Page) {
   const requests: OptimizationReviewRequest[] = []
   const unexpected: string[] = []
   await page.route("**/api/**", (route) => {
+    if (new URL(route.request().url()).pathname === "/api/v1/capabilities") return route.fulfill({ json: { remote_execution_enabled: true } })
     const path = new URL(route.request().url()).pathname
     if (path === "/api/v1/auth/me" || path === "/api/v1/auth/login") return route.fulfill({ json: { user_id: "reviewer", display_name: "Researcher", email: "reviewer@example.test", is_admin: false } })
     if (path === "/api/v1/protein-optimization/options") return route.fulfill({ json: optimizationOptions })

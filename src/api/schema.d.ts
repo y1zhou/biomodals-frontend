@@ -451,6 +451,23 @@ export interface paths {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/api/v1/capabilities": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** Capabilities */
+        readonly get: operations["capabilities_api_v1_capabilities_get"];
+        readonly put?: never;
+        readonly post?: never;
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/api/v1/gromacs/jobs": {
         readonly parameters: {
             readonly query?: never;
@@ -1572,6 +1589,14 @@ export interface components {
         readonly CandidateGermlines: {
             readonly vh: components["schemas"]["GermlinePresentation"];
             readonly vl: components["schemas"]["GermlinePresentation"];
+        };
+        /**
+         * CapabilitiesView
+         * @description Public startup capabilities; no provider credentials or Tool metadata.
+         */
+        readonly CapabilitiesView: {
+            /** Remote Execution Enabled */
+            readonly remote_execution_enabled: boolean;
         };
         /**
          * ChemistryLigand
@@ -3469,6 +3494,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly modal_costs_api_v1_admin_modal_costs_get: {
@@ -3526,6 +3562,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -3634,6 +3681,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly resolve_state_unknown_job_api_v1_admin_modal_state_unknown_jobs__job_id__resolve_post: {
@@ -3740,6 +3798,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -3859,6 +3928,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -4493,6 +4573,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly submit_job_api_v1_alphafold3_jobs_post: {
@@ -4567,6 +4658,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly download_job_document_api_v1_alphafold3_jobs__job_id__document_get: {
@@ -4635,6 +4737,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly prediction_api_v1_alphafold3_jobs__job_id__prediction_get: {
@@ -4670,7 +4783,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -4701,6 +4814,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -4738,7 +4862,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -4769,6 +4893,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -4812,7 +4947,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -4823,7 +4958,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             readonly 422: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -4843,6 +4978,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -5031,6 +5177,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly delete_validation_api_v1_alphafold3_validations__validation_id__delete: {
@@ -5089,6 +5246,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly download_document_api_v1_alphafold3_validations__validation_id__document_get: {
@@ -5144,6 +5312,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -5663,6 +5842,50 @@ export interface operations {
             };
         };
     };
+    readonly capabilities_api_v1_capabilities_get: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Successful Response */
+            readonly 200: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CapabilitiesView"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            readonly 413: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            readonly 500: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     readonly submit_job_api_v1_gromacs_jobs_post: {
         readonly parameters: {
             readonly query?: never;
@@ -5735,6 +5958,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly clustering_info_api_v1_gromacs_jobs__job_id__clustering_get: {
@@ -5801,6 +6035,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Gateway Timeout */
@@ -5890,6 +6135,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
             /** @description Gateway Timeout */
             readonly 504: {
                 headers: {
@@ -5967,6 +6223,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
             /** @description Gateway Timeout */
@@ -6056,6 +6323,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
             /** @description Gateway Timeout */
             readonly 504: {
                 headers: {
@@ -6103,7 +6381,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
-            /** @description Request Entity Too Large */
+            /** @description Content Too Large */
             readonly 413: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -6134,6 +6412,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6232,7 +6521,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             readonly 422: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -6252,6 +6541,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6309,6 +6609,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6374,6 +6685,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly selection_download_api_v1_humanization_jobs__job_id__selection_csv_get: {
@@ -6431,6 +6753,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly options_api_v1_humanization_options_get: {
@@ -6473,6 +6806,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6533,6 +6877,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly get_job_api_v1_jobs__job_id__get: {
@@ -6588,6 +6943,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6670,6 +7036,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly cancel_job_api_v1_jobs__job_id__cancel_post: {
@@ -6739,6 +7116,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6811,7 +7199,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description Requested Range Not Satisfiable */
+            /** @description Range Not Satisfiable */
             readonly 416: {
                 headers: {
                     readonly "Content-Range"?: string;
@@ -6843,6 +7231,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6904,6 +7303,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -6981,6 +7391,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly prepare_download_api_v1_jobs__job_id__prepare_download_post: {
@@ -7050,6 +7471,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly refresh_job_api_v1_jobs__job_id__refresh_post: {
@@ -7108,6 +7540,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -7181,6 +7624,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly submit_api_v1_nanobody_humanization_jobs_post: {
@@ -7233,7 +7687,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             readonly 422: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -7323,6 +7777,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly selection_api_v1_nanobody_humanization_jobs__job_id__selection_get: {
@@ -7386,6 +7851,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly selection_download_api_v1_nanobody_humanization_jobs__job_id__selection_csv_get: {
@@ -7443,6 +7919,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly options_api_v1_nanobody_humanization_options_get: {
@@ -7485,6 +7972,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -7612,7 +8110,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             readonly 422: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -7632,6 +8130,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -7708,6 +8217,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -7791,6 +8311,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly inputs_api_v1_protein_optimization_jobs__job_id__inputs_get: {
@@ -7859,6 +8390,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly prepare_selected_download_api_v1_protein_optimization_jobs__job_id__prepare_selected_download_post: {
@@ -7912,7 +8454,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             readonly 422: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -7932,6 +8474,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };
@@ -7978,6 +8531,17 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
+                };
+            };
         };
     };
     readonly review_api_v1_protein_optimization_review_post: {
@@ -8018,7 +8582,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["PayloadTooLargeResponse"];
                 };
             };
-            /** @description Unprocessable Entity */
+            /** @description Unprocessable Content */
             readonly 422: {
                 headers: {
                     /** @description Server-generated request correlation identifier. */
@@ -8038,6 +8602,17 @@ export interface operations {
                 };
                 content: {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            readonly 503: {
+                headers: {
+                    /** @description Server-generated request correlation identifier. */
+                    readonly "X-Request-ID"?: string;
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["CodedErrorResponse"];
                 };
             };
         };

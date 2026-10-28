@@ -11,6 +11,7 @@ async function mockResults(page: Page, { state = "succeeded", cacheMiss = false,
   const concurrentReads = new Promise<void>((resolve) => { releaseReads = resolve })
   await page.context().addCookies([{ name: "biomodals-csrf", value: "test-csrf", url: process.env.BIOMODALS_BROWSER_ORIGIN! }])
   await page.route((url) => url.pathname.startsWith("/api/"), async (route) => {
+    if (new URL(route.request().url()).pathname === "/api/v1/capabilities") return route.fulfill({ json: { remote_execution_enabled: true } })
     const request = route.request()
     const url = new URL(request.url())
     requests.push(`${request.method()} ${url.pathname}`)

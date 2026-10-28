@@ -3,6 +3,8 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { createBrowserRouter, RouterProvider } from "react-router"
 
+import { apiEvents } from "./api/client"
+import { capabilitiesKey } from "./capabilities"
 import App from "./App.tsx"
 import AppErrorBoundary from "./components/AppErrorBoundary.tsx"
 import "./index.css"
@@ -14,6 +16,11 @@ const queryClient = new QueryClient({
     },
   },
 })
+apiEvents.addEventListener("remote-execution-unavailable", () => {
+  queryClient.setQueryData(capabilitiesKey, { remote_execution_enabled: false })
+  void queryClient.invalidateQueries({ queryKey: capabilitiesKey })
+})
+
 const router = createBrowserRouter([
   {
     path: "*",

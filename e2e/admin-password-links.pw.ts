@@ -10,6 +10,7 @@ test("create and reset show each origin with its own copy control", async ({ pag
     document.execCommand = (command) => command === "copy"
   })
   await page.route("**/api/v1/**", async (route) => {
+    if (new URL(route.request().url()).pathname === "/api/v1/capabilities") return route.fulfill({ json: { remote_execution_enabled: true } })
     const url = new URL(route.request().url())
     if (url.pathname.endsWith("/auth/me")) return route.fulfill({ json: { user_id: "admin", display_name: "Admin", email: "admin@example.test", is_admin: true } })
     if (url.pathname.endsWith("/password-link")) return route.fulfill({ json: links })
